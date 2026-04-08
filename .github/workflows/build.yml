@@ -70,6 +70,7 @@ jobs:
             --nofollow-import-to=tkinter,matplotlib,numpy,pandas,scipy \
             --output-dir=dist \
             --output-filename=${{ matrix.output_name }} \
+            --assume-yes-for-downloads \
             main.py
         else
           python -m nuitka --standalone --onefile --disable-console \
@@ -79,6 +80,7 @@ jobs:
             --output-dir=dist \
             --output-filename=${{ matrix.output_name }} \
             --lto=yes \
+            --assume-yes-for-downloads \
             main.py
         fi
       shell: bash
