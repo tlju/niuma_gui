@@ -65,7 +65,7 @@ jobs:
       run: |
         if [ "${{ matrix.platform }}" = "windows" ]; then
           python -m nuitka --standalone --onefile --windows-disable-console \
-            --enable-plugin=pyqt6,sqlalchemy,cryptography,pydantic \
+            --enable-plugin=pyqt6,cryptography,pydantic \
             --follow-imports \
             --nofollow-import-to=tkinter,matplotlib,numpy,pandas,scipy \
             --output-dir=dist \
@@ -73,7 +73,7 @@ jobs:
             main.py
         else
           python -m nuitka --standalone --onefile --disable-console \
-            --enable-plugin=pyqt6,sqlalchemy,cryptography,pydantic \
+            --enable-plugin=pyqt6,cryptography,pydantic \
             --follow-imports \
             --nofollow-import-to=tkinter,matplotlib,numpy,pandas,scipy \
             --output-dir=dist \
