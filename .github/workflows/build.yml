@@ -1,0 +1,81 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+  release:
+    types: [ created ]
+
+env:
+  PYTHON_VERSION: '3.10'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            arch: x64
+            platform: linux
+            output_name: niuma-linux-x64
+          - os: ubuntu-22.04
+            arch: arm64
+            platform: linux
+            output_name: niuma-linux-arm64
+          - os: windows-2022
+            arch: x64
+            platform: windows
+            output_name: niuma-windows-x64.exe
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up QEMU (arm64)
+      if: matrix.arch == 'arm64'
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Build with PyInstaller
+      run: |
+        python -m PyInstaller --clean --noconfirm pyinstaller.spec
+
+    - name: Rename output
+      run: |
+        if [ "${{ matrix.platform }}" = "windows" ]; then
+          mv dist/niuma_gui.exe dist/${{ matrix.output_name }}
+        else
+          mv dist/niuma_gui dist/${{ matrix.output_name }}
+        fi
+      shell: bash
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.output_name }}
+        path: dist/${{ matrix.output_name }}
+
+    - name: Create Release
+      if: github.event_name == 'release' && github.event.action == 'created'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: dist/${{ matrix.output_name }}
+        asset_name: ${{ matrix.output_name }}
+        asset_content_type: application/octet-stream
