@@ -2,7 +2,6 @@ PyQt6>=6.6.0
 PyQt6-WebEngine>=6.6.0
 SQLAlchemy>=2.0.0
 paramiko>=3.0.0
-ptyon>=1.0.0
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
 python-dotenv>=1.0.0
