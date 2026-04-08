@@ -25,6 +25,6 @@ class ServerAsset(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # 关系 - 待 Script 和 ExecLog 模型实现后再启用
-    # scripts = relationship("Script", back_populates="server")
-    # exec_logs = relationship("ExecLog", back_populates="server")
+    # 关系
+    scripts = relationship("Script", back_populates="server")
+    exec_logs = relationship("ExecLog", back_populates="server")
