@@ -1,5 +1,6 @@
 import pytest
 from models.user import User, UserStatus
+from models.server_asset import ServerAsset
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import Base
@@ -27,3 +28,22 @@ def test_create_user(db_session):
     assert retrieved is not None
     assert retrieved.username == "testuser"
     assert retrieved.status == UserStatus.ACTIVE
+
+def test_create_server_asset(db_session):
+    asset = ServerAsset(
+        name="Test Server",
+        hostname="test.example.com",
+        ip="192.168.1.100",
+        port=22,
+        os_type="Linux",
+        username="admin",
+        password_cipher="encrypted_password"
+    )
+    db_session.add(asset)
+    db_session.commit()
+
+    retrieved = db_session.query(ServerAsset).filter(
+        ServerAsset.name == "Test Server"
+    ).first()
+    assert retrieved is not None
+    assert retrieved.ip == "192.168.1.100"
