@@ -3,6 +3,9 @@ from models.user import User, UserStatus
 from models.audit_log import AuditLog
 from services.crypto import hash_password, verify_password
 from typing import Optional
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 class AuthService:
     def __init__(self, db: Session):

@@ -1,13 +1,20 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
-    QTableWidgetItem, QPushButton, QHeaderView, QComboBox, QLabel
+    QTableWidgetItem, QPushButton, QHeaderView, QComboBox, QLabel,
+    QMessageBox
 )
 from PyQt6.QtCore import Qt
+from core.workers import AuditLogLoadWorker
+from core.logger import get_logger
+from gui.icons import icons
+
+logger = get_logger(__name__)
 
 class AuditPage(QWidget):
     def __init__(self, audit_service, parent=None):
         super().__init__(parent)
         self.audit_service = audit_service
+        self.loading_worker = None
         self.init_ui()
         self.load_logs()
 
@@ -21,9 +28,11 @@ class AuditPage(QWidget):
         self.action_combo = QComboBox()
         self.action_combo.addItem("全部", "")
         self.action_combo.addItems(["login", "create", "update", "delete", "execute"])
+        self.action_combo.currentIndexChanged.connect(self.load_logs)
         toolbar.addWidget(self.action_combo)
 
         self.refresh_btn = QPushButton("刷新")
+        self.refresh_btn.setIcon(icons.refresh_icon())
         self.refresh_btn.clicked.connect(self.load_logs)
         toolbar.addWidget(self.refresh_btn)
 
@@ -45,13 +54,31 @@ class AuditPage(QWidget):
         self.setLayout(layout)
 
     def load_logs(self):
+        """在后台线程加载审计日志"""
         action_type = self.action_combo.currentData()
 
-        if action_type:
-            logs = self.audit_service.get_logs(action_type=action_type)
-        else:
-            logs = self.audit_service.get_logs()
+        if self.loading_worker and self.loading_worker.isRunning():
+            logger.warning("审计日志加载任务正在进行中，跳过")
+            return
 
+        self.loading_worker = AuditLogLoadWorker(self.audit_service, action_type)
+        self.loading_worker.finished.connect(self._on_logs_loaded)
+        self.loading_worker.error.connect(self._on_load_error)
+        self.loading_worker.start()
+        logger.info(f"开始加载审计日志，操作类型: {action_type or '全部'}")
+
+    def _on_logs_loaded(self, logs):
+        """审计日志加载完成回调"""
+        logger.info(f"成功加载 {len(logs)} 条审计日志")
+        self._populate_table(logs)
+
+    def _on_load_error(self, error_msg):
+        """加载错误回调"""
+        logger.error(f"加载审计日志失败: {error_msg}")
+        QMessageBox.critical(self, "错误", f"加载审计日志失败:\n{error_msg}")
+
+    def _populate_table(self, logs):
+        """填充表格数据"""
         self.table.setRowCount(len(logs))
 
         for row, log in enumerate(logs):

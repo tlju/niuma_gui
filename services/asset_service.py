@@ -4,6 +4,9 @@ from models.audit_log import AuditLog
 from services.crypto import CryptoManager
 from typing import List, Optional
 from core.config import settings
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 class AssetService:
     def __init__(self, db: Session):

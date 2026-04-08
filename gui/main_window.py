@@ -5,17 +5,23 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QAction
 from gui.login_dialog import LoginDialog
+from gui.icons import icons
 from core.database import init_db, get_db_session
 from services.auth_service import AuthService
 from services.asset_service import AssetService
 from services.script_service import ScriptService
 from services.audit_service import AuditService
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.current_user_id = None
         self.current_username = None
+        self.setWindowIcon(icons.app_icon())
+        logger.info("启动Niuma堡垒机主窗口")
 
         # 初始化数据库
         init_db()
@@ -60,10 +66,12 @@ class MainWindow(QMainWindow):
         file_menu = menubar.addMenu("文件")
 
         logout_action = QAction("登出", self)
+        logout_action.setIcon(icons.user_icon())
         logout_action.triggered.connect(self.logout)
         file_menu.addAction(logout_action)
 
         exit_action = QAction("退出", self)
+        exit_action.setIcon(icons.cancel_icon())
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
@@ -108,9 +116,9 @@ class MainWindow(QMainWindow):
         self.scripts_page = ScriptsPage(self.script_service, self.current_user_id)
         self.audit_page = AuditPage(self.audit_service)
 
-        self.tabs.addTab(self.assets_page, "资产管理")
-        self.tabs.addTab(self.scripts_page, "脚本管理")
-        self.tabs.addTab(self.audit_page, "审计日志")
+        self.tabs.addTab(self.assets_page, icons.asset_icon(), "资产管理")
+        self.tabs.addTab(self.scripts_page, icons.script_icon(), "脚本管理")
+        self.tabs.addTab(self.audit_page, icons.audit_icon(), "审计日志")
 
         self.layout.addWidget(self.tabs)
 

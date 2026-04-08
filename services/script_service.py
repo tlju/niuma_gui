@@ -6,7 +6,10 @@ from models.server_asset import ServerAsset
 from services.crypto import CryptoManager
 from typing import List, Optional
 from core.config import settings
+from core.logger import get_logger
 import paramiko
+
+logger = get_logger(__name__)
 
 class ScriptService:
     def __init__(self, db: Session):

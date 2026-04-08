@@ -1,6 +1,10 @@
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QIntValidator
+from gui.icons import icons
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 class LoginDialog(QDialog):
     login_success = pyqtSignal(int, str)  # user_id, username
@@ -10,6 +14,7 @@ class LoginDialog(QDialog):
         self.auth_service = auth_service
         self.user_id = None
         self.username = None
+        self.setWindowIcon(icons.user_icon())
         self.init_ui()
 
     def init_ui(self):
@@ -38,11 +43,13 @@ class LoginDialog(QDialog):
 
         # 登录按钮
         self.login_btn = QPushButton("登录")
+        self.login_btn.setIcon(icons.ok_icon())
         self.login_btn.clicked.connect(self.handle_login)
         layout.addWidget(self.login_btn)
 
         # 注册按钮
         self.register_btn = QPushButton("注册")
+        self.register_btn.setIcon(icons.add_icon())
         self.register_btn.clicked.connect(self.handle_register)
         layout.addWidget(self.register_btn)
 

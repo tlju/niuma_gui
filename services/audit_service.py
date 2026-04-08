@@ -2,6 +2,9 @@ from sqlalchemy.orm import Session
 from models.audit_log import AuditLog
 from typing import List, Optional
 from datetime import datetime
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 class AuditService:
     def __init__(self, db: Session):

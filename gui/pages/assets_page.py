@@ -4,12 +4,18 @@ from PyQt6.QtWidgets import (
     QLineEdit, QComboBox, QMessageBox, QHeaderView
 )
 from PyQt6.QtCore import Qt
+from core.workers import AssetLoadWorker
+from core.logger import get_logger
+from gui.icons import icons
+
+logger = get_logger(__name__)
 
 class AssetsPage(QWidget):
     def __init__(self, asset_service, current_user_id, parent=None):
         super().__init__(parent)
         self.asset_service = asset_service
         self.current_user_id = current_user_id
+        self.loading_worker = None
         self.init_ui()
         self.load_assets()
 
@@ -20,10 +26,12 @@ class AssetsPage(QWidget):
         toolbar = QHBoxLayout()
 
         self.add_btn = QPushButton("添加资产")
+        self.add_btn.setIcon(icons.add_icon())
         self.add_btn.clicked.connect(self.show_add_dialog)
         toolbar.addWidget(self.add_btn)
 
         self.refresh_btn = QPushButton("刷新")
+        self.refresh_btn.setIcon(icons.refresh_icon())
         self.refresh_btn.clicked.connect(self.load_assets)
         toolbar.addWidget(self.refresh_btn)
 
@@ -45,8 +53,29 @@ class AssetsPage(QWidget):
         self.setLayout(layout)
 
     def load_assets(self):
-        assets = self.asset_service.get_all()
+        """在后台线程加载资产数据"""
+        if self.loading_worker and self.loading_worker.isRunning():
+            logger.warning("资产加载任务正在进行中，跳过")
+            return
 
+        self.loading_worker = AssetLoadWorker(self.asset_service)
+        self.loading_worker.finished.connect(self._on_assets_loaded)
+        self.loading_worker.error.connect(self._on_load_error)
+        self.loading_worker.start()
+        logger.info("开始加载资产列表")
+
+    def _on_assets_loaded(self, assets):
+        """资产加载完成回调"""
+        logger.info(f"成功加载 {len(assets)} 个资产")
+        self._populate_table(assets)
+
+    def _on_load_error(self, error_msg):
+        """加载错误回调"""
+        logger.error(f"加载资产失败: {error_msg}")
+        QMessageBox.critical(self, "错误", f"加载资产失败:\n{error_msg}")
+
+    def _populate_table(self, assets):
+        """填充表格数据"""
         self.table.setRowCount(len(assets))
 
         for row, asset in enumerate(assets):
@@ -62,6 +91,7 @@ class AssetsPage(QWidget):
             btn_layout = QHBoxLayout()
 
             delete_btn = QPushButton("删除")
+            delete_btn.setIcon(icons.delete_icon())
             delete_btn.clicked.connect(
                 lambda checked, a=asset.id: self.delete_asset(a)
             )
@@ -89,6 +119,7 @@ class AssetsPage(QWidget):
         if reply == QMessageBox.StandardButton.Yes:
             self.asset_service.delete(asset_id, self.current_user_id)
             self.load_assets()
+
 
 class AssetDialog(QDialog):
     def __init__(self, parent=None):

@@ -1,0 +1,15 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file>icons/app.png</file>
+        <file>icons/add.png</file>
+        <file>icons/refresh.png</file>
+        <file>icons/delete.png</file>
+        <file>icons/execute.png</file>
+        <file>icons/close.png</file>
+        <file>icons/ok.png.png</file>
+        <file>icons/user.png</file>
+        <file>icons/asset.png</file>
+        <file>icons/script.png</file>
+        <file>icons/audit.png</file>
+    </qresource>
+</RCC>

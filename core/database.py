@@ -2,6 +2,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from core.config import settings
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 # 创建数据库引擎
 engine = create_engine(
