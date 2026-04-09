@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from models.user import User, UserStatus
 from models.audit_log import AuditLog
-from services.crypto import hash_password, verify_password
+from services.crypto import verify_password
 from typing import Optional
 from core.logger import get_logger
 
@@ -10,33 +10,6 @@ logger = get_logger(__name__)
 class AuthService:
     def __init__(self, db: Session):
         self.db = db
-
-    def register(
-        self,
-        username: str,
-        password: str,
-        full_name: str,
-        email: Optional[str] = None
-    ) -> Optional[int]:
-        if self.get_user_by_username(username):
-            return None
-
-        hashed = hash_password(password)
-        user = User(
-            username=username,
-            hashed_password=hashed,
-            full_name=full_name,
-            email=email,
-            status=UserStatus.ACTIVE
-        )
-        self.db.add(user)
-        self.db.commit()
-        self.db.refresh(user)
-
-        # 记录审计日志
-        self._log_audit(user.id, "create", "user", user.id)
-
-        return user.id
 
     def authenticate(self, username: str, password: str) -> Optional[User]:
         user = self.get_user_by_username(username)

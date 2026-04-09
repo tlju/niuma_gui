@@ -57,7 +57,7 @@ class IconProvider:
 
     def user_icon(self):
         """用户图标"""
-        return self.style.standardIcon(QStyle.StandardPixmap.SP_UserIcon)
+        return self.style.standardIcon(QStyle.StandardPixmap.SP_FileIcon)
 
     def asset_icon(self):
         """资产图标"""

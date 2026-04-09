@@ -1,13 +1,17 @@
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtGui import QIntValidator
+from PyQt6.QtWidgets import (
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
+    QLineEdit, QPushButton, QMessageBox, QFrame, QSpacerItem, QSizePolicy
+)
+from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtGui import QFont
 from gui.icons import icons
 from core.logger import get_logger
 
 logger = get_logger(__name__)
 
+
 class LoginDialog(QDialog):
-    login_success = pyqtSignal(int, str)  # user_id, username
+    login_success = pyqtSignal(int, str)
 
     def __init__(self, auth_service, parent=None):
         super().__init__(parent)
@@ -18,45 +22,108 @@ class LoginDialog(QDialog):
         self.init_ui()
 
     def init_ui(self):
-        self.setWindowTitle("登录 - Niuma 堡垒机")
-        self.setFixedSize(400, 250)
+        self.setWindowTitle("登录 - 运维辅助工具")
+        self.setFixedSize(420, 380)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
 
-        layout = QVBoxLayout()
+        main_layout = QVBoxLayout()
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # 标题
-        title_label = QLabel("牛马运维辅助系统")
-        title_label.setStyleSheet("font-size: 20px; font-weight: bold;")
-        layout.addWidget(title_label)
+        header = QFrame()
+        header.setObjectName("header")
+        header.setFixedHeight(120)
+        header.setStyleSheet("""
+            QFrame#header {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #1abc9c, stop:1 #3498db);
+            }
+        """)
+        header_layout = QVBoxLayout(header)
+        header_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # 用户名
-        layout.addWidget(QLabel("用户名:"))
+        title_label = QLabel("运维辅助工具")
+        title_label.setObjectName("titleLabel")
+        title_label.setStyleSheet("""
+            QLabel#titleLabel {
+                font-size: 28px;
+                font-weight: bold;
+                color: white;
+                background: transparent;
+            }
+        """)
+        header_layout.addWidget(title_label)
+
+        subtitle_label = QLabel("运维辅助工具")
+        subtitle_label.setObjectName("subtitleLabel")
+        subtitle_label.setStyleSheet("""
+            QLabel#subtitleLabel {
+                font-size: 14px;
+                color: rgba(255, 255, 255, 0.8);
+                background: transparent;
+                margin-top: 5px;
+            }
+        """)
+        header_layout.addWidget(subtitle_label)
+
+        main_layout.addWidget(header)
+
+        form_frame = QFrame()
+        form_frame.setStyleSheet("QFrame { background-color: white; }")
+        form_layout = QVBoxLayout(form_frame)
+        form_layout.setSpacing(15)
+        form_layout.setContentsMargins(40, 30, 40, 30)
+
+        username_label = QLabel("用户名")
+        username_label.setStyleSheet("font-weight: bold; color: #2c3e50;")
+        form_layout.addWidget(username_label)
+
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("请输入用户名")
-        layout.addWidget(self.username_input)
+        self.username_input.setMinimumHeight(42)
+        form_layout.addWidget(self.username_input)
 
-        # 密码
-        layout.addWidget(QLabel("密码:"))
+        password_label = QLabel("密码")
+        password_label.setStyleSheet("font-weight: bold; color: #2c3e50;")
+        form_layout.addWidget(password_label)
+
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("请输入密码")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
-        layout.addWidget(self.password_input)
+        self.password_input.setMinimumHeight(42)
+        self.password_input.returnPressed.connect(self.handle_login)
+        form_layout.addWidget(self.password_input)
 
-        # 登录按钮
-        self.login_btn = QPushButton("登录")
-        self.login_btn.setIcon(icons.ok_icon())
+        form_layout.addSpacerItem(QSpacerItem(20, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
+
+        self.login_btn = QPushButton("登 录")
+        self.login_btn.setObjectName("loginBtn")
+        self.login_btn.setMinimumHeight(48)
+        self.login_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.login_btn.setStyleSheet("""
+            QPushButton#loginBtn {
+                background-color: #1abc9c;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-size: 16px;
+                font-weight: bold;
+            }
+            QPushButton#loginBtn:hover {
+                background-color: #16a085;
+            }
+            QPushButton#loginBtn:pressed {
+                background-color: #14967a;
+            }
+        """)
         self.login_btn.clicked.connect(self.handle_login)
-        layout.addWidget(self.login_btn)
+        form_layout.addWidget(self.login_btn)
 
-        # 注册按钮
-        self.register_btn = QPushButton("注册")
-        self.register_btn.setIcon(icons.add_icon())
-        self.register_btn.clicked.connect(self.handle_register)
-        layout.addWidget(self.register_btn)
-
-        self.setLayout(layout)
+        main_layout.addWidget(form_frame)
+        self.setLayout(main_layout)
 
     def handle_login(self):
-        username = self.username_input.text()
+        username = self.username_input.text().strip()
         password = self.password_input.text()
 
         if not username or not password:
@@ -71,21 +138,5 @@ class LoginDialog(QDialog):
             self.accept()
         else:
             QMessageBox.warning(self, "错误", "用户名或密码错误")
-
-    def handle_register(self):
-        username = self.username_input.text()
-        password = self.password_input.text()
-
-        if not username or not password:
-            QMessageBox.warning(self, "提示", "请输入用户名和密码")
-            return
-
-        if len(password) < 6:
-            QMessageBox.warning(self, "提示", "密码至少6位")
-            return
-
-        user_id = self.auth_service.register(username, password, username)
-        if user_id:
-            QMessageBox.information(self, "成功", "注册成功，请登录")
-        else:
-            QMessageBox.warning(self, "错误", "用户名已存在")
+            self.password_input.clear()
+            self.password_input.setFocus()
