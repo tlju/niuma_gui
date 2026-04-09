@@ -1,0 +1,36 @@
+LoginDialog {
+    background-color: #fff;
+}
+
+LoginDialog QFrame#header {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 #1abc9c, stop:1 #3498db);
+}
+
+LoginDialog QLabel[class="title"] {
+    font-size: 28px;
+    font-weight: bold;
+    color: white;
+    background: transparent;
+}
+
+LoginDialog QLabel[class="subtitle"] {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    background: transparent;
+    margin-top: 5px;
+}
+
+LoginDialog QPushButton[class="login"] {
+    background-color: #1abc9c;
+    font-size: 16px;
+    padding: 12px 24px;
+}
+
+LoginDialog QPushButton[class="login"]:hover {
+    background-color: #16a085;
+}
+
+LoginDialog QPushButton[class="login"]:pressed {
+    background-color: #14967a;
+}

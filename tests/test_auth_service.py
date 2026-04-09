@@ -1,6 +1,7 @@
 import pytest
 from services.auth_service import AuthService
 from services.crypto import hash_password, verify_password
+from models.user import User, UserStatus
 
 @pytest.fixture
 def db_session():
@@ -25,21 +26,67 @@ def test_hash_verify_password():
     assert verify_password(password, hashed) == True
     assert verify_password("wrong_password", hashed) == False
 
-def test_register_user(auth_service):
-    user_id = auth_service.register("testuser", "password123", "Test User")
-    assert user_id is not None
+def test_create_user_directly(auth_service):
+    user = User(
+        username="testuser",
+        hashed_password=hash_password("password123"),
+        full_name="Test User",
+        status=UserStatus.ACTIVE
+    )
+    auth_service.db.add(user)
+    auth_service.db.commit()
 
-    user = auth_service.get_user_by_username("testuser")
-    assert user.username == "testuser"
-    assert user.full_name == "Test User"
+    retrieved_user = auth_service.get_user_by_username("testuser")
+    assert retrieved_user.username == "testuser"
+    assert retrieved_user.full_name == "Test User"
 
 def test_authenticate_user(auth_service):
-    auth_service.register("testuser", "password123", "Test User")
+    user = User(
+        username="testuser",
+        hashed_password=hash_password("password123"),
+        full_name="Test User",
+        status=UserStatus.ACTIVE
+    )
+    auth_service.db.add(user)
+    auth_service.db.commit()
 
-    user = auth_service.authenticate("testuser", "password123")
-    assert user is not None
-    assert user.username == "testuser"
+    authenticated_user = auth_service.authenticate("testuser", "password123")
+    assert authenticated_user is not None
+    assert authenticated_user.username == "testuser"
 
-    # 错误密码
     invalid = auth_service.authenticate("testuser", "wrongpassword")
     assert invalid is None
+
+def test_authenticate_non_existent_user(auth_service):
+    user = auth_service.authenticate("nonexistent", "password")
+    assert user is None
+
+def test_authenticate_inactive_user(auth_service):
+    user = User(
+        username="testuser",
+        hashed_password=hash_password("password123"),
+        full_name="Test User",
+        status=UserStatus.INACTIVE
+    )
+    auth_service.db.add(user)
+    auth_service.db.commit()
+
+    authenticated_user = auth_service.authenticate("testuser", "password123")
+    assert authenticated_user is None
+
+def test_get_user_by_id(auth_service):
+    user = User(
+        username="testuser",
+        hashed_password=hash_password("password123"),
+        full_name="Test User",
+        status=UserStatus.ACTIVE
+    )
+    auth_service.db.add(user)
+    auth_service.db.commit()
+
+    retrieved_user = auth_service.get_user_by_id(user.id)
+    assert retrieved_user is not None
+    assert retrieved_user.username == "testuser"
+
+    non_existent = auth_service.get_user_by_id(999)
+    assert non_existent is None

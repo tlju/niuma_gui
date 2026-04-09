@@ -2,12 +2,13 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
     QTableWidgetItem, QPushButton, QDialog, QLabel,
     QLineEdit, QPlainTextEdit, QMessageBox, QHeaderView,
-    QComboBox
+    QComboBox, QApplication
 )
 from PyQt6.QtCore import Qt
 from core.workers import ScriptLoadWorker, ScriptExecutionWorker
 from core.logger import get_logger
 from gui.icons import icons
+from gui.style_manager import load_combined_stylesheet
 
 logger = get_logger(__name__)
 
@@ -21,6 +22,8 @@ class ScriptsPage(QWidget):
         self.load_scripts()
 
     def init_ui(self):
+        load_combined_stylesheet(QApplication.instance(), ["common", "scripts_page"])
+        
         layout = QVBoxLayout()
 
         # 工具栏

@@ -2,11 +2,12 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
     QTableWidgetItem, QPushButton, QDialog, QLabel,
     QLineEdit, QComboBox, QMessageBox, QHeaderView,
-    QFrame, QFormLayout, QTabWidget, QSpinBox
+    QFrame, QFormLayout, QTabWidget, QSpinBox, QApplication
 )
 from PyQt6.QtCore import Qt
 from core.logger import get_logger
 from gui.icons import icons
+from gui.style_manager import load_combined_stylesheet
 
 logger = get_logger(__name__)
 
@@ -19,18 +20,13 @@ class DataDictsPage(QWidget):
         self.load_dicts()
 
     def init_ui(self):
+        load_combined_stylesheet(QApplication.instance(), ["common", "data_dicts_page"])
+        
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
 
         toolbar_frame = QFrame()
-        toolbar_frame.setStyleSheet("""
-            QFrame {
-                background-color: #f8f9fa;
-                border-radius: 8px;
-                padding: 8px;
-            }
-        """)
         toolbar_layout = QHBoxLayout(toolbar_frame)
         toolbar_layout.setContentsMargins(10, 8, 10, 8)
 

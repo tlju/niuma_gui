@@ -35,6 +35,10 @@ class IconProvider:
         """添加图标"""
         return self.style.standardIcon(QStyle.StandardPixmap.SP_DialogOpenButton)
 
+    def edit_icon(self):
+        """编辑图标"""
+        return self.style.standardIcon(QStyle.StandardPixmap.SP_FileDialogDetailedView)
+
     def refresh_icon(self):
         """刷新图标"""
         return self.style.standardIcon(QStyle.StandardPixmap.SP_BrowserReload)

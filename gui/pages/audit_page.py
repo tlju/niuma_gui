@@ -1,12 +1,13 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
     QTableWidgetItem, QPushButton, QHeaderView, QComboBox, QLabel,
-    QMessageBox
+    QMessageBox, QApplication
 )
 from PyQt6.QtCore import Qt
 from core.workers import AuditLogLoadWorker
 from core.logger import get_logger
 from gui.icons import icons
+from gui.style_manager import load_combined_stylesheet
 
 logger = get_logger(__name__)
 
@@ -19,6 +20,8 @@ class AuditPage(QWidget):
         self.load_logs()
 
     def init_ui(self):
+        load_combined_stylesheet(QApplication.instance(), ["common", "audit_page"])
+        
         layout = QVBoxLayout()
 
         # 工具栏

@@ -3,13 +3,14 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem, QPushButton, QDialog, QLabel,
     QLineEdit, QComboBox, QMessageBox, QHeaderView,
     QFrame, QSpacerItem, QSizePolicy, QGroupBox,
-    QFormLayout, QSpinBox
+    QFormLayout, QSpinBox, QApplication
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 from core.workers import AssetLoadWorker
 from core.logger import get_logger
 from gui.icons import icons
+from gui.style_manager import load_combined_stylesheet
 
 logger = get_logger(__name__)
 
@@ -25,18 +26,14 @@ class AssetsPage(QWidget):
         self.load_assets()
 
     def init_ui(self):
+        load_combined_stylesheet(QApplication.instance(), ["common", "assets_page"])
+        
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
 
         toolbar_frame = QFrame()
-        toolbar_frame.setStyleSheet("""
-            QFrame {
-                background-color: #f8f9fa;
-                border-radius: 8px;
-                padding: 8px;
-            }
-        """)
+        toolbar_frame.setProperty("class", "toolbar")
         toolbar_layout = QHBoxLayout(toolbar_frame)
         toolbar_layout.setContentsMargins(10, 8, 10, 8)
         toolbar_layout.setSpacing(10)
@@ -56,7 +53,6 @@ class AssetsPage(QWidget):
         toolbar_layout.addSpacing(20)
 
         search_label = QLabel("搜索:")
-        search_label.setStyleSheet("color: #2c3e50; font-weight: bold;")
         toolbar_layout.addWidget(search_label)
 
         self.search_input = QLineEdit()
@@ -69,7 +65,6 @@ class AssetsPage(QWidget):
         toolbar_layout.addStretch()
 
         self.count_label = QLabel("共 0 条记录")
-        self.count_label.setStyleSheet("color: #7f8c8d; font-size: 13px;")
         toolbar_layout.addWidget(self.count_label)
 
         layout.addWidget(toolbar_frame)
@@ -84,39 +79,6 @@ class AssetsPage(QWidget):
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(False)
-        self.table.setStyleSheet("""
-            QTableWidget {
-                background-color: white;
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
-                gridline-color: transparent;
-            }
-            QTableWidget::item {
-                padding: 8px;
-                border-bottom: 1px solid #f0f0f0;
-            }
-            QTableWidget::item:selected {
-                background-color: #e3f2fd;
-                color: #2c3e50;
-            }
-            QTableWidget::item:hover {
-                background-color: #f5f5f5;
-            }
-            QHeaderView::section {
-                background-color: #2c3e50;
-                color: white;
-                padding: 12px 8px;
-                border: none;
-                font-weight: bold;
-                font-size: 13px;
-            }
-            QHeaderView::section:first {
-                border-top-left-radius: 8px;
-            }
-            QHeaderView::section:last {
-                border-top-right-radius: 8px;
-            }
-        """)
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)

@@ -5,7 +5,8 @@ class SystemParam(Base):
     __tablename__ = "system_params"
 
     id = Column(Integer, primary_key=True)
-    param_key = Column(String(100), unique=True, nullable=False)
+    param_name = Column(String(100), nullable=False)
+    param_code = Column(String(100), unique=True, nullable=False)
     param_value = Column(Text)
-    param_type = Column(String(20), default="string")  # string, int, bool, json
+    status = Column(Integer, default=1)  # 0: 禁用, 1: 启用
     description = Column(Text)

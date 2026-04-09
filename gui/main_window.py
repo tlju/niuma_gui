@@ -1,11 +1,12 @@
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QMessageBox, QStatusBar, QFrame, QStackedWidget
+    QLabel, QMessageBox, QStatusBar, QFrame, QStackedWidget, QApplication
 )
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QAction
 from gui.login_dialog import LoginDialog
 from gui.icons import icons
+from gui.style_manager import load_combined_stylesheet
 from core.database import init_db, get_db_session
 from services.auth_service import AuthService
 from services.asset_service import AssetService
@@ -51,6 +52,8 @@ class MainWindow(QMainWindow):
         self.resize(1400, 900)
         self.setMinimumSize(1024, 768)
 
+        load_combined_stylesheet(QApplication.instance(), ["common", "main_window"])
+
         self.create_menu_bar()
 
         self.central_widget = QWidget()
@@ -77,62 +80,60 @@ class MainWindow(QMainWindow):
     def create_menu_bar(self):
         menubar = self.menuBar()
 
-        file_menu = menubar.addMenu("文件")
+        system_menu = menubar.addMenu("系统")
 
         audit_action = QAction("审计日志", self)
         audit_action.setIcon(icons.audit_icon())
         audit_action.setShortcut("Ctrl+U")
         audit_action.triggered.connect(lambda: self.switch_page("audit"))
-        file_menu.addAction(audit_action)
+        system_menu.addAction(audit_action)
 
         params_action = QAction("系统参数", self)
         params_action.setShortcut("Ctrl+P")
         params_action.triggered.connect(lambda: self.switch_page("params"))
-        file_menu.addAction(params_action)
+        system_menu.addAction(params_action)
 
         dicts_action = QAction("数据字典", self)
         dicts_action.setShortcut("Ctrl+D")
         dicts_action.triggered.connect(lambda: self.switch_page("dicts"))
-        file_menu.addAction(dicts_action)
+        system_menu.addAction(dicts_action)
 
-        docs_action = QAction("文档管理", self)
-        docs_action.setShortcut("Ctrl+W")
-        docs_action.triggered.connect(lambda: self.switch_page("documents"))
-        file_menu.addAction(docs_action)
-
-        file_menu.addSeparator()
+        system_menu.addSeparator()
 
         exit_action = QAction("退出", self)
         exit_action.setIcon(icons.cancel_icon())
         exit_action.setShortcut("Ctrl+Q")
         exit_action.triggered.connect(self.close)
-        file_menu.addAction(exit_action)
+        system_menu.addAction(exit_action)
 
-        assets_menu = menubar.addMenu("资产管理")
-        assets_action = QAction("资产列表", self)
+        function_menu = menubar.addMenu("功能")
+
+        assets_action = QAction("资产管理", self)
         assets_action.setIcon(icons.asset_icon())
         assets_action.setShortcut("Ctrl+A")
         assets_action.triggered.connect(lambda: self.switch_page("assets"))
-        assets_menu.addAction(assets_action)
+        function_menu.addAction(assets_action)
 
-        scripts_menu = menubar.addMenu("脚本管理")
-        scripts_action = QAction("脚本列表", self)
+        scripts_action = QAction("脚本管理", self)
         scripts_action.setIcon(icons.script_icon())
         scripts_action.setShortcut("Ctrl+S")
         scripts_action.triggered.connect(lambda: self.switch_page("scripts"))
-        scripts_menu.addAction(scripts_action)
+        function_menu.addAction(scripts_action)
 
-        todos_menu = menubar.addMenu("待办事项")
-        todos_action = QAction("待办列表", self)
+        todos_action = QAction("待办事项", self)
         todos_action.setShortcut("Ctrl+T")
         todos_action.triggered.connect(lambda: self.switch_page("todos"))
-        todos_menu.addAction(todos_action)
+        function_menu.addAction(todos_action)
 
-        workflows_menu = menubar.addMenu("工作流")
-        workflows_action = QAction("工作流列表", self)
+        docs_action = QAction("文档管理", self)
+        docs_action.setShortcut("Ctrl+W")
+        docs_action.triggered.connect(lambda: self.switch_page("documents"))
+        function_menu.addAction(docs_action)
+
+        workflows_action = QAction("工作流", self)
         workflows_action.setShortcut("Ctrl+F")
         workflows_action.triggered.connect(lambda: self.switch_page("workflows"))
-        workflows_menu.addAction(workflows_action)
+        function_menu.addAction(workflows_action)
 
         help_menu = menubar.addMenu("帮助")
 
@@ -219,10 +220,27 @@ class MainWindow(QMainWindow):
             "<p>纯 Python GUI 版本，基于 PyQt6</p>"
             "<p><b>技术栈:</b> PyQt6, SQLAlchemy, Paramiko</p>"
             "<hr>"
-            "<p style='color: #7f8c8d;'>© 2026 Niuma Team</p>"
+            "<p style='color: #7f8c8d;'>© 2024 Niuma Team</p>"
         )
 
     def closeEvent(self, event):
+        self.current_user_id = None
+        self.current_username = None
+        self.status_bar.clearMessage()
+
+        if self.stacked_widget:
+            self.layout.removeWidget(self.stacked_widget)
+            self.stacked_widget.deleteLater()
+            self.stacked_widget = None
+            self.assets_page = None
+            self.scripts_page = None
+            self.audit_page = None
+            self.params_page = None
+            self.dicts_page = None
+            self.todos_page = None
+            self.documents_page = None
+            self.workflows_page = None
+
         if self.db:
             self.db.close()
         super().closeEvent(event)

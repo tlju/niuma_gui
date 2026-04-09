@@ -1,10 +1,11 @@
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-    QLineEdit, QPushButton, QMessageBox, QFrame, QSpacerItem, QSizePolicy
+    QLineEdit, QPushButton, QMessageBox, QFrame, QSpacerItem, QSizePolicy, QApplication
 )
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QFont
 from gui.icons import icons
+from gui.style_manager import load_combined_stylesheet
 from core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -22,6 +23,8 @@ class LoginDialog(QDialog):
         self.init_ui()
 
     def init_ui(self):
+        load_combined_stylesheet(QApplication.instance(), ["common", "login_dialog"])
+        
         self.setWindowTitle("登录 - 运维辅助工具")
         self.setFixedSize(420, 380)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
@@ -33,49 +36,27 @@ class LoginDialog(QDialog):
         header = QFrame()
         header.setObjectName("header")
         header.setFixedHeight(120)
-        header.setStyleSheet("""
-            QFrame#header {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                    stop:0 #1abc9c, stop:1 #3498db);
-            }
-        """)
         header_layout = QVBoxLayout(header)
         header_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         title_label = QLabel("运维辅助工具")
         title_label.setObjectName("titleLabel")
-        title_label.setStyleSheet("""
-            QLabel#titleLabel {
-                font-size: 28px;
-                font-weight: bold;
-                color: white;
-                background: transparent;
-            }
-        """)
+        title_label.setProperty("class", "title")
         header_layout.addWidget(title_label)
 
         subtitle_label = QLabel("运维辅助工具")
         subtitle_label.setObjectName("subtitleLabel")
-        subtitle_label.setStyleSheet("""
-            QLabel#subtitleLabel {
-                font-size: 14px;
-                color: rgba(255, 255, 255, 0.8);
-                background: transparent;
-                margin-top: 5px;
-            }
-        """)
+        subtitle_label.setProperty("class", "subtitle")
         header_layout.addWidget(subtitle_label)
 
         main_layout.addWidget(header)
 
         form_frame = QFrame()
-        form_frame.setStyleSheet("QFrame { background-color: white; }")
         form_layout = QVBoxLayout(form_frame)
         form_layout.setSpacing(15)
         form_layout.setContentsMargins(40, 30, 40, 30)
 
         username_label = QLabel("用户名")
-        username_label.setStyleSheet("font-weight: bold; color: #2c3e50;")
         form_layout.addWidget(username_label)
 
         self.username_input = QLineEdit()
@@ -84,7 +65,6 @@ class LoginDialog(QDialog):
         form_layout.addWidget(self.username_input)
 
         password_label = QLabel("密码")
-        password_label.setStyleSheet("font-weight: bold; color: #2c3e50;")
         form_layout.addWidget(password_label)
 
         self.password_input = QLineEdit()
@@ -98,24 +78,9 @@ class LoginDialog(QDialog):
 
         self.login_btn = QPushButton("登 录")
         self.login_btn.setObjectName("loginBtn")
+        self.login_btn.setProperty("class", "login")
         self.login_btn.setMinimumHeight(48)
         self.login_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.login_btn.setStyleSheet("""
-            QPushButton#loginBtn {
-                background-color: #1abc9c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton#loginBtn:hover {
-                background-color: #16a085;
-            }
-            QPushButton#loginBtn:pressed {
-                background-color: #14967a;
-            }
-        """)
         self.login_btn.clicked.connect(self.handle_login)
         form_layout.addWidget(self.login_btn)
 

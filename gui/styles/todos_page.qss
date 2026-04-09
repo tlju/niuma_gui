@@ -1,0 +1,5 @@
+TodosPage QFrame {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 8px;
+}

@@ -2,11 +2,12 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
     QTableWidgetItem, QPushButton, QDialog, QLabel,
     QLineEdit, QComboBox, QMessageBox, QHeaderView,
-    QFrame, QFormLayout, QTextEdit
+    QFrame, QFormLayout, QTextEdit, QTabWidget, QApplication
 )
 from PyQt6.QtCore import Qt
 from core.logger import get_logger
 from gui.icons import icons
+from gui.style_manager import load_combined_stylesheet
 
 logger = get_logger(__name__)
 
@@ -19,18 +20,13 @@ class SystemParamsPage(QWidget):
         self.load_params()
 
     def init_ui(self):
+        load_combined_stylesheet(QApplication.instance(), ["common", "system_params_page"])
+        
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
 
         toolbar_frame = QFrame()
-        toolbar_frame.setStyleSheet("""
-            QFrame {
-                background-color: #f8f9fa;
-                border-radius: 8px;
-                padding: 8px;
-            }
-        """)
         toolbar_layout = QHBoxLayout(toolbar_frame)
         toolbar_layout.setContentsMargins(10, 8, 10, 8)
         toolbar_layout.setSpacing(10)
@@ -53,7 +49,7 @@ class SystemParamsPage(QWidget):
         toolbar_layout.addWidget(search_label)
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("输入参数键或描述搜索...")
+        self.search_input.setPlaceholderText("输入参数名称、代码或描述搜索...")
         self.search_input.setMinimumWidth(250)
         self.search_input.setMinimumHeight(36)
         self.search_input.textChanged.connect(self._filter_params)
@@ -62,22 +58,24 @@ class SystemParamsPage(QWidget):
         toolbar_layout.addStretch()
 
         self.count_label = QLabel("共 0 条记录")
-        self.count_label.setStyleSheet("color: #7f8c8d;")
         toolbar_layout.addWidget(self.count_label)
 
         layout.addWidget(toolbar_frame)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["ID", "参数键", "参数值", "类型", "描述"])
+        self.table.setColumnCount(7)
+        self.table.setHorizontalHeaderLabels(["ID", "参数名称", "参数代码", "参数值", "状态", "描述", "操作"])
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(False)
+        self.table.verticalHeader().setDefaultSectionSize(60)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
 
         layout.addWidget(self.table)
         self.setLayout(layout)
@@ -98,10 +96,12 @@ class SystemParamsPage(QWidget):
         self.table.setRowCount(len(params))
         for row, param in enumerate(params):
             self.table.setItem(row, 0, QTableWidgetItem(str(param.id)))
-            self.table.setItem(row, 1, QTableWidgetItem(param.param_key or ""))
-            self.table.setItem(row, 2, QTableWidgetItem(param.param_value or ""))
-            self.table.setItem(row, 3, QTableWidgetItem(param.param_type or "string"))
-            self.table.setItem(row, 4, QTableWidgetItem(param.description or ""))
+            self.table.setItem(row, 1, QTableWidgetItem(param.param_name or ""))
+            self.table.setItem(row, 2, QTableWidgetItem(param.param_code or ""))
+            self.table.setItem(row, 3, QTableWidgetItem(param.param_value or ""))
+            status_text = "启用" if param.status == 1 else "禁用"
+            self.table.setItem(row, 4, QTableWidgetItem(status_text))
+            self.table.setItem(row, 5, QTableWidgetItem(param.description or ""))
 
             edit_btn = QPushButton("编辑")
             edit_btn.setIcon(icons.edit_icon())
@@ -116,14 +116,15 @@ class SystemParamsPage(QWidget):
             btn_layout.addWidget(edit_btn)
             btn_layout.addWidget(delete_btn)
             btn_layout.addStretch()
-            self.table.setCellWidget(row, 4, btn_widget)
+            self.table.setCellWidget(row, 6, btn_widget)
 
     def _filter_params(self, text):
         if not text:
             self._populate_table(self.all_params)
             return
         filtered = [p for p in self.all_params if
-                    text.lower() in (p.param_key or "").lower() or
+                    text.lower() in (p.param_name or "").lower() or
+                    text.lower() in (p.param_code or "").lower() or
                     text.lower() in (p.description or "").lower()]
         self._populate_table(filtered)
 
@@ -171,16 +172,20 @@ class ParamDialog(QDialog):
     def init_ui(self):
         layout = QFormLayout()
 
-        self.key_input = QLineEdit()
-        layout.addRow("参数键:", self.key_input)
+        self.name_input = QLineEdit()
+        layout.addRow("参数名称:", self.name_input)
+
+        self.code_input = QLineEdit()
+        layout.addRow("参数代码:", self.code_input)
 
         self.value_input = QTextEdit()
         self.value_input.setMaximumHeight(80)
         layout.addRow("参数值:", self.value_input)
 
-        self.type_combo = QComboBox()
-        self.type_combo.addItems(["string", "int", "bool", "json"])
-        layout.addRow("类型:", self.type_combo)
+        self.status_combo = QComboBox()
+        self.status_combo.addItem("启用", 1)
+        self.status_combo.addItem("禁用", 0)
+        layout.addRow("状态:", self.status_combo)
 
         self.desc_input = QLineEdit()
         layout.addRow("描述:", self.desc_input)
@@ -197,15 +202,20 @@ class ParamDialog(QDialog):
         self.setLayout(layout)
 
     def _populate_data(self):
-        self.key_input.setText(self.param.param_key or "")
+        self.name_input.setText(self.param.param_name or "")
+        self.code_input.setText(self.param.param_code or "")
         self.value_input.setPlainText(self.param.param_value or "")
-        self.type_combo.setCurrentText(self.param.param_type or "string")
+        status = self.param.status or "active"
+        index = self.status_combo.findData(status)
+        if index >= 0:
+            self.status_combo.setCurrentIndex(index)
         self.desc_input.setText(self.param.description or "")
 
     def get_data(self):
         return {
-            "param_key": self.key_input.text(),
+            "param_name": self.name_input.text(),
+            "param_code": self.code_input.text(),
             "param_value": self.value_input.toPlainText(),
-            "param_type": self.type_combo.currentText(),
+            "status": self.status_combo.currentData(),
             "description": self.desc_input.text()
         }
