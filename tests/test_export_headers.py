@@ -38,7 +38,7 @@ def test_export_with_headers(asset_service):
     worksheet = workbook.active
     
     expected_columns = [
-        "单位名称*", "系统名称*", "IP地址", "IPv6地址", "用户名*",
+        "单位名称", "系统名称", "IP地址", "IPv6地址", "用户名",
         "端口", "主机名", "业务服务", "位置", "服务器类型", "VIP", "备注"
     ]
     
@@ -55,7 +55,7 @@ def test_export_empty_with_headers(asset_service):
     worksheet = workbook.active
     
     expected_columns = [
-        "单位名称*", "系统名称*", "IP地址", "IPv6地址", "用户名*",
+        "单位名称", "系统名称", "IP地址", "IPv6地址", "用户名",
         "端口", "主机名", "业务服务", "位置", "服务器类型", "VIP", "备注"
     ]
     
@@ -79,7 +79,7 @@ def test_export_with_password_column(asset_service):
     worksheet = workbook.active
     
     expected_columns = [
-        "单位名称*", "系统名称*", "IP地址", "IPv6地址", "用户名*",
+        "单位名称", "系统名称", "IP地址", "IPv6地址", "用户名",
         "密码", "端口", "主机名", "业务服务", "位置", "服务器类型", "VIP", "备注"
     ]
     

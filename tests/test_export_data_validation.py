@@ -132,7 +132,7 @@ def test_export_empty_with_data_validation(asset_service, dict_service):
     assert worksheet.max_row == 1
     
     headers = [cell.value for cell in worksheet[1]]
-    assert "单位名称*" in headers
-    assert "系统名称*" in headers
+    assert "单位名称" in headers
+    assert "系统名称" in headers
     assert "位置" in headers
     assert "服务器类型" in headers

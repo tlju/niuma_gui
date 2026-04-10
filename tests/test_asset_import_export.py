@@ -52,7 +52,7 @@ def test_export_assets(asset_service):
     
     headers = [cell.value for cell in worksheet[1]]
     expected_headers = [
-        "单位名称*", "系统名称*", "IP地址", "IPv6地址", "用户名*",
+        "单位名称", "系统名称", "IP地址", "IPv6地址", "用户名",
         "端口", "主机名", "业务服务", "位置", "服务器类型", "VIP", "备注"
     ]
     assert headers == expected_headers
@@ -77,7 +77,7 @@ def test_export_assets_with_password(asset_service):
     
     headers = [cell.value for cell in worksheet[1]]
     expected_headers = [
-        "单位名称*", "系统名称*", "IP地址", "IPv6地址", "用户名*",
+        "单位名称", "系统名称", "IP地址", "IPv6地址", "用户名",
         "密码", "端口", "主机名", "业务服务", "位置", "服务器类型", "VIP", "备注"
     ]
     assert headers == expected_headers
@@ -103,7 +103,7 @@ def test_import_assets_excel(asset_service):
     workbook = openpyxl.Workbook()
     worksheet = workbook.active
     worksheet.append([
-        "单位名称*", "系统名称*", "IP地址", "IPv6地址", "用户名*", "密码", "端口"
+        "单位名称", "系统名称", "IP地址", "IPv6地址", "用户名", "密码", "端口"
     ])
     worksheet.append(["Unit1", "System1", "192.168.1.1", "", "admin", "pass123", 22])
     worksheet.append(["Unit2", "System2", "192.168.1.2", "", "root", "pass456", 22])
@@ -128,7 +128,7 @@ def test_import_assets_missing_required_fields(asset_service):
     workbook = openpyxl.Workbook()
     worksheet = workbook.active
     worksheet.append([
-        "单位名称*", "系统名称*", "用户名*"
+        "单位名称", "系统名称", "用户名"
     ])
     worksheet.append(["Unit1", "", "admin"])
 
@@ -153,7 +153,7 @@ def test_import_assets_update_existing(asset_service):
     workbook = openpyxl.Workbook()
     worksheet = workbook.active
     worksheet.append([
-        "单位名称*", "系统名称*", "IP地址", "IPv6地址", "用户名*", "密码", "端口"
+        "单位名称", "系统名称", "IP地址", "IPv6地址", "用户名", "密码", "端口"
     ])
     worksheet.append(["Unit1", "System1", "192.168.1.1", "", "admin", "newpass", 2222])
 
@@ -183,7 +183,7 @@ def test_import_assets_duplicate_without_update(asset_service):
     workbook = openpyxl.Workbook()
     worksheet = workbook.active
     worksheet.append([
-        "单位名称*", "系统名称*", "IP地址", "IPv6地址", "用户名*", "密码"
+        "单位名称", "系统名称", "IP地址", "IPv6地址", "用户名", "密码"
     ])
     worksheet.append(["Unit1", "System1", "192.168.1.1", "", "admin", "pass"])
 
@@ -206,7 +206,7 @@ def test_import_assets_missing_ip_and_ipv6(asset_service):
     workbook = openpyxl.Workbook()
     worksheet = workbook.active
     worksheet.append([
-        "单位名称*", "系统名称*", "IP地址", "IPv6地址", "用户名*", "密码"
+        "单位名称", "系统名称", "IP地址", "IPv6地址", "用户名", "密码"
     ])
     worksheet.append(["Unit1", "System1", "", "", "admin", "pass"])
 
@@ -230,7 +230,7 @@ def test_import_assets_same_unit_system_different_ip(asset_service):
     workbook = openpyxl.Workbook()
     worksheet = workbook.active
     worksheet.append([
-        "单位名称*", "系统名称*", "IP地址", "IPv6地址", "用户名*", "密码"
+        "单位名称", "系统名称", "IP地址", "IPv6地址", "用户名", "密码"
     ])
     worksheet.append(["Unit1", "System1", "192.168.1.2", "", "admin", "pass"])
 
@@ -255,7 +255,7 @@ def test_import_assets_same_unit_system_ip_different_user(asset_service):
     workbook = openpyxl.Workbook()
     worksheet = workbook.active
     worksheet.append([
-        "单位名称*", "系统名称*", "IP地址", "IPv6地址", "用户名*", "密码"
+        "单位名称", "系统名称", "IP地址", "IPv6地址", "用户名", "密码"
     ])
     worksheet.append(["Unit1", "System1", "192.168.1.1", "", "root", "pass"])
 
@@ -278,7 +278,7 @@ def test_import_assets_with_ipv6_only(asset_service):
     workbook = openpyxl.Workbook()
     worksheet = workbook.active
     worksheet.append([
-        "单位名称*", "系统名称*", "IP地址", "IPv6地址", "用户名*", "密码"
+        "单位名称", "系统名称", "IP地址", "IPv6地址", "用户名", "密码"
     ])
     worksheet.append(["Unit1", "System1", "", "2001:db8::1", "admin", "pass"])
 
@@ -302,7 +302,7 @@ def test_import_assets_skip_errors(asset_service):
     workbook = openpyxl.Workbook()
     worksheet = workbook.active
     worksheet.append([
-        "单位名称*", "系统名称*", "IP地址", "IPv6地址", "用户名*", "密码"
+        "单位名称", "系统名称", "IP地址", "IPv6地址", "用户名", "密码"
     ])
     worksheet.append(["Unit1", "System1", "192.168.1.1", "", "admin", "pass1"])
     worksheet.append(["", "System2", "192.168.1.2", "", "admin", "pass2"])

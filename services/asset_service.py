@@ -155,7 +155,7 @@ class AssetService:
             assets = self.get_all()
         
         columns = [
-            "单位名称*", "系统名称*", "IP地址", "IPv6地址", "用户名*",
+            "单位名称", "系统名称", "IP地址", "IPv6地址", "用户名",
             "端口", "主机名", "业务服务", "位置", "服务器类型", "VIP", "备注"
         ]
         if include_password:
@@ -164,6 +164,9 @@ class AssetService:
         output = BytesIO()
         workbook = xlsxwriter.Workbook(output, {'in_memory': True})
         worksheet = workbook.add_worksheet('资产列表')
+        
+        dict_sheet = workbook.add_worksheet('字典数据')
+        dict_sheet.hide()
         
         header_format = workbook.add_format({
             'bold': True,
@@ -222,11 +225,14 @@ class AssetService:
         unit_items = self.dict_service.get_dict_items("unit")
         unit_names = [item.item_name for item in unit_items]
         if unit_names:
+            for i, name in enumerate(unit_names):
+                dict_sheet.write(i, 0, name)
+            max_row = len(unit_names) - 1
             worksheet.data_validation(
-                1, 0, len(assets), 0,
+                1, 0, max(len(assets), 1), 0,
                 {
                     'validate': 'list',
-                    'source': unit_names,
+                    'source': f"='字典数据'!$A$1:$A${max_row + 1}",
                     'input_title': '单位名称',
                     'input_message': '请从下拉列表中选择单位名称'
                 }
@@ -235,11 +241,14 @@ class AssetService:
         system_items = self.dict_service.get_dict_items("system")
         system_names = [item.item_name for item in system_items]
         if system_names:
+            for i, name in enumerate(system_names):
+                dict_sheet.write(i, 1, name)
+            max_row = len(system_names) - 1
             worksheet.data_validation(
-                1, 1, len(assets), 1,
+                1, 1, max(len(assets), 1), 1,
                 {
                     'validate': 'list',
-                    'source': system_names,
+                    'source': f"='字典数据'!$B$1:$B${max_row + 1}",
                     'input_title': '系统名称',
                     'input_message': '请从下拉列表中选择系统名称'
                 }
@@ -248,12 +257,15 @@ class AssetService:
         location_items = self.dict_service.get_dict_items("location")
         location_names = [item.item_name for item in location_items]
         if location_names:
+            for i, name in enumerate(location_names):
+                dict_sheet.write(i, 2, name)
+            max_row = len(location_names) - 1
             location_col = 9 if include_password else 8
             worksheet.data_validation(
-                1, location_col, len(assets), location_col,
+                1, location_col, max(len(assets), 1), location_col,
                 {
                     'validate': 'list',
-                    'source': location_names,
+                    'source': f"='字典数据'!$C$1:$C${max_row + 1}",
                     'input_title': '位置',
                     'input_message': '请从下拉列表中选择位置'
                 }
@@ -262,12 +274,15 @@ class AssetService:
         server_type_items = self.dict_service.get_dict_items("server_type")
         server_type_names = [item.item_name for item in server_type_items]
         if server_type_names:
+            for i, name in enumerate(server_type_names):
+                dict_sheet.write(i, 3, name)
+            max_row = len(server_type_names) - 1
             server_type_col = 10 if include_password else 9
             worksheet.data_validation(
-                1, server_type_col, len(assets), server_type_col,
+                1, server_type_col, max(len(assets), 1), server_type_col,
                 {
                     'validate': 'list',
-                    'source': server_type_names,
+                    'source': f"='字典数据'!$D$1:$D${max_row + 1}",
                     'input_title': '服务器类型',
                     'input_message': '请从下拉列表中选择服务器类型'
                 }

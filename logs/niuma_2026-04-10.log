@@ -3406,3 +3406,275 @@
 2026-04-10 17:03:09 - gui.pages.assets_page - INFO - load_assets:185 - 开始加载资产列表
 2026-04-10 17:03:09 - gui.pages.assets_page - INFO - _on_assets_loaded:193 - 成功加载 256 个资产
 2026-04-10 17:03:11 - gui.pages.assets_page - INFO - import_assets:389 - 资产导入完成: 成功 256, 失败 0
+2026-04-10 17:07:37 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-10 17:07:41 - gui.pages.assets_page - INFO - load_assets:185 - 开始加载资产列表
+2026-04-10 17:07:41 - gui.pages.scripts_page - INFO - load_scripts:83 - 开始加载脚本列表
+2026-04-10 17:07:41 - gui.pages.audit_page - INFO - load_logs:83 - 开始加载审计日志，操作类型: 全部
+2026-04-10 17:07:41 - gui.pages.system_params_page - INFO - load_params:94 - 加载了 1 个系统参数
+2026-04-10 17:07:41 - gui.pages.data_dicts_page - INFO - load_dicts:111 - 加载了 4 个数据字典
+2026-04-10 17:07:41 - gui.pages.todos_page - INFO - load_todos:102 - 加载了 0 个待办事项
+2026-04-10 17:07:41 - gui.pages.documents_page - INFO - load_documents:111 - 加载了 0 个文档
+2026-04-10 17:07:41 - gui.pages.workflows_page - INFO - load_templates:101 - 加载了 0 个工作流模板
+2026-04-10 17:07:41 - gui.pages.assets_page - INFO - _on_assets_loaded:193 - 成功加载 256 个资产
+2026-04-10 17:07:41 - gui.pages.scripts_page - INFO - _on_scripts_loaded:86 - 成功加载 0 个脚本
+2026-04-10 17:07:41 - gui.pages.audit_page - INFO - _on_logs_loaded:86 - 成功加载 80 条审计日志
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict:27 - 创建数据字典: unit
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: unit.unit1
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: unit.unit2
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict:27 - 创建数据字典: system
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: system.sys1
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: system.sys2
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict:27 - 创建数据字典: location
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: location.loc1
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: location.loc2
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict:27 - 创建数据字典: server_type
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: server_type.type1
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: server_type.type2
+2026-04-10 17:15:32 - services.asset_service - INFO - export_assets:281 - 导出 1 个资产到Excel文件
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict:27 - 创建数据字典: unit
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: unit.unit1
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict:27 - 创建数据字典: system
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: system.sys1
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict:27 - 创建数据字典: location
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: location.loc1
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict:27 - 创建数据字典: server_type
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: server_type.type1
+2026-04-10 17:15:32 - services.asset_service - INFO - export_assets:281 - 导出 1 个资产到Excel文件
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict:27 - 创建数据字典: unit
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: unit.unit1
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict:27 - 创建数据字典: system
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: system.sys1
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict:27 - 创建数据字典: location
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: location.loc1
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict:27 - 创建数据字典: server_type
+2026-04-10 17:15:32 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: server_type.type1
+2026-04-10 17:15:32 - services.asset_service - INFO - export_assets:281 - 导出 0 个资产到Excel文件
+2026-04-10 17:15:48 - services.asset_service - INFO - export_assets:281 - 导出 2 个资产到Excel文件
+2026-04-10 17:15:48 - services.asset_service - INFO - export_assets:281 - 导出 1 个资产到Excel文件
+2026-04-10 17:15:48 - services.asset_service - INFO - export_assets:281 - 导出 2 个资产到Excel文件
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:457 - 创建资产: Unit1 - System1, ID: 1
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:457 - 创建资产: Unit2 - System2, ID: 2
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:475 - 导入完成: 成功 2 个, 失败 0 个
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:475 - 导入完成: 成功 0 个, 失败 1 个
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:422 - 更新资产: Unit1 - System1
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:475 - 导入完成: 成功 1 个, 失败 0 个
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:475 - 导入完成: 成功 0 个, 失败 1 个
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:475 - 导入完成: 成功 0 个, 失败 1 个
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:457 - 创建资产: Unit1 - System1, ID: 2
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:475 - 导入完成: 成功 1 个, 失败 0 个
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:457 - 创建资产: Unit1 - System1, ID: 2
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:475 - 导入完成: 成功 1 个, 失败 0 个
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:457 - 创建资产: Unit1 - System1, ID: 1
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:475 - 导入完成: 成功 1 个, 失败 0 个
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:457 - 创建资产: Unit1 - System1, ID: 1
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:457 - 创建资产: Unit2 - System2, ID: 2
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:475 - 导入完成: 成功 2 个, 失败 1 个
+2026-04-10 17:15:48 - services.asset_service - INFO - export_assets:281 - 导出 2 个资产到Excel文件
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:457 - 创建资产: Unit1 - System1, ID: 1
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:457 - 创建资产: Unit2 - System2, ID: 2
+2026-04-10 17:15:48 - services.asset_service - INFO - import_assets:475 - 导入完成: 成功 2 个, 失败 0 个
+2026-04-10 17:15:48 - services.asset_service - INFO - export_assets:281 - 导出 1 个资产到Excel文件
+2026-04-10 17:15:48 - services.asset_service - INFO - export_assets:281 - 导出 0 个资产到Excel文件
+2026-04-10 17:15:48 - services.asset_service - INFO - export_assets:281 - 导出 1 个资产到Excel文件
+2026-04-10 17:35:27 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-10 17:35:31 - gui.pages.assets_page - INFO - load_assets:185 - 开始加载资产列表
+2026-04-10 17:35:31 - gui.pages.scripts_page - INFO - load_scripts:83 - 开始加载脚本列表
+2026-04-10 17:35:31 - gui.pages.audit_page - INFO - load_logs:83 - 开始加载审计日志，操作类型: 全部
+2026-04-10 17:35:31 - gui.pages.system_params_page - INFO - load_params:94 - 加载了 1 个系统参数
+2026-04-10 17:35:31 - gui.pages.data_dicts_page - INFO - load_dicts:111 - 加载了 4 个数据字典
+2026-04-10 17:35:31 - gui.pages.todos_page - INFO - load_todos:102 - 加载了 0 个待办事项
+2026-04-10 17:35:31 - gui.pages.documents_page - INFO - load_documents:111 - 加载了 0 个文档
+2026-04-10 17:35:31 - gui.pages.workflows_page - INFO - load_templates:101 - 加载了 0 个工作流模板
+2026-04-10 17:35:31 - gui.pages.assets_page - INFO - _on_assets_loaded:193 - 成功加载 256 个资产
+2026-04-10 17:35:31 - gui.pages.scripts_page - INFO - _on_scripts_loaded:86 - 成功加载 0 个脚本
+2026-04-10 17:35:31 - gui.pages.audit_page - INFO - _on_logs_loaded:86 - 成功加载 81 条审计日志
+2026-04-10 17:35:37 - services.asset_service - INFO - export_assets:281 - 导出 256 个资产到Excel文件
+2026-04-10 17:35:38 - gui.pages.assets_page - INFO - export_assets:348 - 资产导出成功: /mnt/c/Users/tlju/Desktop/123/资产列表_20260410_173535.xlsx
+2026-04-10 17:47:35 - services.asset_service - INFO - export_assets:279 - 导出 2 个资产到Excel文件
+2026-04-10 17:47:35 - services.asset_service - INFO - export_assets:279 - 导出 1 个资产到Excel文件
+2026-04-10 17:47:35 - services.asset_service - INFO - export_assets:279 - 导出 2 个资产到Excel文件
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:455 - 创建资产: Unit1 - System1, ID: 1
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:455 - 创建资产: Unit2 - System2, ID: 2
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:473 - 导入完成: 成功 2 个, 失败 0 个
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:473 - 导入完成: 成功 0 个, 失败 1 个
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:420 - 更新资产: Unit1 - System1
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:473 - 导入完成: 成功 1 个, 失败 0 个
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:473 - 导入完成: 成功 0 个, 失败 1 个
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:473 - 导入完成: 成功 0 个, 失败 1 个
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:455 - 创建资产: Unit1 - System1, ID: 2
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:473 - 导入完成: 成功 1 个, 失败 0 个
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:455 - 创建资产: Unit1 - System1, ID: 2
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:473 - 导入完成: 成功 1 个, 失败 0 个
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:455 - 创建资产: Unit1 - System1, ID: 1
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:473 - 导入完成: 成功 1 个, 失败 0 个
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:455 - 创建资产: Unit1 - System1, ID: 1
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:455 - 创建资产: Unit2 - System2, ID: 2
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:473 - 导入完成: 成功 2 个, 失败 1 个
+2026-04-10 17:47:35 - services.asset_service - INFO - export_assets:279 - 导出 2 个资产到Excel文件
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:455 - 创建资产: Unit1 - System1, ID: 1
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:455 - 创建资产: Unit2 - System2, ID: 2
+2026-04-10 17:47:35 - services.asset_service - INFO - import_assets:473 - 导入完成: 成功 2 个, 失败 0 个
+2026-04-10 17:47:35 - services.asset_service - INFO - export_assets:279 - 导出 1 个资产到Excel文件
+2026-04-10 17:47:35 - services.asset_service - INFO - export_assets:279 - 导出 0 个资产到Excel文件
+2026-04-10 17:47:35 - services.asset_service - INFO - export_assets:279 - 导出 1 个资产到Excel文件
+2026-04-10 17:47:35 - services.dict_service - INFO - create_dict:27 - 创建数据字典: unit
+2026-04-10 17:47:35 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: unit.unit1
+2026-04-10 17:47:35 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: unit.unit2
+2026-04-10 17:47:35 - services.dict_service - INFO - create_dict:27 - 创建数据字典: system
+2026-04-10 17:47:35 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: system.sys1
+2026-04-10 17:47:35 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: system.sys2
+2026-04-10 17:47:35 - services.dict_service - INFO - create_dict:27 - 创建数据字典: location
+2026-04-10 17:47:35 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: location.loc1
+2026-04-10 17:47:35 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: location.loc2
+2026-04-10 17:47:35 - services.dict_service - INFO - create_dict:27 - 创建数据字典: server_type
+2026-04-10 17:47:35 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: server_type.type1
+2026-04-10 17:47:35 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: server_type.type2
+2026-04-10 17:47:35 - services.asset_service - INFO - export_assets:279 - 导出 1 个资产到Excel文件
+2026-04-10 17:47:35 - services.dict_service - INFO - create_dict:27 - 创建数据字典: unit
+2026-04-10 17:47:35 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: unit.unit1
+2026-04-10 17:47:35 - services.dict_service - INFO - create_dict:27 - 创建数据字典: system
+2026-04-10 17:47:36 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: system.sys1
+2026-04-10 17:47:36 - services.dict_service - INFO - create_dict:27 - 创建数据字典: location
+2026-04-10 17:47:36 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: location.loc1
+2026-04-10 17:47:36 - services.dict_service - INFO - create_dict:27 - 创建数据字典: server_type
+2026-04-10 17:47:36 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: server_type.type1
+2026-04-10 17:47:36 - services.asset_service - INFO - export_assets:279 - 导出 1 个资产到Excel文件
+2026-04-10 17:47:36 - services.dict_service - INFO - create_dict:27 - 创建数据字典: unit
+2026-04-10 17:47:36 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: unit.unit1
+2026-04-10 17:47:36 - services.dict_service - INFO - create_dict:27 - 创建数据字典: system
+2026-04-10 17:47:36 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: system.sys1
+2026-04-10 17:47:36 - services.dict_service - INFO - create_dict:27 - 创建数据字典: location
+2026-04-10 17:47:36 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: location.loc1
+2026-04-10 17:47:36 - services.dict_service - INFO - create_dict:27 - 创建数据字典: server_type
+2026-04-10 17:47:36 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: server_type.type1
+2026-04-10 17:47:36 - services.asset_service - INFO - export_assets:279 - 导出 0 个资产到Excel文件
+2026-04-10 18:13:19 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-10 18:13:25 - gui.pages.assets_page - INFO - load_assets:185 - 开始加载资产列表
+2026-04-10 18:13:25 - gui.pages.scripts_page - INFO - load_scripts:83 - 开始加载脚本列表
+2026-04-10 18:13:25 - gui.pages.audit_page - INFO - load_logs:83 - 开始加载审计日志，操作类型: 全部
+2026-04-10 18:13:25 - gui.pages.system_params_page - INFO - load_params:94 - 加载了 1 个系统参数
+2026-04-10 18:13:25 - gui.pages.data_dicts_page - INFO - load_dicts:111 - 加载了 4 个数据字典
+2026-04-10 18:13:25 - gui.pages.todos_page - INFO - load_todos:102 - 加载了 0 个待办事项
+2026-04-10 18:13:25 - gui.pages.documents_page - INFO - load_documents:111 - 加载了 0 个文档
+2026-04-10 18:13:25 - gui.pages.workflows_page - INFO - load_templates:101 - 加载了 0 个工作流模板
+2026-04-10 18:13:25 - gui.pages.assets_page - INFO - _on_assets_loaded:193 - 成功加载 256 个资产
+2026-04-10 18:13:25 - gui.pages.scripts_page - INFO - _on_scripts_loaded:86 - 成功加载 0 个脚本
+2026-04-10 18:13:25 - gui.pages.audit_page - INFO - _on_logs_loaded:86 - 成功加载 82 条审计日志
+2026-04-10 18:13:43 - services.asset_service - INFO - export_assets:279 - 导出 256 个资产到Excel文件
+2026-04-10 18:13:44 - gui.pages.assets_page - INFO - export_assets:348 - 资产导出成功: /mnt/c/Users/tlju/Desktop/123/资产列表_20260410_181339.xlsx
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict:27 - 创建数据字典: unit
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: unit.unit1
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: unit.unit2
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict:27 - 创建数据字典: system
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: system.sys1
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: system.sys2
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict:27 - 创建数据字典: location
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: location.loc1
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: location.loc2
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict:27 - 创建数据字典: server_type
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: server_type.type1
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: server_type.type2
+2026-04-10 18:20:12 - services.asset_service - INFO - export_assets:237 - 系统名称字典项: ['系统1', '系统2']
+2026-04-10 18:20:12 - services.asset_service - INFO - export_assets:280 - 导出 1 个资产到Excel文件
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict:27 - 创建数据字典: unit
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: unit.unit1
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict:27 - 创建数据字典: system
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: system.sys1
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict:27 - 创建数据字典: location
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: location.loc1
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict:27 - 创建数据字典: server_type
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: server_type.type1
+2026-04-10 18:20:12 - services.asset_service - INFO - export_assets:237 - 系统名称字典项: ['系统1']
+2026-04-10 18:20:12 - services.asset_service - INFO - export_assets:280 - 导出 1 个资产到Excel文件
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict:27 - 创建数据字典: unit
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: unit.unit1
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict:27 - 创建数据字典: system
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: system.sys1
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict:27 - 创建数据字典: location
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: location.loc1
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict:27 - 创建数据字典: server_type
+2026-04-10 18:20:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: server_type.type1
+2026-04-10 18:20:12 - services.asset_service - INFO - export_assets:237 - 系统名称字典项: ['系统1']
+2026-04-10 18:20:12 - services.asset_service - INFO - export_assets:280 - 导出 0 个资产到Excel文件
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict:27 - 创建数据字典: unit
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: unit.unit1
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: unit.unit2
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict:27 - 创建数据字典: system
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: system.sys1
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: system.sys2
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict:27 - 创建数据字典: location
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: location.loc1
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: location.loc2
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict:27 - 创建数据字典: server_type
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: server_type.type1
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: server_type.type2
+2026-04-10 18:23:55 - services.asset_service - INFO - export_assets:243 - 系统名称字典项数量: 2
+2026-04-10 18:23:55 - services.asset_service - INFO - export_assets:295 - 导出 1 个资产到Excel文件
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict:27 - 创建数据字典: unit
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: unit.unit1
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict:27 - 创建数据字典: system
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: system.sys1
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict:27 - 创建数据字典: location
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: location.loc1
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict:27 - 创建数据字典: server_type
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: server_type.type1
+2026-04-10 18:23:55 - services.asset_service - INFO - export_assets:243 - 系统名称字典项数量: 1
+2026-04-10 18:23:55 - services.asset_service - INFO - export_assets:295 - 导出 1 个资产到Excel文件
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict:27 - 创建数据字典: unit
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: unit.unit1
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict:27 - 创建数据字典: system
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: system.sys1
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict:27 - 创建数据字典: location
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: location.loc1
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict:27 - 创建数据字典: server_type
+2026-04-10 18:23:55 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: server_type.type1
+2026-04-10 18:23:55 - services.asset_service - INFO - export_assets:243 - 系统名称字典项数量: 1
+2026-04-10 18:23:55 - services.asset_service - INFO - export_assets:295 - 导出 0 个资产到Excel文件
+2026-04-10 18:23:55 - services.asset_service - INFO - export_assets:243 - 系统名称字典项数量: 0
+2026-04-10 18:23:55 - services.asset_service - INFO - export_assets:295 - 导出 1 个资产到Excel文件
+2026-04-10 18:23:55 - services.asset_service - INFO - export_assets:243 - 系统名称字典项数量: 0
+2026-04-10 18:23:55 - services.asset_service - INFO - export_assets:295 - 导出 0 个资产到Excel文件
+2026-04-10 18:23:55 - services.asset_service - INFO - export_assets:243 - 系统名称字典项数量: 0
+2026-04-10 18:23:55 - services.asset_service - INFO - export_assets:295 - 导出 1 个资产到Excel文件
+2026-04-10 18:23:55 - services.asset_service - INFO - export_assets:243 - 系统名称字典项数量: 0
+2026-04-10 18:23:55 - services.asset_service - INFO - export_assets:295 - 导出 2 个资产到Excel文件
+2026-04-10 18:23:56 - services.asset_service - INFO - export_assets:243 - 系统名称字典项数量: 0
+2026-04-10 18:23:56 - services.asset_service - INFO - export_assets:295 - 导出 1 个资产到Excel文件
+2026-04-10 18:23:56 - services.asset_service - INFO - export_assets:243 - 系统名称字典项数量: 0
+2026-04-10 18:23:56 - services.asset_service - INFO - export_assets:295 - 导出 2 个资产到Excel文件
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:471 - 创建资产: Unit1 - System1, ID: 1
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:471 - 创建资产: Unit2 - System2, ID: 2
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:489 - 导入完成: 成功 2 个, 失败 0 个
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:489 - 导入完成: 成功 0 个, 失败 1 个
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:436 - 更新资产: Unit1 - System1
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:489 - 导入完成: 成功 1 个, 失败 0 个
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:489 - 导入完成: 成功 0 个, 失败 1 个
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:489 - 导入完成: 成功 0 个, 失败 1 个
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:471 - 创建资产: Unit1 - System1, ID: 2
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:489 - 导入完成: 成功 1 个, 失败 0 个
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:471 - 创建资产: Unit1 - System1, ID: 2
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:489 - 导入完成: 成功 1 个, 失败 0 个
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:471 - 创建资产: Unit1 - System1, ID: 1
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:489 - 导入完成: 成功 1 个, 失败 0 个
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:471 - 创建资产: Unit1 - System1, ID: 1
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:471 - 创建资产: Unit2 - System2, ID: 2
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:489 - 导入完成: 成功 2 个, 失败 1 个
+2026-04-10 18:23:56 - services.asset_service - INFO - export_assets:243 - 系统名称字典项数量: 0
+2026-04-10 18:23:56 - services.asset_service - INFO - export_assets:295 - 导出 2 个资产到Excel文件
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:471 - 创建资产: Unit1 - System1, ID: 1
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:471 - 创建资产: Unit2 - System2, ID: 2
+2026-04-10 18:23:56 - services.asset_service - INFO - import_assets:489 - 导入完成: 成功 2 个, 失败 0 个
+2026-04-10 18:31:38 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-10 18:31:42 - gui.pages.assets_page - INFO - load_assets:185 - 开始加载资产列表
+2026-04-10 18:31:42 - gui.pages.scripts_page - INFO - load_scripts:83 - 开始加载脚本列表
+2026-04-10 18:31:42 - gui.pages.audit_page - INFO - load_logs:83 - 开始加载审计日志，操作类型: 全部
+2026-04-10 18:31:42 - gui.pages.system_params_page - INFO - load_params:94 - 加载了 1 个系统参数
+2026-04-10 18:31:42 - gui.pages.data_dicts_page - INFO - load_dicts:111 - 加载了 4 个数据字典
+2026-04-10 18:31:42 - gui.pages.todos_page - INFO - load_todos:102 - 加载了 0 个待办事项
+2026-04-10 18:31:42 - gui.pages.documents_page - INFO - load_documents:111 - 加载了 0 个文档
+2026-04-10 18:31:42 - gui.pages.workflows_page - INFO - load_templates:101 - 加载了 0 个工作流模板
+2026-04-10 18:31:42 - gui.pages.assets_page - INFO - _on_assets_loaded:193 - 成功加载 256 个资产
+2026-04-10 18:31:42 - gui.pages.scripts_page - INFO - _on_scripts_loaded:86 - 成功加载 0 个脚本
+2026-04-10 18:31:42 - gui.pages.audit_page - INFO - _on_logs_loaded:86 - 成功加载 83 条审计日志
+2026-04-10 18:31:50 - services.asset_service - INFO - export_assets:294 - 导出 256 个资产到Excel文件
+2026-04-10 18:31:51 - gui.pages.assets_page - INFO - export_assets:348 - 资产导出成功: /mnt/c/Users/tlju/Desktop/123/资产列表_20260410_183146.xlsx
