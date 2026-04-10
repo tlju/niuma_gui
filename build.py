@@ -42,7 +42,7 @@ def build():
         '--onefile',
         '--enable-plugin=pyqt6',
         '--follow-imports',
-        '--nofollow-import-to=tkinter,matplotlib,numpy,pandas,scipy',
+        '--nofollow-import-to=tkinter,matplotlib,numpy,scipy',
         '--output-dir=dist',
         f'--output-filename={output_name}',
         '--assume-yes-for-downloads',

@@ -129,3 +129,41 @@ class DictService:
             DataDict.name.like(f"%{keyword}%") |
             DataDict.code.like(f"%{keyword}%")
         ).all()
+
+    def get_item_name_by_code(self, dict_code: str, item_code: str) -> Optional[str]:
+        """
+        通过字典代码和项代码获取项名称
+        
+        Args:
+            dict_code: 字典代码
+            item_code: 字典项代码
+            
+        Returns:
+            字典项名称，如果不存在则返回 None
+        """
+        if not dict_code or not item_code:
+            return None
+        item = self.db.query(DataDictItem).filter(
+            DataDictItem.dict_code == dict_code,
+            DataDictItem.item_code == item_code
+        ).first()
+        return item.item_name if item else None
+
+    def get_item_code_by_name(self, dict_code: str, item_name: str) -> Optional[str]:
+        """
+        通过字典代码和项名称获取项代码
+        
+        Args:
+            dict_code: 字典代码
+            item_name: 字典项名称
+            
+        Returns:
+            字典项代码，如果不存在则返回 None
+        """
+        if not dict_code or not item_name:
+            return None
+        item = self.db.query(DataDictItem).filter(
+            DataDictItem.dict_code == dict_code,
+            DataDictItem.item_name == item_name
+        ).first()
+        return item.item_code if item else None

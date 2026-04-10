@@ -199,3 +199,37 @@ def test_search_dicts(dict_service):
     results = dict_service.search_dicts("server")
     assert len(results) == 1
     assert results[0].code == "server_config"
+
+def test_get_item_name_by_code(dict_service):
+    dict_service.create_dict("unit", "单位")
+    dict_service.create_dict_item("unit", "unit1", "单位1")
+    dict_service.create_dict_item("unit", "unit2", "单位2")
+
+    name = dict_service.get_item_name_by_code("unit", "unit1")
+    assert name == "单位1"
+
+    name = dict_service.get_item_name_by_code("unit", "unit2")
+    assert name == "单位2"
+
+    name = dict_service.get_item_name_by_code("unit", "non_existent")
+    assert name is None
+
+    name = dict_service.get_item_name_by_code("non_existent_dict", "unit1")
+    assert name is None
+
+def test_get_item_code_by_name(dict_service):
+    dict_service.create_dict("system", "系统")
+    dict_service.create_dict_item("system", "sys1", "系统1")
+    dict_service.create_dict_item("system", "sys2", "系统2")
+
+    code = dict_service.get_item_code_by_name("system", "系统1")
+    assert code == "sys1"
+
+    code = dict_service.get_item_code_by_name("system", "系统2")
+    assert code == "sys2"
+
+    code = dict_service.get_item_code_by_name("system", "non_existent")
+    assert code is None
+
+    code = dict_service.get_item_code_by_name("non_existent_dict", "系统1")
+    assert code is None

@@ -3,7 +3,8 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem, QPushButton, QDialog, QLabel,
     QLineEdit, QComboBox, QMessageBox, QHeaderView,
     QFrame, QSpacerItem, QSizePolicy, QGroupBox,
-    QFormLayout, QSpinBox, QApplication
+    QFormLayout, QSpinBox, QApplication, QFileDialog,
+    QCheckBox, QTextEdit
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
@@ -11,6 +12,7 @@ from core.workers import AssetLoadWorker
 from core.logger import get_logger
 from gui.icons import icons
 from gui.style_manager import load_combined_stylesheet
+from datetime import datetime
 
 logger = get_logger(__name__)
 
@@ -41,6 +43,20 @@ class AssetsPage(QWidget):
             return self.dict_cache[dict_code][item_code]
         return item_code
 
+    def _load_filter_combos(self):
+        if self.dict_service:
+            unit_items = self.dict_service.get_dict_items("unit")
+            self.unit_filter_combo.clear()
+            self.unit_filter_combo.addItem("全部", None)
+            for item in unit_items:
+                self.unit_filter_combo.addItem(item.item_name, item.item_code)
+
+            system_items = self.dict_service.get_dict_items("system")
+            self.system_filter_combo.clear()
+            self.system_filter_combo.addItem("全部", None)
+            for item in system_items:
+                self.system_filter_combo.addItem(item.item_name, item.item_code)
+
     def init_ui(self):
         load_combined_stylesheet(QApplication.instance(), ["common", "assets_page"])
 
@@ -67,14 +83,50 @@ class AssetsPage(QWidget):
         self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         toolbar_layout.addWidget(self.refresh_btn)
 
+        toolbar_layout.addSpacing(10)
+
+        self.export_btn = QPushButton("  导出")
+        self.export_btn.setIcon(icons.download_icon())
+        self.export_btn.setMinimumHeight(34)
+        self.export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        toolbar_layout.addWidget(self.export_btn)
+
+        self.import_btn = QPushButton("  导入")
+        self.import_btn.setIcon(icons.upload_icon())
+        self.import_btn.setMinimumHeight(34)
+        self.import_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        toolbar_layout.addWidget(self.import_btn)
+
         toolbar_layout.addSpacing(20)
+
+        unit_filter_label = QLabel("单位:")
+        toolbar_layout.addWidget(unit_filter_label)
+
+        self.unit_filter_combo = QComboBox()
+        self.unit_filter_combo.setMinimumWidth(120)
+        self.unit_filter_combo.setMinimumHeight(34)
+        self.unit_filter_combo.addItem("全部", None)
+        self.unit_filter_combo.currentTextChanged.connect(lambda: self._filter_assets(self.search_input.text()))
+        toolbar_layout.addWidget(self.unit_filter_combo)
+
+        system_filter_label = QLabel("系统:")
+        toolbar_layout.addWidget(system_filter_label)
+
+        self.system_filter_combo = QComboBox()
+        self.system_filter_combo.setMinimumWidth(120)
+        self.system_filter_combo.setMinimumHeight(34)
+        self.system_filter_combo.addItem("全部", None)
+        self.system_filter_combo.currentTextChanged.connect(lambda: self._filter_assets(self.search_input.text()))
+        toolbar_layout.addWidget(self.system_filter_combo)
+
+        toolbar_layout.addSpacing(10)
 
         search_label = QLabel("搜索:")
         toolbar_layout.addWidget(search_label)
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("输入名称、IP或主机名搜索...")
-        self.search_input.setMinimumWidth(250)
+        self.search_input.setMinimumWidth(200)
         self.search_input.setMinimumHeight(34)
         self.search_input.textChanged.connect(self._filter_assets)
         toolbar_layout.addWidget(self.search_input)
@@ -88,9 +140,9 @@ class AssetsPage(QWidget):
         layout.addWidget(toolbar_frame)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(12)
+        self.table.setColumnCount(11)
         self.table.setHorizontalHeaderLabels([
-            "ID", "单位", "系统", "IP地址", "IPv6", "端口", "主机名", "用户名", "业务服务", "位置", "服务器类型", "操作"
+            "单位", "系统", "IP地址", "IPv6", "端口", "主机名", "用户名", "业务服务", "位置", "服务器类型", "操作"
         ])
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -98,22 +150,26 @@ class AssetsPage(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(False)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.cellDoubleClicked.connect(self._on_cell_double_clicked)
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(11, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(11, 150)
+        header.setSectionResizeMode(10, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(10, 150)
 
         self.table.verticalHeader().setDefaultSectionSize(42)
 
         layout.addWidget(self.table)
         self.setLayout(layout)
 
+        self._load_filter_combos()
+
         self.add_btn.clicked.connect(self.show_add_dialog)
         self.refresh_btn.clicked.connect(self.load_assets)
+        self.export_btn.clicked.connect(self.export_assets)
+        self.import_btn.clicked.connect(self.import_assets)
 
     def load_assets(self):
         if self.loading_worker and self.loading_worker.isRunning():
@@ -143,23 +199,33 @@ class AssetsPage(QWidget):
         QMessageBox.critical(self, "错误", f"加载资产失败:\n{error_msg}")
 
     def _filter_assets(self, text):
-        if not text:
-            self._populate_table(self.all_assets)
-        else:
+        unit_filter = self.unit_filter_combo.currentData()
+        system_filter = self.system_filter_combo.currentData()
+        
+        filtered = self.all_assets
+        
+        if unit_filter:
+            filtered = [a for a in filtered if a.unit_name == unit_filter]
+        
+        if system_filter:
+            filtered = [a for a in filtered if a.system_name == system_filter]
+        
+        if text:
             text = text.lower()
             filtered = [
-                a for a in self.all_assets
-                if text in (a.unit_name or "").lower()
-                or text in (a.system_name or "").lower()
+                a for a in filtered
+                if text in (self._get_item_name("unit", a.unit_name) or "").lower()
+                or text in (self._get_item_name("system", a.system_name) or "").lower()
                 or text in (a.ip or "").lower()
                 or text in (a.ipv6 or "").lower()
                 or text in (a.host_name or "").lower()
                 or text in (a.username or "").lower()
                 or text in (a.business_service or "").lower()
-                or text in (a.location or "").lower()
-                or text in (a.server_type or "").lower()
+                or text in (self._get_item_name("location", a.location) or "").lower()
+                or text in (self._get_item_name("server_type", a.server_type) or "").lower()
             ]
-            self._populate_table(filtered)
+        
+        self._populate_table(filtered)
         self._update_count_label()
 
     def _update_count_label(self):
@@ -174,24 +240,20 @@ class AssetsPage(QWidget):
         self.table.setRowCount(len(assets))
 
         for row, asset in enumerate(assets):
-            id_item = QTableWidgetItem(str(asset.id))
-            id_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(row, 0, id_item)
-
-            self.table.setItem(row, 1, QTableWidgetItem(self._get_item_name("unit", asset.unit_name)))
-            self.table.setItem(row, 2, QTableWidgetItem(self._get_item_name("system", asset.system_name)))
-            self.table.setItem(row, 3, QTableWidgetItem(asset.ip or ""))
-            self.table.setItem(row, 4, QTableWidgetItem(asset.ipv6 or ""))
+            self.table.setItem(row, 0, QTableWidgetItem(self._get_item_name("unit", asset.unit_name)))
+            self.table.setItem(row, 1, QTableWidgetItem(self._get_item_name("system", asset.system_name)))
+            self.table.setItem(row, 2, QTableWidgetItem(asset.ip or ""))
+            self.table.setItem(row, 3, QTableWidgetItem(asset.ipv6 or ""))
 
             port_item = QTableWidgetItem(str(asset.port or ""))
             port_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(row, 5, port_item)
+            self.table.setItem(row, 4, port_item)
 
-            self.table.setItem(row, 6, QTableWidgetItem(asset.host_name or ""))
-            self.table.setItem(row, 7, QTableWidgetItem(asset.username or ""))
-            self.table.setItem(row, 8, QTableWidgetItem(asset.business_service or ""))
-            self.table.setItem(row, 9, QTableWidgetItem(self._get_item_name("location", asset.location)))
-            self.table.setItem(row, 10, QTableWidgetItem(self._get_item_name("server_type", asset.server_type)))
+            self.table.setItem(row, 5, QTableWidgetItem(asset.host_name or ""))
+            self.table.setItem(row, 6, QTableWidgetItem(asset.username or ""))
+            self.table.setItem(row, 7, QTableWidgetItem(asset.business_service or ""))
+            self.table.setItem(row, 8, QTableWidgetItem(self._get_item_name("location", asset.location)))
+            self.table.setItem(row, 9, QTableWidgetItem(self._get_item_name("server_type", asset.server_type)))
 
             btn_widget = QWidget()
             btn_layout = QHBoxLayout(btn_widget)
@@ -211,7 +273,12 @@ class AssetsPage(QWidget):
             delete_btn.clicked.connect(lambda checked, a=asset.id: self.delete_asset(a))
             btn_layout.addWidget(delete_btn)
 
-            self.table.setCellWidget(row, 11, btn_widget)
+            self.table.setCellWidget(row, 10, btn_widget)
+
+    def _on_cell_double_clicked(self, row, column):
+        if row < len(self.all_assets):
+            asset = self.all_assets[row]
+            self.show_edit_dialog(asset)
 
     def show_add_dialog(self):
         dialog = AssetDialog(self, dict_service=self.dict_service)
@@ -251,6 +318,79 @@ class AssetsPage(QWidget):
                 QMessageBox.information(self, "成功", "资产删除成功")
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"删除资产失败: {e}")
+
+    def export_assets(self):
+        dialog = ExportDialog(self, len(self.all_assets))
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            options = dialog.get_options()
+            try:
+                file_path, _ = QFileDialog.getSaveFileName(
+                    self,
+                    "导出资产",
+                    f"资产列表_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                    "Excel 文件 (*.xlsx)"
+                )
+                
+                if file_path:
+                    asset_ids = None if options["export_all"] else [
+                        self.all_assets[i].id for i in range(self.table.rowCount())
+                    ]
+                    
+                    file_data = self.asset_service.export_assets(
+                        asset_ids=asset_ids,
+                        include_password=options["include_password"]
+                    )
+                    
+                    with open(file_path, 'wb') as f:
+                        f.write(file_data)
+                    
+                    QMessageBox.information(self, "成功", f"成功导出 {len(self.all_assets) if options['export_all'] else self.table.rowCount()} 个资产")
+                    logger.info(f"资产导出成功: {file_path}")
+                    
+            except Exception as e:
+                logger.error(f"导出资产失败: {e}")
+                QMessageBox.critical(self, "错误", f"导出资产失败:\n{e}")
+
+    def import_assets(self):
+        dialog = ImportDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            options = dialog.get_options()
+            try:
+                file_path, _ = QFileDialog.getOpenFileName(
+                    self,
+                    "导入资产",
+                    "",
+                    "Excel 文件 (*.xlsx *.xls)"
+                )
+                
+                if file_path:
+                    with open(file_path, 'rb') as f:
+                        file_data = f.read()
+                    
+                    success_count, fail_count, errors = self.asset_service.import_assets(
+                        file_data=file_data,
+                        update_existing=options["update_existing"],
+                        skip_errors=options["skip_errors"]
+                    )
+                    
+                    self.load_assets()
+                    
+                    result_msg = f"导入完成!\n成功: {success_count} 个\n失败: {fail_count} 个"
+                    if errors:
+                        result_msg += f"\n\n错误详情:\n" + "\n".join(errors[:10])
+                        if len(errors) > 10:
+                            result_msg += f"\n... 还有 {len(errors) - 10} 个错误"
+                    
+                    if fail_count > 0:
+                        QMessageBox.warning(self, "导入完成", result_msg)
+                    else:
+                        QMessageBox.information(self, "导入成功", result_msg)
+                    
+                    logger.info(f"资产导入完成: 成功 {success_count}, 失败 {fail_count}")
+                    
+            except Exception as e:
+                logger.error(f"导入资产失败: {e}")
+                QMessageBox.critical(self, "错误", f"导入资产失败:\n{e}")
 
 
 class AssetDialog(QDialog):
@@ -385,9 +525,10 @@ class AssetDialog(QDialog):
         right_layout.addWidget(QLabel("密码 *:"))
         right_layout.addWidget(self.password_input)
 
-        self.notes_input = QLineEdit()
+        self.notes_input = QTextEdit()
         self.notes_input.setPlaceholderText("可选")
-        self.notes_input.setMinimumHeight(34)
+        self.notes_input.setMinimumHeight(80)
+        self.notes_input.setMaximumHeight(120)
         right_layout.addWidget(QLabel("备注:"))
         right_layout.addWidget(self.notes_input)
 
@@ -475,4 +616,135 @@ class AssetDialog(QDialog):
             "username": self.username_input.text().strip(),
             "password": self.password_input.text(),
             "notes": self.notes_input.text().strip() or None,
+        }
+
+
+class ExportDialog(QDialog):
+    def __init__(self, parent=None, total_count=0):
+        super().__init__(parent)
+        self.total_count = total_count
+        self.setWindowTitle("导出资产")
+        self.setMinimumSize(400, 250)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+        layout.setSpacing(15)
+        layout.setContentsMargins(24, 20, 24, 20)
+
+        title_label = QLabel("导出资产设置")
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50;")
+        layout.addWidget(title_label)
+
+        info_label = QLabel(f"当前共有 {self.total_count} 个资产")
+        info_label.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        layout.addWidget(info_label)
+
+        self.export_all_radio = QCheckBox("导出所有资产")
+        self.export_all_radio.setChecked(True)
+        layout.addWidget(self.export_all_radio)
+
+        self.include_password_check = QCheckBox("包含密码字段")
+        self.include_password_check.setChecked(False)
+        layout.addWidget(self.include_password_check)
+
+        warning_label = QLabel("⚠️ 注意: 包含密码字段会导出解密后的密码,请注意文件安全!")
+        warning_label.setStyleSheet("color: #e74c3c; font-size: 11px;")
+        warning_label.setWordWrap(True)
+        layout.addWidget(warning_label)
+
+        layout.addStretch()
+
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(12)
+
+        self.cancel_btn = QPushButton("取消")
+        self.cancel_btn.setProperty("class", "secondary")
+        self.cancel_btn.setMinimumHeight(40)
+        self.cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.cancel_btn.clicked.connect(self.reject)
+        btn_layout.addWidget(self.cancel_btn)
+
+        self.ok_btn = QPushButton("确定")
+        self.ok_btn.setProperty("class", "success")
+        self.ok_btn.setMinimumHeight(40)
+        self.ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.ok_btn.clicked.connect(self.accept)
+        btn_layout.addWidget(self.ok_btn)
+
+        layout.addLayout(btn_layout)
+        self.setLayout(layout)
+
+    def get_options(self):
+        return {
+            "export_all": self.export_all_radio.isChecked(),
+            "include_password": self.include_password_check.isChecked()
+        }
+
+
+class ImportDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("导入资产")
+        self.setMinimumSize(450, 300)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+        layout.setSpacing(15)
+        layout.setContentsMargins(24, 20, 24, 20)
+
+        title_label = QLabel("导入资产设置")
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50;")
+        layout.addWidget(title_label)
+
+        format_label = QLabel("支持格式: Excel (.xlsx, .xls)")
+        format_label.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        layout.addWidget(format_label)
+
+        required_label = QLabel("必填字段: 单位名称*、系统名称*、用户名*、IP地址或IPv6地址*")
+        required_label.setStyleSheet("color: #3498db; font-size: 12px;")
+        layout.addWidget(required_label)
+
+        self.update_existing_check = QCheckBox("更新已存在的资产 (根据单位名称+系统名称+IP地址+IPv6地址+用户名匹配)")
+        self.update_existing_check.setChecked(False)
+        layout.addWidget(self.update_existing_check)
+
+        self.skip_errors_check = QCheckBox("跳过错误继续导入")
+        self.skip_errors_check.setChecked(True)
+        layout.addWidget(self.skip_errors_check)
+
+        note_label = QLabel("💡 提示: 可以先导出资产作为模板,然后填写数据后导入")
+        note_label.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        note_label.setWordWrap(True)
+        layout.addWidget(note_label)
+
+        layout.addStretch()
+
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(12)
+
+        self.cancel_btn = QPushButton("取消")
+        self.cancel_btn.setProperty("class", "secondary")
+        self.cancel_btn.setMinimumHeight(40)
+        self.cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.cancel_btn.clicked.connect(self.reject)
+        btn_layout.addWidget(self.cancel_btn)
+
+        self.ok_btn = QPushButton("确定")
+        self.ok_btn.setProperty("class", "success")
+        self.ok_btn.setMinimumHeight(40)
+        self.ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.ok_btn.clicked.connect(self.accept)
+        btn_layout.addWidget(self.ok_btn)
+
+        layout.addLayout(btn_layout)
+        self.setLayout(layout)
+
+    def get_options(self):
+        return {
+            "update_existing": self.update_existing_check.isChecked(),
+            "skip_errors": self.skip_errors_check.isChecked()
         }

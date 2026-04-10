@@ -222,6 +222,48 @@ class IconProvider:
         bar_h = size * 0.25
         painter.drawRoundedRect(QRectF(cx - bar_w / 2, cy - r * 0.15, bar_w, bar_h), 2, 2)
 
+    def _draw_download(self, painter, size):
+        color = QColor("#27ae60")
+        pen = QPen(color, max(2, size * 0.08), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        
+        cx = size / 2
+        cy = size / 2
+        arrow_size = size * 0.25
+        
+        path = QPainterPath()
+        path.moveTo(cx, cy - arrow_size * 0.5)
+        path.lineTo(cx, cy + arrow_size * 0.5)
+        path.lineTo(cx - arrow_size * 0.5, cy)
+        path.moveTo(cx, cy + arrow_size * 0.5)
+        path.lineTo(cx + arrow_size * 0.5, cy)
+        painter.drawPath(path)
+        
+        base_y = cy + arrow_size * 0.7
+        painter.drawLine(int(cx - arrow_size * 0.6), int(base_y), int(cx + arrow_size * 0.6), int(base_y))
+
+    def _draw_upload(self, painter, size):
+        color = QColor("#3498db")
+        pen = QPen(color, max(2, size * 0.08), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        
+        cx = size / 2
+        cy = size / 2
+        arrow_size = size * 0.25
+        
+        base_y = cy - arrow_size * 0.7
+        painter.drawLine(int(cx - arrow_size * 0.6), int(base_y), int(cx + arrow_size * 0.6), int(base_y))
+        
+        path = QPainterPath()
+        path.moveTo(cx, cy + arrow_size * 0.5)
+        path.lineTo(cx, cy - arrow_size * 0.5)
+        path.lineTo(cx - arrow_size * 0.5, cy)
+        path.moveTo(cx, cy - arrow_size * 0.5)
+        path.lineTo(cx + arrow_size * 0.5, cy)
+        painter.drawPath(path)
+
     def app_icon(self):
         return self._create_icon(self._draw_computer)
 
@@ -257,6 +299,12 @@ class IconProvider:
 
     def audit_icon(self):
         return self._create_icon(self._draw_info)
+
+    def download_icon(self):
+        return self._create_icon(self._draw_download)
+
+    def upload_icon(self):
+        return self._create_icon(self._draw_upload)
 
 
 icons = IconProvider()
