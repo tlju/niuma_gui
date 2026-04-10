@@ -1,11 +1,26 @@
-AssetsPage QFrame[class="toolbar"] {
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    padding: 8px;
+AssetsPage {
+    background-color: #f5f6fa;
 }
 
-AssetsPage QFrame[class="status-bar"] {
-    background-color: #f8f9fa;
+AssetsPage QFrame[class="toolbar"] {
+    background-color: #ffffff;
+    border: 1px solid #e9ecef;
     border-radius: 8px;
-    padding: 8px;
+    padding: 8px 12px;
+}
+
+AssetsPage QTableWidget {
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+}
+
+AssetsPage QTableWidget::item {
+    padding: 6px 8px;
+}
+
+AssetsPage QLabel[class="count"] {
+    color: #7f8c8d;
+    font-size: 12px;
+    font-weight: 500;
 }

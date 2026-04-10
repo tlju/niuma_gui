@@ -1,11 +1,58 @@
+import sys
 from pathlib import Path
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QFontDatabase
+from PyQt6.QtCore import QSysInfo
+
+
+def _detect_platform_font() -> list:
+    font_list = []
+    if sys.platform == "win32":
+        font_list = [
+            "Microsoft YaHei", "Segoe UI", "SimHei",
+            "PingFang SC", "Noto Sans CJK SC", "sans-serif"
+        ]
+    elif sys.platform == "darwin":
+        font_list = [
+            "PingFang SC", "Heiti SC", "STHeiti",
+            "Noto Sans CJK SC", "Microsoft YaHei", "sans-serif"
+        ]
+    else:
+        font_list = [
+            "Noto Sans CJK SC", "WenQuanYi Micro Hei",
+            "WenQuanYi Zen Hei", "Droid Sans Fallback",
+            "Microsoft YaHei", "sans-serif"
+        ]
+
+    available = QFontDatabase.families()
+    for font_name in font_list:
+        if font_name in available or font_name == "sans-serif":
+            return [font_name]
+
+    return ["sans-serif"]
+
+
+def _detect_font_size() -> int:
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            hdc = ctypes.windll.user32.GetDC(0)
+            dpi = ctypes.windll.gdi32.GetDeviceCaps(hdc, 90)
+            ctypes.windll.user32.ReleaseDC(0, hdc)
+            if dpi > 120:
+                return 11
+        except Exception:
+            pass
+        return 10
+    elif sys.platform == "darwin":
+        return 13
+    else:
+        return 10
 
 
 def load_stylesheet(app: QApplication, style_name: str = None) -> None:
     styles_dir = Path(__file__).parent / "styles"
-    
+
     if style_name:
         style_path = styles_dir / f"{style_name}.qss"
         if style_path.exists():
@@ -21,19 +68,27 @@ def load_stylesheet(app: QApplication, style_name: str = None) -> None:
 def load_combined_stylesheet(app: QApplication, style_names: list) -> None:
     styles_dir = Path(__file__).parent / "styles"
     combined_styles = ""
-    
+
     for style_name in style_names:
         style_path = styles_dir / f"{style_name}.qss"
         if style_path.exists():
             with open(style_path, "r", encoding="utf-8") as f:
                 combined_styles += f.read() + "\n"
-    
+
     if combined_styles:
         app.setStyleSheet(combined_styles)
 
 
 def get_font() -> QFont:
     font = QFont()
-    font.setFamilies(["Microsoft YaHei", "WenQuanYi Micro Hei", "Noto Sans CJK SC", "sans-serif"])
-    font.setPointSize(10)
+    preferred_fonts = _detect_platform_font()
+    font.setFamilies(preferred_fonts)
+    font.setPointSize(_detect_font_size())
+    font.setStyleHint(QFont.StyleHint.SansSerif)
+    font.setWeight(QFont.Weight.Normal)
     return font
+
+
+def setup_app_fonts(app: QApplication) -> None:
+    font = get_font()
+    app.setFont(font)

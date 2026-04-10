@@ -1,36 +1,73 @@
 LoginDialog {
-    background-color: #fff;
+    background-color: #ffffff;
 }
 
 LoginDialog QFrame#header {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-        stop:0 #1abc9c, stop:1 #3498db);
+        stop:0 #1abc9c, stop:0.5 #16a085, stop:1 #3498db);
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px;
 }
 
 LoginDialog QLabel[class="title"] {
-    font-size: 28px;
-    font-weight: bold;
-    color: white;
+    font-size: 26px;
+    font-weight: 700;
+    color: #ffffff;
     background: transparent;
+    letter-spacing: 2px;
 }
 
 LoginDialog QLabel[class="subtitle"] {
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.85);
     background: transparent;
-    margin-top: 5px;
+    margin-top: 6px;
+    letter-spacing: 1px;
+}
+
+LoginDialog QLabel {
+    color: #495057;
+    font-weight: 500;
+    font-size: 12px;
+}
+
+LoginDialog QLineEdit {
+    background-color: #ffffff;
+    border: 1.5px solid #dee2e6;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 14px;
+    color: #2c3e50;
+    selection-background-color: #3498db;
+    selection-color: #ffffff;
+}
+
+LoginDialog QLineEdit:focus {
+    border-color: #1abc9c;
+    border-width: 2px;
+}
+
+LoginDialog QLineEdit::placeholder {
+    color: #adb5bd;
 }
 
 LoginDialog QPushButton[class="login"] {
     background-color: #1abc9c;
-    font-size: 16px;
+    border: 1px solid #16a085;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 700;
     padding: 12px 24px;
+    letter-spacing: 4px;
+    color: #ffffff;
 }
 
 LoginDialog QPushButton[class="login"]:hover {
     background-color: #16a085;
+    border-color: #14967a;
 }
 
 LoginDialog QPushButton[class="login"]:pressed {
     background-color: #14967a;
+    border-color: #117a65;
 }

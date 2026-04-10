@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from models.base import Base
@@ -6,24 +6,21 @@ from models.base import Base
 class ServerAsset(Base):
     __tablename__ = "server_assets"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False)
-    hostname = Column(String(255))
-    ip = Column(String(50), nullable=False)
-    port = Column(Integer, default=22)
-    os_type = Column(String(50))  # Linux, Windows, macOS
-    description = Column(Text)
-
-    # 认证信息
-    username = Column(String(50))
-    password_cipher = Column(String(500))  # 加密存储
-    private_key_cipher = Column(String(2000))  # 加密存储
-    auth_type = Column(String(20), default="password")  # password, key
-
-    # 状态
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    unit_name = Column(String(100), nullable=False)
+    system_name = Column(String(100), nullable=False)
+    ip = Column(String(45), nullable=True)
+    ipv6 = Column(String(45), nullable=True)
+    port = Column(Integer, nullable=True)
+    host_name = Column(String(100), nullable=True)
+    username = Column(String(100), nullable=False)
+    password_cipher = Column(String(255), nullable=False)
+    notes = Column(Text, nullable=True)
+    business_service = Column(String(200), nullable=True)
+    location = Column(String(100), nullable=True)
+    server_type = Column(String(100), nullable=True)
+    vip = Column(String(200), nullable=True)
+    created_at = Column(DateTime, default=func.now())
 
     # 关系
     scripts = relationship("Script", back_populates="server")

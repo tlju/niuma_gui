@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
     QTableWidgetItem, QPushButton, QHeaderView, QComboBox, QLabel,
-    QMessageBox, QApplication
+    QMessageBox, QFrame, QApplication
 )
 from PyQt6.QtCore import Qt
 from core.workers import AuditLogLoadWorker
@@ -21,33 +21,46 @@ class AuditPage(QWidget):
 
     def init_ui(self):
         load_combined_stylesheet(QApplication.instance(), ["common", "audit_page"])
-        
+
         layout = QVBoxLayout()
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
 
-        # 工具栏
-        toolbar = QHBoxLayout()
+        toolbar_frame = QFrame()
+        toolbar_frame.setProperty("class", "toolbar")
+        toolbar_layout = QHBoxLayout(toolbar_frame)
+        toolbar_layout.setContentsMargins(10, 8, 10, 8)
+        toolbar_layout.setSpacing(10)
 
-        toolbar.addWidget(QLabel("操作类型:"))
+        toolbar_layout.addWidget(QLabel("操作类型:"))
         self.action_combo = QComboBox()
         self.action_combo.addItem("全部", "")
         self.action_combo.addItems(["login", "create", "update", "delete", "execute"])
+        self.action_combo.setMinimumHeight(34)
         self.action_combo.currentIndexChanged.connect(self.load_logs)
-        toolbar.addWidget(self.action_combo)
+        toolbar_layout.addWidget(self.action_combo)
 
-        self.refresh_btn = QPushButton("刷新")
+        self.refresh_btn = QPushButton("  刷新")
         self.refresh_btn.setIcon(icons.refresh_icon())
+        self.refresh_btn.setMinimumHeight(34)
+        self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.refresh_btn.clicked.connect(self.load_logs)
-        toolbar.addWidget(self.refresh_btn)
+        toolbar_layout.addWidget(self.refresh_btn)
 
-        toolbar.addStretch()
-        layout.addLayout(toolbar)
+        toolbar_layout.addStretch()
+        layout.addWidget(toolbar_frame)
 
-        # 日志表格
         self.table = QTableWidget()
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels([
             "ID", "用户ID", "操作类型", "资源类型", "资源ID", "时间"
         ])
+        self.table.setAlternatingRowColors(True)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.table.verticalHeader().setVisible(False)
+        self.table.setShowGrid(False)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.verticalHeader().setDefaultSectionSize(42)
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -57,7 +70,6 @@ class AuditPage(QWidget):
         self.setLayout(layout)
 
     def load_logs(self):
-        """在后台线程加载审计日志"""
         action_type = self.action_combo.currentData()
 
         if self.loading_worker and self.loading_worker.isRunning():
@@ -71,17 +83,14 @@ class AuditPage(QWidget):
         logger.info(f"开始加载审计日志，操作类型: {action_type or '全部'}")
 
     def _on_logs_loaded(self, logs):
-        """审计日志加载完成回调"""
         logger.info(f"成功加载 {len(logs)} 条审计日志")
         self._populate_table(logs)
 
     def _on_load_error(self, error_msg):
-        """加载错误回调"""
         logger.error(f"加载审计日志失败: {error_msg}")
         QMessageBox.critical(self, "错误", f"加载审计日志失败:\n{error_msg}")
 
     def _populate_table(self, logs):
-        """填充表格数据"""
         self.table.setRowCount(len(logs))
 
         for row, log in enumerate(logs):

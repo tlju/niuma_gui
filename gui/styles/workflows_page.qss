@@ -1,5 +1,20 @@
-WorkflowsPage QFrame {
-    background-color: #f8f9fa;
+WorkflowsPage {
+    background-color: #f5f6fa;
+}
+
+WorkflowsPage QFrame[class="toolbar"] {
+    background-color: #ffffff;
+    border: 1px solid #e9ecef;
     border-radius: 8px;
-    padding: 8px;
+    padding: 8px 12px;
+}
+
+WorkflowsPage QTableWidget {
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+}
+
+WorkflowsPage QTableWidget::item {
+    padding: 6px 4px;
 }

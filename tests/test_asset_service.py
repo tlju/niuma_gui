@@ -20,21 +20,23 @@ def asset_service(db_session):
 
 def test_create_asset(asset_service):
     asset_id = asset_service.create(
-        name="Test Server",
-        ip="192.168.1.100",
-        port=22,
+        unit_name="Test Unit",
+        system_name="Test System",
         username="admin",
-        password="secret123"
+        password="secret123",
+        ip="192.168.1.100",
+        port=22
     )
     assert asset_id is not None
 
     asset = asset_service.get_by_id(asset_id)
-    assert asset.name == "Test Server"
+    assert asset.unit_name == "Test Unit"
+    assert asset.system_name == "Test System"
     assert asset.ip == "192.168.1.100"
 
 def test_list_assets(asset_service):
-    asset_service.create("Server1", "192.168.1.1", 22, "admin", "pass")
-    asset_service.create("Server2", "192.168.1.2", 22, "admin", "pass")
+    asset_service.create("Unit1", "System1", "admin", "pass", "192.168.1.1", 22)
+    asset_service.create("Unit2", "System2", "admin", "pass", "192.168.1.2", 22)
 
     assets = asset_service.get_all()
     assert len(assets) >= 2

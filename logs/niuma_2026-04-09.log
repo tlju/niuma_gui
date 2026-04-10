@@ -2964,3 +2964,527 @@
 2026-04-09 14:23:24 - gui.main_window - INFO - switch_page:213 - 切换到系统参数页面
 2026-04-09 14:23:32 - services.param_service - INFO - delete_param:70 - 删除系统参数: test_key
 2026-04-09 14:23:32 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 0 个系统参数
+2026-04-09 14:25:21 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-09 14:25:24 - gui.pages.assets_page - INFO - load_assets:108 - 开始加载资产列表
+2026-04-09 14:25:24 - gui.pages.scripts_page - INFO - load_scripts:69 - 开始加载脚本列表
+2026-04-09 14:25:24 - gui.pages.audit_page - INFO - load_logs:71 - 开始加载审计日志，操作类型: 全部
+2026-04-09 14:25:24 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 0 个系统参数
+2026-04-09 14:25:24 - gui.pages.data_dicts_page - INFO - load_dicts:86 - 加载了 0 个数据字典
+2026-04-09 14:25:24 - gui.pages.todos_page - INFO - load_todos:94 - 加载了 0 个待办事项
+2026-04-09 14:25:24 - gui.pages.documents_page - INFO - load_documents:102 - 加载了 0 个文档
+2026-04-09 14:25:24 - gui.pages.workflows_page - INFO - load_templates:88 - 加载了 0 个工作流模板
+2026-04-09 14:25:24 - gui.pages.assets_page - INFO - _on_assets_loaded:116 - 成功加载 0 个资产
+2026-04-09 14:25:24 - gui.pages.scripts_page - INFO - _on_scripts_loaded:73 - 成功加载 0 个脚本
+2026-04-09 14:25:24 - gui.pages.audit_page - INFO - _on_logs_loaded:75 - 成功加载 37 条审计日志
+2026-04-09 14:25:30 - gui.main_window - INFO - switch_page:213 - 切换到数据字典页面
+2026-04-09 14:25:38 - gui.main_window - INFO - switch_page:213 - 切换到系统参数页面
+2026-04-09 14:26:17 - services.param_service - INFO - create_param:31 - 创建系统参数: bastion_host
+2026-04-09 14:26:17 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 1 个系统参数
+2026-04-09 14:26:28 - gui.main_window - INFO - switch_page:213 - 切换到数据字典页面
+2026-04-09 14:26:59 - services.dict_service - INFO - create_dict:27 - 创建数据字典: unit
+2026-04-09 14:26:59 - gui.pages.data_dicts_page - INFO - load_dicts:86 - 加载了 1 个数据字典
+2026-04-09 14:28:51 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-09 14:28:54 - gui.pages.assets_page - INFO - load_assets:109 - 开始加载资产列表
+2026-04-09 14:28:54 - gui.pages.scripts_page - INFO - load_scripts:69 - 开始加载脚本列表
+2026-04-09 14:28:54 - gui.pages.audit_page - INFO - load_logs:71 - 开始加载审计日志，操作类型: 全部
+2026-04-09 14:28:54 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 1 个系统参数
+2026-04-09 14:28:54 - gui.pages.data_dicts_page - INFO - load_dicts:86 - 加载了 1 个数据字典
+2026-04-09 14:28:54 - gui.pages.todos_page - INFO - load_todos:94 - 加载了 0 个待办事项
+2026-04-09 14:28:54 - gui.pages.documents_page - INFO - load_documents:102 - 加载了 0 个文档
+2026-04-09 14:28:54 - gui.pages.workflows_page - INFO - load_templates:88 - 加载了 0 个工作流模板
+2026-04-09 14:28:54 - gui.pages.assets_page - INFO - _on_assets_loaded:117 - 成功加载 0 个资产
+2026-04-09 14:28:54 - gui.pages.scripts_page - INFO - _on_scripts_loaded:73 - 成功加载 0 个脚本
+2026-04-09 14:28:54 - gui.pages.audit_page - INFO - _on_logs_loaded:75 - 成功加载 38 条审计日志
+2026-04-09 14:28:57 - gui.main_window - INFO - switch_page:213 - 切换到数据字典页面
+2026-04-09 15:13:02 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-09 15:13:05 - gui.pages.assets_page - INFO - load_assets:108 - 开始加载资产列表
+2026-04-09 15:13:05 - gui.pages.scripts_page - INFO - load_scripts:69 - 开始加载脚本列表
+2026-04-09 15:13:05 - gui.pages.audit_page - INFO - load_logs:71 - 开始加载审计日志，操作类型: 全部
+2026-04-09 15:13:05 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 1 个系统参数
+2026-04-09 15:13:05 - gui.pages.data_dicts_page - INFO - load_dicts:88 - 加载了 1 个数据字典
+2026-04-09 15:13:05 - gui.pages.todos_page - INFO - load_todos:94 - 加载了 0 个待办事项
+2026-04-09 15:13:05 - gui.pages.documents_page - INFO - load_documents:102 - 加载了 0 个文档
+2026-04-09 15:13:05 - gui.pages.workflows_page - INFO - load_templates:88 - 加载了 0 个工作流模板
+2026-04-09 15:13:05 - gui.pages.assets_page - INFO - _on_assets_loaded:116 - 成功加载 0 个资产
+2026-04-09 15:13:05 - gui.pages.scripts_page - INFO - _on_scripts_loaded:73 - 成功加载 0 个脚本
+2026-04-09 15:13:05 - gui.pages.audit_page - INFO - _on_logs_loaded:75 - 成功加载 39 条审计日志
+2026-04-09 15:13:09 - gui.main_window - INFO - switch_page:213 - 切换到数据字典页面
+2026-04-09 15:26:50 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-09 15:26:53 - gui.pages.assets_page - INFO - load_assets:108 - 开始加载资产列表
+2026-04-09 15:26:53 - gui.pages.scripts_page - INFO - load_scripts:69 - 开始加载脚本列表
+2026-04-09 15:26:53 - gui.pages.audit_page - INFO - load_logs:71 - 开始加载审计日志，操作类型: 全部
+2026-04-09 15:26:53 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 1 个系统参数
+2026-04-09 15:26:53 - gui.pages.data_dicts_page - INFO - load_dicts:105 - 加载了 1 个数据字典
+2026-04-09 15:26:53 - gui.pages.todos_page - INFO - load_todos:94 - 加载了 0 个待办事项
+2026-04-09 15:26:53 - gui.pages.documents_page - INFO - load_documents:102 - 加载了 0 个文档
+2026-04-09 15:26:53 - gui.pages.workflows_page - INFO - load_templates:88 - 加载了 0 个工作流模板
+2026-04-09 15:26:53 - gui.pages.assets_page - INFO - _on_assets_loaded:116 - 成功加载 0 个资产
+2026-04-09 15:26:53 - gui.pages.scripts_page - INFO - _on_scripts_loaded:73 - 成功加载 0 个脚本
+2026-04-09 15:26:53 - gui.pages.audit_page - INFO - _on_logs_loaded:75 - 成功加载 40 条审计日志
+2026-04-09 15:26:57 - gui.main_window - INFO - switch_page:213 - 切换到数据字典页面
+2026-04-09 15:27:22 - services.dict_service - INFO - create_dict_item:94 - 创建字典项: unit.11
+2026-04-09 15:27:31 - services.dict_service - INFO - create_dict:27 - 创建数据字典: sda
+2026-04-09 15:27:31 - gui.pages.data_dicts_page - INFO - load_dicts:105 - 加载了 2 个数据字典
+2026-04-09 15:27:41 - gui.pages.data_dicts_page - INFO - load_dicts:105 - 加载了 2 个数据字典
+2026-04-09 15:30:02 - services.dict_service - INFO - delete_dict:67 - 删除数据字典: unit
+2026-04-09 15:30:02 - gui.pages.data_dicts_page - INFO - load_dicts:105 - 加载了 1 个数据字典
+2026-04-09 15:30:05 - services.dict_service - INFO - delete_dict:67 - 删除数据字典: sda
+2026-04-09 15:30:05 - gui.pages.data_dicts_page - INFO - load_dicts:105 - 加载了 0 个数据字典
+2026-04-09 15:30:35 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-09 15:30:38 - gui.pages.assets_page - INFO - load_assets:108 - 开始加载资产列表
+2026-04-09 15:30:38 - gui.pages.scripts_page - INFO - load_scripts:69 - 开始加载脚本列表
+2026-04-09 15:30:38 - gui.pages.audit_page - INFO - load_logs:71 - 开始加载审计日志，操作类型: 全部
+2026-04-09 15:30:38 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 1 个系统参数
+2026-04-09 15:30:38 - gui.pages.data_dicts_page - INFO - load_dicts:105 - 加载了 0 个数据字典
+2026-04-09 15:30:38 - gui.pages.todos_page - INFO - load_todos:94 - 加载了 0 个待办事项
+2026-04-09 15:30:38 - gui.pages.documents_page - INFO - load_documents:102 - 加载了 0 个文档
+2026-04-09 15:30:38 - gui.pages.workflows_page - INFO - load_templates:88 - 加载了 0 个工作流模板
+2026-04-09 15:30:38 - gui.pages.assets_page - INFO - _on_assets_loaded:116 - 成功加载 0 个资产
+2026-04-09 15:30:38 - gui.pages.scripts_page - INFO - _on_scripts_loaded:73 - 成功加载 0 个脚本
+2026-04-09 15:30:38 - gui.pages.audit_page - INFO - _on_logs_loaded:75 - 成功加载 41 条审计日志
+2026-04-09 15:30:41 - gui.main_window - INFO - switch_page:213 - 切换到数据字典页面
+2026-04-09 15:34:11 - gui.pages.data_dicts_page - INFO - load_dicts:105 - 加载了 0 个数据字典
+2026-04-09 15:34:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: fdsa
+2026-04-09 15:34:16 - gui.pages.data_dicts_page - INFO - load_dicts:105 - 加载了 1 个数据字典
+2026-04-09 15:34:24 - services.dict_service - INFO - create_dict_item:94 - 创建字典项: fdsa.dfs
+2026-04-09 15:34:53 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-09 15:34:55 - gui.pages.assets_page - INFO - load_assets:108 - 开始加载资产列表
+2026-04-09 15:34:55 - gui.pages.scripts_page - INFO - load_scripts:69 - 开始加载脚本列表
+2026-04-09 15:34:55 - gui.pages.audit_page - INFO - load_logs:71 - 开始加载审计日志，操作类型: 全部
+2026-04-09 15:34:55 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 1 个系统参数
+2026-04-09 15:34:55 - gui.pages.data_dicts_page - INFO - load_dicts:104 - 加载了 1 个数据字典
+2026-04-09 15:34:55 - gui.pages.todos_page - INFO - load_todos:94 - 加载了 0 个待办事项
+2026-04-09 15:34:55 - gui.pages.documents_page - INFO - load_documents:102 - 加载了 0 个文档
+2026-04-09 15:34:56 - gui.pages.workflows_page - INFO - load_templates:88 - 加载了 0 个工作流模板
+2026-04-09 15:34:56 - gui.pages.assets_page - INFO - _on_assets_loaded:116 - 成功加载 0 个资产
+2026-04-09 15:34:56 - gui.pages.scripts_page - INFO - _on_scripts_loaded:73 - 成功加载 0 个脚本
+2026-04-09 15:34:56 - gui.pages.audit_page - INFO - _on_logs_loaded:75 - 成功加载 42 条审计日志
+2026-04-09 15:34:59 - gui.main_window - INFO - switch_page:213 - 切换到数据字典页面
+2026-04-09 15:35:12 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-09 15:35:15 - gui.pages.assets_page - INFO - load_assets:108 - 开始加载资产列表
+2026-04-09 15:35:15 - gui.pages.scripts_page - INFO - load_scripts:69 - 开始加载脚本列表
+2026-04-09 15:35:15 - gui.pages.audit_page - INFO - load_logs:71 - 开始加载审计日志，操作类型: 全部
+2026-04-09 15:35:15 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 1 个系统参数
+2026-04-09 15:35:15 - gui.pages.data_dicts_page - INFO - load_dicts:104 - 加载了 1 个数据字典
+2026-04-09 15:35:15 - gui.pages.todos_page - INFO - load_todos:94 - 加载了 0 个待办事项
+2026-04-09 15:35:15 - gui.pages.documents_page - INFO - load_documents:102 - 加载了 0 个文档
+2026-04-09 15:35:15 - gui.pages.workflows_page - INFO - load_templates:88 - 加载了 0 个工作流模板
+2026-04-09 15:35:15 - gui.pages.assets_page - INFO - _on_assets_loaded:116 - 成功加载 0 个资产
+2026-04-09 15:35:15 - gui.pages.scripts_page - INFO - _on_scripts_loaded:73 - 成功加载 0 个脚本
+2026-04-09 15:35:15 - gui.pages.audit_page - INFO - _on_logs_loaded:75 - 成功加载 43 条审计日志
+2026-04-09 15:35:18 - gui.main_window - INFO - switch_page:213 - 切换到数据字典页面
+2026-04-09 15:35:33 - services.dict_service - INFO - create_dict:27 - 创建数据字典: fds111
+2026-04-09 15:35:33 - gui.pages.data_dicts_page - INFO - load_dicts:104 - 加载了 2 个数据字典
+2026-04-09 15:35:40 - services.dict_service - INFO - delete_dict:67 - 删除数据字典: fds111
+2026-04-09 15:35:40 - gui.pages.data_dicts_page - INFO - load_dicts:104 - 加载了 1 个数据字典
+2026-04-09 15:35:42 - services.dict_service - INFO - delete_dict:67 - 删除数据字典: fdsa
+2026-04-09 15:35:42 - gui.pages.data_dicts_page - INFO - load_dicts:104 - 加载了 0 个数据字典
+2026-04-09 15:35:45 - gui.pages.data_dicts_page - INFO - load_dicts:104 - 加载了 0 个数据字典
+2026-04-09 15:35:45 - gui.pages.data_dicts_page - INFO - load_dicts:104 - 加载了 0 个数据字典
+2026-04-09 15:35:46 - gui.pages.data_dicts_page - INFO - load_dicts:104 - 加载了 0 个数据字典
+2026-04-09 15:40:18 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-09 15:40:21 - gui.pages.assets_page - INFO - load_assets:108 - 开始加载资产列表
+2026-04-09 15:40:21 - gui.pages.scripts_page - INFO - load_scripts:69 - 开始加载脚本列表
+2026-04-09 15:40:21 - gui.pages.audit_page - INFO - load_logs:71 - 开始加载审计日志，操作类型: 全部
+2026-04-09 15:40:21 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 1 个系统参数
+2026-04-09 15:40:21 - gui.pages.data_dicts_page - INFO - load_dicts:105 - 加载了 0 个数据字典
+2026-04-09 15:40:21 - gui.pages.todos_page - INFO - load_todos:94 - 加载了 0 个待办事项
+2026-04-09 15:40:21 - gui.pages.documents_page - INFO - load_documents:102 - 加载了 0 个文档
+2026-04-09 15:40:21 - gui.pages.workflows_page - INFO - load_templates:88 - 加载了 0 个工作流模板
+2026-04-09 15:40:21 - gui.pages.assets_page - INFO - _on_assets_loaded:116 - 成功加载 0 个资产
+2026-04-09 15:40:21 - gui.pages.scripts_page - INFO - _on_scripts_loaded:73 - 成功加载 0 个脚本
+2026-04-09 15:40:21 - gui.pages.audit_page - INFO - _on_logs_loaded:75 - 成功加载 44 条审计日志
+2026-04-09 15:40:36 - gui.main_window - INFO - switch_page:213 - 切换到数据字典页面
+2026-04-09 16:01:49 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-09 16:01:55 - gui.pages.assets_page - INFO - load_assets:108 - 开始加载资产列表
+2026-04-09 16:01:55 - gui.pages.scripts_page - INFO - load_scripts:69 - 开始加载脚本列表
+2026-04-09 16:01:56 - gui.pages.audit_page - INFO - load_logs:71 - 开始加载审计日志，操作类型: 全部
+2026-04-09 16:01:56 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 1 个系统参数
+2026-04-09 16:01:56 - gui.pages.data_dicts_page - INFO - load_dicts:105 - 加载了 0 个数据字典
+2026-04-09 16:01:56 - gui.pages.todos_page - INFO - load_todos:94 - 加载了 0 个待办事项
+2026-04-09 16:01:56 - gui.pages.documents_page - INFO - load_documents:102 - 加载了 0 个文档
+2026-04-09 16:01:56 - gui.pages.workflows_page - INFO - load_templates:88 - 加载了 0 个工作流模板
+2026-04-09 16:01:56 - gui.pages.assets_page - INFO - _on_assets_loaded:116 - 成功加载 0 个资产
+2026-04-09 16:01:56 - gui.pages.scripts_page - INFO - _on_scripts_loaded:73 - 成功加载 0 个脚本
+2026-04-09 16:01:56 - gui.pages.audit_page - INFO - _on_logs_loaded:75 - 成功加载 45 条审计日志
+2026-04-09 16:02:07 - gui.main_window - INFO - switch_page:213 - 切换到系统参数页面
+2026-04-09 16:02:10 - gui.main_window - INFO - switch_page:213 - 切换到数据字典页面
+2026-04-09 16:02:13 - gui.pages.data_dicts_page - INFO - load_dicts:105 - 加载了 0 个数据字典
+2026-04-09 16:03:46 - gui.pages.data_dicts_page - INFO - load_dicts:105 - 加载了 4 个数据字典
+2026-04-09 16:04:59 - services.dict_service - INFO - create_dict_item:94 - 创建字典项: unit.CGY
+2026-04-09 16:08:24 - gui.pages.data_dicts_page - INFO - load_dicts:105 - 加载了 4 个数据字典
+2026-04-09 16:23:13 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-09 16:23:18 - gui.pages.assets_page - INFO - load_assets:108 - 开始加载资产列表
+2026-04-09 16:23:18 - gui.pages.scripts_page - INFO - load_scripts:69 - 开始加载脚本列表
+2026-04-09 16:23:18 - gui.pages.audit_page - INFO - load_logs:71 - 开始加载审计日志，操作类型: 全部
+2026-04-09 16:23:18 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 1 个系统参数
+2026-04-09 16:23:18 - gui.pages.data_dicts_page - INFO - load_dicts:105 - 加载了 4 个数据字典
+2026-04-09 16:23:18 - gui.pages.todos_page - INFO - load_todos:94 - 加载了 0 个待办事项
+2026-04-09 16:23:18 - gui.pages.documents_page - INFO - load_documents:102 - 加载了 0 个文档
+2026-04-09 16:23:18 - gui.pages.workflows_page - INFO - load_templates:88 - 加载了 0 个工作流模板
+2026-04-09 16:23:18 - gui.pages.assets_page - INFO - _on_assets_loaded:116 - 成功加载 0 个资产
+2026-04-09 16:23:18 - gui.pages.scripts_page - INFO - _on_scripts_loaded:73 - 成功加载 0 个脚本
+2026-04-09 16:23:18 - gui.pages.audit_page - INFO - _on_logs_loaded:75 - 成功加载 46 条审计日志
+2026-04-09 16:23:25 - gui.main_window - INFO - switch_page:213 - 切换到数据字典页面
+2026-04-09 16:24:27 - gui.pages.data_dicts_page - INFO - load_dicts:105 - 加载了 4 个数据字典
+2026-04-09 16:24:29 - gui.pages.data_dicts_page - INFO - load_dicts:105 - 加载了 4 个数据字典
+2026-04-09 16:24:40 - services.dict_service - INFO - update_dict_item:115 - 更新字典项: unit.CGY
+2026-04-09 16:26:32 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: unit.ZB
+2026-04-09 16:28:26 - services.dict_service - INFO - update_dict_item:115 - 更新字典项: unit.CGY
+2026-04-09 16:28:44 - services.dict_service - INFO - update_dict_item:115 - 更新字典项: unit.ZB
+2026-04-09 16:28:50 - services.dict_service - INFO - update_dict_item:115 - 更新字典项: unit.ZB
+2026-04-09 16:47:55 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-09 16:47:59 - gui.pages.assets_page - INFO - load_assets:108 - 开始加载资产列表
+2026-04-09 16:47:59 - gui.pages.scripts_page - INFO - load_scripts:69 - 开始加载脚本列表
+2026-04-09 16:47:59 - gui.pages.audit_page - INFO - load_logs:71 - 开始加载审计日志，操作类型: 全部
+2026-04-09 16:47:59 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 1 个系统参数
+2026-04-09 16:47:59 - gui.pages.data_dicts_page - INFO - load_dicts:105 - 加载了 4 个数据字典
+2026-04-09 16:47:59 - gui.pages.todos_page - INFO - load_todos:94 - 加载了 0 个待办事项
+2026-04-09 16:47:59 - gui.pages.documents_page - INFO - load_documents:102 - 加载了 0 个文档
+2026-04-09 16:48:00 - gui.pages.workflows_page - INFO - load_templates:88 - 加载了 0 个工作流模板
+2026-04-09 16:48:00 - gui.pages.assets_page - INFO - _on_assets_loaded:116 - 成功加载 0 个资产
+2026-04-09 16:48:00 - gui.pages.scripts_page - INFO - _on_scripts_loaded:73 - 成功加载 0 个脚本
+2026-04-09 16:48:00 - gui.pages.audit_page - INFO - _on_logs_loaded:75 - 成功加载 47 条审计日志
+2026-04-09 16:48:04 - gui.main_window - INFO - switch_page:213 - 切换到数据字典页面
+2026-04-09 16:48:33 - gui.main_window - INFO - switch_page:213 - 切换到审计日志页面
+2026-04-09 16:48:48 - gui.main_window - INFO - switch_page:213 - 切换到数据字典页面
+2026-04-09 16:49:40 - gui.main_window - INFO - switch_page:213 - 切换到数据字典页面
+2026-04-09 16:49:42 - gui.main_window - INFO - switch_page:213 - 切换到系统参数页面
+2026-04-09 17:13:45 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-09 17:13:48 - gui.pages.assets_page - INFO - load_assets:108 - 开始加载资产列表
+2026-04-09 17:13:48 - gui.pages.scripts_page - INFO - load_scripts:69 - 开始加载脚本列表
+2026-04-09 17:13:48 - gui.pages.audit_page - INFO - load_logs:71 - 开始加载审计日志，操作类型: 全部
+2026-04-09 17:13:48 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 1 个系统参数
+2026-04-09 17:13:48 - gui.pages.data_dicts_page - INFO - load_dicts:103 - 加载了 4 个数据字典
+2026-04-09 17:13:48 - gui.pages.todos_page - INFO - load_todos:94 - 加载了 0 个待办事项
+2026-04-09 17:13:49 - gui.pages.documents_page - INFO - load_documents:102 - 加载了 0 个文档
+2026-04-09 17:13:49 - gui.pages.workflows_page - INFO - load_templates:88 - 加载了 0 个工作流模板
+2026-04-09 17:13:49 - gui.pages.assets_page - INFO - _on_assets_loaded:116 - 成功加载 0 个资产
+2026-04-09 17:13:49 - gui.pages.scripts_page - INFO - _on_scripts_loaded:73 - 成功加载 0 个脚本
+2026-04-09 17:13:49 - gui.pages.audit_page - INFO - _on_logs_loaded:75 - 成功加载 48 条审计日志
+2026-04-09 17:13:53 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-09 17:14:00 - gui.pages.assets_page - INFO - load_assets:108 - 开始加载资产列表
+2026-04-09 17:14:00 - gui.pages.scripts_page - INFO - load_scripts:69 - 开始加载脚本列表
+2026-04-09 17:14:00 - gui.pages.audit_page - INFO - load_logs:71 - 开始加载审计日志，操作类型: 全部
+2026-04-09 17:14:00 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 1 个系统参数
+2026-04-09 17:14:00 - gui.pages.data_dicts_page - INFO - load_dicts:103 - 加载了 4 个数据字典
+2026-04-09 17:14:00 - gui.pages.todos_page - INFO - load_todos:94 - 加载了 0 个待办事项
+2026-04-09 17:14:00 - gui.pages.documents_page - INFO - load_documents:102 - 加载了 0 个文档
+2026-04-09 17:14:00 - gui.pages.workflows_page - INFO - load_templates:88 - 加载了 0 个工作流模板
+2026-04-09 17:14:00 - gui.pages.assets_page - INFO - _on_assets_loaded:116 - 成功加载 0 个资产
+2026-04-09 17:14:00 - gui.pages.scripts_page - INFO - _on_scripts_loaded:73 - 成功加载 0 个脚本
+2026-04-09 17:14:00 - gui.pages.audit_page - INFO - _on_logs_loaded:75 - 成功加载 49 条审计日志
+2026-04-09 17:14:06 - gui.main_window - INFO - switch_page:213 - 切换到系统参数页面
+2026-04-09 17:14:16 - gui.main_window - INFO - switch_page:213 - 切换到数据字典页面
+2026-04-09 17:15:04 - gui.main_window - INFO - switch_page:213 - 切换到审计日志页面
+2026-04-09 17:15:09 - gui.main_window - INFO - switch_page:213 - 切换到系统参数页面
+2026-04-09 17:15:19 - gui.main_window - INFO - switch_page:213 - 切换到资产管理页面
+2026-04-09 17:17:52 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-09 17:17:55 - gui.pages.assets_page - INFO - load_assets:108 - 开始加载资产列表
+2026-04-09 17:17:55 - gui.pages.scripts_page - INFO - load_scripts:69 - 开始加载脚本列表
+2026-04-09 17:17:55 - gui.pages.audit_page - INFO - load_logs:71 - 开始加载审计日志，操作类型: 全部
+2026-04-09 17:17:55 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 1 个系统参数
+2026-04-09 17:17:55 - gui.pages.data_dicts_page - INFO - load_dicts:103 - 加载了 4 个数据字典
+2026-04-09 17:17:55 - gui.pages.todos_page - INFO - load_todos:94 - 加载了 0 个待办事项
+2026-04-09 17:17:55 - gui.pages.documents_page - INFO - load_documents:102 - 加载了 0 个文档
+2026-04-09 17:17:55 - gui.pages.workflows_page - INFO - load_templates:88 - 加载了 0 个工作流模板
+2026-04-09 17:17:55 - gui.pages.assets_page - INFO - _on_assets_loaded:116 - 成功加载 0 个资产
+2026-04-09 17:17:55 - gui.pages.scripts_page - INFO - _on_scripts_loaded:73 - 成功加载 0 个脚本
+2026-04-09 17:17:55 - gui.pages.audit_page - INFO - _on_logs_loaded:75 - 成功加载 50 条审计日志
+2026-04-09 17:20:28 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-09 17:20:32 - gui.pages.assets_page - INFO - load_assets:108 - 开始加载资产列表
+2026-04-09 17:20:32 - gui.pages.scripts_page - INFO - load_scripts:69 - 开始加载脚本列表
+2026-04-09 17:20:32 - gui.pages.audit_page - INFO - load_logs:71 - 开始加载审计日志，操作类型: 全部
+2026-04-09 17:20:32 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 1 个系统参数
+2026-04-09 17:20:32 - gui.pages.data_dicts_page - INFO - load_dicts:103 - 加载了 4 个数据字典
+2026-04-09 17:20:32 - gui.pages.todos_page - INFO - load_todos:94 - 加载了 0 个待办事项
+2026-04-09 17:20:32 - gui.pages.documents_page - INFO - load_documents:102 - 加载了 0 个文档
+2026-04-09 17:20:32 - gui.pages.workflows_page - INFO - load_templates:88 - 加载了 0 个工作流模板
+2026-04-09 17:20:32 - gui.pages.assets_page - INFO - _on_assets_loaded:116 - 成功加载 0 个资产
+2026-04-09 17:20:32 - gui.pages.scripts_page - INFO - _on_scripts_loaded:73 - 成功加载 0 个脚本
+2026-04-09 17:20:32 - gui.pages.audit_page - INFO - _on_logs_loaded:75 - 成功加载 51 条审计日志
+2026-04-09 17:20:38 - gui.main_window - INFO - switch_page:213 - 切换到数据字典页面
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: dict1
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: dict2
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: dict3
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:28:16 - services.dict_service - INFO - update_dict:58 - 更新数据字典: test_dict
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:28:16 - services.dict_service - INFO - update_dict:58 - 更新数据字典: new_code
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: dict1
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: dict2
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:28:16 - services.dict_service - INFO - delete_dict:67 - 删除数据字典: test_dict
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: test_dict.item1
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: test_dict.item1
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: test_dict.item2
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: test_dict.item3
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: test_dict.item1
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: test_dict.item1
+2026-04-09 20:28:16 - services.dict_service - INFO - update_dict_item:115 - 更新字典项: test_dict.item1
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: test_dict.item1
+2026-04-09 20:28:16 - services.dict_service - INFO - delete_dict_item:123 - 删除字典项: test_dict.item1
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: server_config
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: database_config
+2026-04-09 20:28:16 - services.dict_service - INFO - create_dict:27 - 创建数据字典: user_settings
+2026-04-09 20:28:16 - services.document_service - INFO - create_document:25 - 创建文档: Test Document
+2026-04-09 20:28:16 - services.document_service - INFO - create_document:25 - 创建文档: Doc1
+2026-04-09 20:28:16 - services.document_service - INFO - create_document:25 - 创建文档: Doc2
+2026-04-09 20:28:16 - services.document_service - INFO - create_document:25 - 创建文档: Doc3
+2026-04-09 20:28:16 - services.document_service - INFO - create_document:25 - 创建文档: Test Document
+2026-04-09 20:28:16 - services.document_service - INFO - create_document:25 - 创建文档: Doc1
+2026-04-09 20:28:16 - services.document_service - INFO - create_document:25 - 创建文档: Doc2
+2026-04-09 20:28:16 - services.document_service - INFO - create_document:25 - 创建文档: Doc3
+2026-04-09 20:28:16 - services.document_service - INFO - create_document:25 - 创建文档: Original Title
+2026-04-09 20:28:16 - services.document_service - INFO - update_document:54 - 更新文档: Updated Title
+2026-04-09 20:28:16 - services.document_service - INFO - create_document:25 - 创建文档: Test Document
+2026-04-09 20:28:16 - services.document_service - INFO - delete_document:62 - 删除文档: Test Document
+2026-04-09 20:28:16 - services.document_service - INFO - create_document:25 - 创建文档: Server Configuration
+2026-04-09 20:28:16 - services.document_service - INFO - create_document:25 - 创建文档: Database Setup
+2026-04-09 20:28:16 - services.document_service - INFO - create_document:25 - 创建文档: API Documentation
+2026-04-09 20:28:16 - services.document_service - INFO - create_document:25 - 创建文档: Doc1
+2026-04-09 20:28:16 - services.document_service - INFO - create_document:25 - 创建文档: Doc2
+2026-04-09 20:28:16 - services.document_service - INFO - create_document:25 - 创建文档: Doc3
+2026-04-09 20:28:16 - services.document_service - INFO - create_document:25 - 创建文档: Doc4
+2026-04-09 20:28:16 - services.param_service - INFO - create_param:31 - 创建系统参数: test_key
+2026-04-09 20:28:16 - services.param_service - INFO - create_param:31 - 创建系统参数: test_key
+2026-04-09 20:28:16 - services.param_service - INFO - create_param:31 - 创建系统参数: key1
+2026-04-09 20:28:16 - services.param_service - INFO - create_param:31 - 创建系统参数: key2
+2026-04-09 20:28:16 - services.param_service - INFO - create_param:31 - 创建系统参数: key3
+2026-04-09 20:28:16 - services.param_service - INFO - create_param:31 - 创建系统参数: test_key
+2026-04-09 20:28:16 - services.param_service - INFO - create_param:31 - 创建系统参数: test_key
+2026-04-09 20:28:16 - services.param_service - INFO - create_param:31 - 创建系统参数: test_key
+2026-04-09 20:28:16 - services.param_service - INFO - update_param:62 - 更新系统参数: test_key
+2026-04-09 20:28:16 - services.param_service - INFO - create_param:31 - 创建系统参数: test_key
+2026-04-09 20:28:16 - services.param_service - INFO - update_param:62 - 更新系统参数: new_key
+2026-04-09 20:28:16 - services.param_service - INFO - create_param:31 - 创建系统参数: key1
+2026-04-09 20:28:16 - services.param_service - INFO - create_param:31 - 创建系统参数: key2
+2026-04-09 20:28:16 - services.param_service - INFO - create_param:31 - 创建系统参数: test_key
+2026-04-09 20:28:16 - services.param_service - INFO - delete_param:70 - 删除系统参数: test_key
+2026-04-09 20:28:17 - services.param_service - INFO - create_param:31 - 创建系统参数: server_host
+2026-04-09 20:28:17 - services.param_service - INFO - create_param:31 - 创建系统参数: server_port
+2026-04-09 20:28:17 - services.param_service - INFO - create_param:31 - 创建系统参数: database_url
+2026-04-09 20:28:17 - services.param_service - INFO - create_param:31 - 创建系统参数: test_key
+2026-04-09 20:28:17 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Test Todo
+2026-04-09 20:28:17 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Todo 1
+2026-04-09 20:28:17 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Todo 2
+2026-04-09 20:28:17 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Todo 3
+2026-04-09 20:28:17 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Todo 1
+2026-04-09 20:28:17 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Todo 2
+2026-04-09 20:28:17 - services.todo_service - INFO - update_todo:60 - 更新待办事项: Todo 1
+2026-04-09 20:28:17 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Test Todo
+2026-04-09 20:28:17 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Todo 1
+2026-04-09 20:28:17 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Todo 2
+2026-04-09 20:28:17 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Todo 3
+2026-04-09 20:28:17 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Original Title
+2026-04-09 20:28:17 - services.todo_service - INFO - update_todo:60 - 更新待办事项: Updated Title
+2026-04-09 20:28:17 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Test Todo
+2026-04-09 20:28:17 - services.todo_service - INFO - update_todo:60 - 更新待办事项: Test Todo
+2026-04-09 20:28:17 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Test Todo
+2026-04-09 20:28:17 - services.todo_service - INFO - delete_todo:68 - 删除待办事项: Test Todo
+2026-04-09 20:28:17 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Test Todo
+2026-04-09 20:28:17 - services.todo_service - INFO - update_todo:60 - 更新待办事项: Test Todo
+2026-04-09 20:28:17 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Server Setup
+2026-04-09 20:28:17 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Database Migration
+2026-04-09 20:28:17 - services.todo_service - INFO - create_todo:27 - 创建待办事项: API Testing
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: workflow1
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: workflow2
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:28:17 - services.workflow_service - INFO - update_template:51 - 更新工作流模板: test_workflow
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:28:17 - services.workflow_service - INFO - delete_template:62 - 删除工作流模板: test_workflow
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_instance
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: instance1
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: instance2
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_instance
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_instance
+2026-04-09 20:28:17 - services.workflow_service - INFO - start_instance:109 - 启动工作流实例: test_instance
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_instance
+2026-04-09 20:28:17 - services.workflow_service - INFO - start_instance:109 - 启动工作流实例: test_instance
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_instance
+2026-04-09 20:28:17 - services.workflow_service - INFO - start_instance:109 - 启动工作流实例: test_instance
+2026-04-09 20:28:17 - services.workflow_service - INFO - complete_instance:121 - 完成工作流实例: test_instance
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_instance
+2026-04-09 20:28:17 - services.workflow_service - INFO - start_instance:109 - 启动工作流实例: test_instance
+2026-04-09 20:28:17 - services.workflow_service - INFO - fail_instance:133 - 工作流实例失败: test_instance
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_instance
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_execution:149 - 创建工作流执行记录: step1
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_instance
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_execution:149 - 创建工作流执行记录: step1
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_execution:149 - 创建工作流执行记录: step2
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:28:17 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_workflow
+2026-04-09 20:28:42 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-09 20:28:44 - gui.pages.assets_page - INFO - load_assets:108 - 开始加载资产列表
+2026-04-09 20:28:44 - gui.pages.scripts_page - INFO - load_scripts:69 - 开始加载脚本列表
+2026-04-09 20:28:44 - gui.pages.audit_page - INFO - load_logs:71 - 开始加载审计日志，操作类型: 全部
+2026-04-09 20:28:44 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 1 个系统参数
+2026-04-09 20:28:44 - gui.pages.data_dicts_page - INFO - load_dicts:103 - 加载了 4 个数据字典
+2026-04-09 20:28:45 - gui.pages.todos_page - INFO - load_todos:94 - 加载了 0 个待办事项
+2026-04-09 20:28:45 - gui.pages.documents_page - INFO - load_documents:102 - 加载了 0 个文档
+2026-04-09 20:28:45 - gui.pages.workflows_page - INFO - load_templates:88 - 加载了 0 个工作流模板
+2026-04-09 20:28:45 - gui.pages.assets_page - INFO - _on_assets_loaded:116 - 成功加载 0 个资产
+2026-04-09 20:28:45 - gui.pages.scripts_page - INFO - _on_scripts_loaded:73 - 成功加载 0 个脚本
+2026-04-09 20:28:45 - gui.pages.audit_page - INFO - _on_logs_loaded:75 - 成功加载 52 条审计日志
+2026-04-09 20:32:12 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:32:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: test_dict.item1
+2026-04-09 20:32:12 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:32:12 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: test_dict.item1
+2026-04-09 20:32:12 - services.dict_service - INFO - update_dict_item:115 - 更新字典项: test_dict.item1
+2026-04-09 20:34:26 - gui.main_window - INFO - switch_page:213 - 切换到数据字典页面
+2026-04-09 20:35:21 - gui.pages.data_dicts_page - INFO - load_dicts:103 - 加载了 4 个数据字典
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: dict1
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: dict2
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: dict3
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:35:37 - services.dict_service - INFO - update_dict:58 - 更新数据字典: test_dict
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:35:37 - services.dict_service - INFO - update_dict:58 - 更新数据字典: new_code
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: dict1
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: dict2
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:35:37 - services.dict_service - INFO - delete_dict:67 - 删除数据字典: test_dict
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: test_dict.item1
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: test_dict.item1
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: test_dict.item1
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: test_dict.item2
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: test_dict.item3
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: test_dict.item1
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: test_dict.item1
+2026-04-09 20:35:37 - services.dict_service - INFO - update_dict_item:115 - 更新字典项: test_dict.item1
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: test_dict
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict_item:93 - 创建字典项: test_dict.item1
+2026-04-09 20:35:37 - services.dict_service - INFO - delete_dict_item:123 - 删除字典项: test_dict.item1
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: server_config
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: database_config
+2026-04-09 20:35:37 - services.dict_service - INFO - create_dict:27 - 创建数据字典: user_settings
+2026-04-09 20:35:37 - services.document_service - INFO - create_document:25 - 创建文档: Test Document
+2026-04-09 20:35:37 - services.document_service - INFO - create_document:25 - 创建文档: Doc1
+2026-04-09 20:35:37 - services.document_service - INFO - create_document:25 - 创建文档: Doc2
+2026-04-09 20:35:37 - services.document_service - INFO - create_document:25 - 创建文档: Doc3
+2026-04-09 20:35:37 - services.document_service - INFO - create_document:25 - 创建文档: Test Document
+2026-04-09 20:35:37 - services.document_service - INFO - create_document:25 - 创建文档: Doc1
+2026-04-09 20:35:37 - services.document_service - INFO - create_document:25 - 创建文档: Doc2
+2026-04-09 20:35:37 - services.document_service - INFO - create_document:25 - 创建文档: Doc3
+2026-04-09 20:35:37 - services.document_service - INFO - create_document:25 - 创建文档: Original Title
+2026-04-09 20:35:37 - services.document_service - INFO - update_document:54 - 更新文档: Updated Title
+2026-04-09 20:35:37 - services.document_service - INFO - create_document:25 - 创建文档: Test Document
+2026-04-09 20:35:37 - services.document_service - INFO - delete_document:62 - 删除文档: Test Document
+2026-04-09 20:35:37 - services.document_service - INFO - create_document:25 - 创建文档: Server Configuration
+2026-04-09 20:35:37 - services.document_service - INFO - create_document:25 - 创建文档: Database Setup
+2026-04-09 20:35:37 - services.document_service - INFO - create_document:25 - 创建文档: API Documentation
+2026-04-09 20:35:37 - services.document_service - INFO - create_document:25 - 创建文档: Doc1
+2026-04-09 20:35:37 - services.document_service - INFO - create_document:25 - 创建文档: Doc2
+2026-04-09 20:35:37 - services.document_service - INFO - create_document:25 - 创建文档: Doc3
+2026-04-09 20:35:37 - services.document_service - INFO - create_document:25 - 创建文档: Doc4
+2026-04-09 20:35:37 - services.param_service - INFO - create_param:31 - 创建系统参数: test_key
+2026-04-09 20:35:37 - services.param_service - INFO - create_param:31 - 创建系统参数: test_key
+2026-04-09 20:35:37 - services.param_service - INFO - create_param:31 - 创建系统参数: key1
+2026-04-09 20:35:37 - services.param_service - INFO - create_param:31 - 创建系统参数: key2
+2026-04-09 20:35:37 - services.param_service - INFO - create_param:31 - 创建系统参数: key3
+2026-04-09 20:35:37 - services.param_service - INFO - create_param:31 - 创建系统参数: test_key
+2026-04-09 20:35:37 - services.param_service - INFO - create_param:31 - 创建系统参数: test_key
+2026-04-09 20:35:37 - services.param_service - INFO - create_param:31 - 创建系统参数: test_key
+2026-04-09 20:35:37 - services.param_service - INFO - update_param:62 - 更新系统参数: test_key
+2026-04-09 20:35:37 - services.param_service - INFO - create_param:31 - 创建系统参数: test_key
+2026-04-09 20:35:37 - services.param_service - INFO - update_param:62 - 更新系统参数: new_key
+2026-04-09 20:35:37 - services.param_service - INFO - create_param:31 - 创建系统参数: key1
+2026-04-09 20:35:37 - services.param_service - INFO - create_param:31 - 创建系统参数: key2
+2026-04-09 20:35:37 - services.param_service - INFO - create_param:31 - 创建系统参数: test_key
+2026-04-09 20:35:37 - services.param_service - INFO - delete_param:70 - 删除系统参数: test_key
+2026-04-09 20:35:37 - services.param_service - INFO - create_param:31 - 创建系统参数: server_host
+2026-04-09 20:35:37 - services.param_service - INFO - create_param:31 - 创建系统参数: server_port
+2026-04-09 20:35:37 - services.param_service - INFO - create_param:31 - 创建系统参数: database_url
+2026-04-09 20:35:37 - services.param_service - INFO - create_param:31 - 创建系统参数: test_key
+2026-04-09 20:35:37 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Test Todo
+2026-04-09 20:35:37 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Todo 1
+2026-04-09 20:35:37 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Todo 2
+2026-04-09 20:35:38 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Todo 3
+2026-04-09 20:35:38 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Todo 1
+2026-04-09 20:35:38 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Todo 2
+2026-04-09 20:35:38 - services.todo_service - INFO - update_todo:60 - 更新待办事项: Todo 1
+2026-04-09 20:35:38 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Test Todo
+2026-04-09 20:35:38 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Todo 1
+2026-04-09 20:35:38 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Todo 2
+2026-04-09 20:35:38 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Todo 3
+2026-04-09 20:35:38 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Original Title
+2026-04-09 20:35:38 - services.todo_service - INFO - update_todo:60 - 更新待办事项: Updated Title
+2026-04-09 20:35:38 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Test Todo
+2026-04-09 20:35:38 - services.todo_service - INFO - update_todo:60 - 更新待办事项: Test Todo
+2026-04-09 20:35:38 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Test Todo
+2026-04-09 20:35:38 - services.todo_service - INFO - delete_todo:68 - 删除待办事项: Test Todo
+2026-04-09 20:35:38 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Test Todo
+2026-04-09 20:35:38 - services.todo_service - INFO - update_todo:60 - 更新待办事项: Test Todo
+2026-04-09 20:35:38 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Server Setup
+2026-04-09 20:35:38 - services.todo_service - INFO - create_todo:27 - 创建待办事项: Database Migration
+2026-04-09 20:35:38 - services.todo_service - INFO - create_todo:27 - 创建待办事项: API Testing
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: workflow1
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: workflow2
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:35:38 - services.workflow_service - INFO - update_template:51 - 更新工作流模板: test_workflow
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:35:38 - services.workflow_service - INFO - delete_template:62 - 删除工作流模板: test_workflow
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_instance
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: instance1
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: instance2
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_instance
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_instance
+2026-04-09 20:35:38 - services.workflow_service - INFO - start_instance:109 - 启动工作流实例: test_instance
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_instance
+2026-04-09 20:35:38 - services.workflow_service - INFO - start_instance:109 - 启动工作流实例: test_instance
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_instance
+2026-04-09 20:35:38 - services.workflow_service - INFO - start_instance:109 - 启动工作流实例: test_instance
+2026-04-09 20:35:38 - services.workflow_service - INFO - complete_instance:121 - 完成工作流实例: test_instance
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_instance
+2026-04-09 20:35:38 - services.workflow_service - INFO - start_instance:109 - 启动工作流实例: test_instance
+2026-04-09 20:35:38 - services.workflow_service - INFO - fail_instance:133 - 工作流实例失败: test_instance
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_instance
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_execution:149 - 创建工作流执行记录: step1
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_instance
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_execution:149 - 创建工作流执行记录: step1
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_execution:149 - 创建工作流执行记录: step2
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_template:26 - 创建工作流模板: test_workflow
+2026-04-09 20:35:38 - services.workflow_service - INFO - create_instance:80 - 创建工作流实例: test_workflow

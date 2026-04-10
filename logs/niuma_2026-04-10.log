@@ -1,0 +1,46 @@
+2026-04-10 07:41:35 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-10 07:41:40 - gui.pages.assets_page - INFO - load_assets:109 - 开始加载资产列表
+2026-04-10 07:41:40 - gui.pages.scripts_page - INFO - load_scripts:69 - 开始加载脚本列表
+2026-04-10 07:41:40 - gui.pages.audit_page - INFO - load_logs:71 - 开始加载审计日志，操作类型: 全部
+2026-04-10 07:41:40 - gui.pages.system_params_page - INFO - load_params:90 - 加载了 1 个系统参数
+2026-04-10 07:41:40 - gui.pages.data_dicts_page - INFO - load_dicts:103 - 加载了 4 个数据字典
+2026-04-10 07:41:40 - gui.pages.todos_page - INFO - load_todos:94 - 加载了 0 个待办事项
+2026-04-10 07:41:40 - gui.pages.documents_page - INFO - load_documents:102 - 加载了 0 个文档
+2026-04-10 07:41:40 - gui.pages.workflows_page - INFO - load_templates:88 - 加载了 0 个工作流模板
+2026-04-10 07:41:40 - gui.pages.assets_page - INFO - _on_assets_loaded:117 - 成功加载 0 个资产
+2026-04-10 07:41:40 - gui.pages.scripts_page - INFO - _on_scripts_loaded:73 - 成功加载 0 个脚本
+2026-04-10 07:41:40 - gui.pages.audit_page - INFO - _on_logs_loaded:75 - 成功加载 53 条审计日志
+2026-04-10 07:42:36 - gui.pages.assets_page - INFO - load_assets:109 - 开始加载资产列表
+2026-04-10 07:42:36 - gui.pages.assets_page - INFO - _on_assets_loaded:117 - 成功加载 1 个资产
+2026-04-10 08:19:22 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-10 08:19:31 - gui.pages.assets_page - INFO - load_assets:114 - 开始加载资产列表
+2026-04-10 08:19:31 - gui.pages.scripts_page - INFO - load_scripts:83 - 开始加载脚本列表
+2026-04-10 08:19:31 - gui.pages.audit_page - INFO - load_logs:83 - 开始加载审计日志，操作类型: 全部
+2026-04-10 08:19:31 - gui.pages.system_params_page - INFO - load_params:94 - 加载了 1 个系统参数
+2026-04-10 08:19:31 - gui.pages.data_dicts_page - INFO - load_dicts:111 - 加载了 4 个数据字典
+2026-04-10 08:19:31 - gui.pages.todos_page - INFO - load_todos:102 - 加载了 0 个待办事项
+2026-04-10 08:19:31 - gui.pages.documents_page - INFO - load_documents:111 - 加载了 0 个文档
+2026-04-10 08:19:31 - gui.pages.workflows_page - INFO - load_templates:101 - 加载了 0 个工作流模板
+2026-04-10 08:19:31 - gui.pages.assets_page - INFO - _on_assets_loaded:122 - 成功加载 1 个资产
+2026-04-10 08:19:31 - gui.pages.scripts_page - INFO - _on_scripts_loaded:86 - 成功加载 0 个脚本
+2026-04-10 08:19:31 - gui.pages.audit_page - INFO - _on_logs_loaded:86 - 成功加载 54 条审计日志
+2026-04-10 08:20:32 - gui.pages.assets_page - INFO - load_assets:114 - 开始加载资产列表
+2026-04-10 08:20:32 - gui.pages.assets_page - INFO - _on_assets_loaded:122 - 成功加载 2 个资产
+2026-04-10 08:26:38 - gui.main_window - INFO - __init__:31 - 启动运维辅助工具主窗口
+2026-04-10 08:28:11 - gui.pages.assets_page - INFO - load_assets:129 - 开始加载资产列表
+2026-04-10 08:28:11 - gui.pages.scripts_page - INFO - load_scripts:83 - 开始加载脚本列表
+2026-04-10 08:28:11 - gui.pages.audit_page - INFO - load_logs:83 - 开始加载审计日志，操作类型: 全部
+2026-04-10 08:28:11 - gui.pages.system_params_page - INFO - load_params:94 - 加载了 1 个系统参数
+2026-04-10 08:28:11 - gui.pages.data_dicts_page - INFO - load_dicts:111 - 加载了 4 个数据字典
+2026-04-10 08:28:11 - gui.pages.todos_page - INFO - load_todos:102 - 加载了 0 个待办事项
+2026-04-10 08:28:11 - gui.pages.documents_page - INFO - load_documents:111 - 加载了 0 个文档
+2026-04-10 08:28:11 - gui.pages.workflows_page - INFO - load_templates:101 - 加载了 0 个工作流模板
+2026-04-10 08:28:11 - gui.pages.assets_page - INFO - _on_assets_loaded:137 - 成功加载 2 个资产
+2026-04-10 08:28:11 - gui.pages.scripts_page - INFO - _on_scripts_loaded:86 - 成功加载 0 个脚本
+2026-04-10 08:28:11 - gui.pages.audit_page - INFO - _on_logs_loaded:86 - 成功加载 55 条审计日志
+2026-04-10 08:28:46 - gui.pages.assets_page - INFO - load_assets:129 - 开始加载资产列表
+2026-04-10 08:28:46 - gui.pages.assets_page - INFO - _on_assets_loaded:137 - 成功加载 1 个资产
+2026-04-10 08:28:53 - gui.pages.assets_page - INFO - load_assets:129 - 开始加载资产列表
+2026-04-10 08:28:53 - gui.pages.assets_page - INFO - _on_assets_loaded:137 - 成功加载 0 个资产
+2026-04-10 08:29:11 - gui.pages.assets_page - INFO - load_assets:129 - 开始加载资产列表
+2026-04-10 08:29:11 - gui.pages.assets_page - INFO - _on_assets_loaded:137 - 成功加载 1 个资产

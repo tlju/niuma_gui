@@ -1,11 +1,16 @@
-AuditPage QFrame[class="toolbar"] {
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    padding: 8px;
+AuditPage {
+    background-color: #f5f6fa;
 }
 
-AuditPage QFrame[class="status-bar"] {
-    background-color: #f8f9fa;
+AuditPage QFrame[class="toolbar"] {
+    background-color: #ffffff;
+    border: 1px solid #e9ecef;
     border-radius: 8px;
-    padding: 8px;
+    padding: 8px 12px;
+}
+
+AuditPage QTableWidget {
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
 }

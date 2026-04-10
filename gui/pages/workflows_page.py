@@ -22,24 +22,29 @@ class WorkflowsPage(QWidget):
 
     def init_ui(self):
         load_combined_stylesheet(QApplication.instance(), ["common", "workflows_page"])
-        
+
         layout = QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
 
         toolbar_frame = QFrame()
+        toolbar_frame.setProperty("class", "toolbar")
         toolbar_layout = QHBoxLayout(toolbar_frame)
         toolbar_layout.setContentsMargins(10, 8, 10, 8)
+        toolbar_layout.setSpacing(10)
 
         self.add_btn = QPushButton("  添加模板")
         self.add_btn.setIcon(icons.add_icon())
-        self.add_btn.setMinimumHeight(36)
+        self.add_btn.setProperty("class", "success")
+        self.add_btn.setMinimumHeight(34)
+        self.add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.add_btn.clicked.connect(self.show_add_template_dialog)
         toolbar_layout.addWidget(self.add_btn)
 
         self.refresh_btn = QPushButton("  刷新")
         self.refresh_btn.setIcon(icons.refresh_icon())
-        self.refresh_btn.setMinimumHeight(36)
+        self.refresh_btn.setMinimumHeight(34)
+        self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.refresh_btn.clicked.connect(self.load_templates)
         toolbar_layout.addWidget(self.refresh_btn)
 
@@ -59,7 +64,11 @@ class WorkflowsPage(QWidget):
         self.template_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.template_table.verticalHeader().setVisible(False)
         self.template_table.setShowGrid(False)
-        self.template_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.template_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.template_table.verticalHeader().setDefaultSectionSize(42)
+        header = self.template_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
 
         self.instance_table = QTableWidget()
         self.instance_table.setColumnCount(6)
@@ -68,7 +77,11 @@ class WorkflowsPage(QWidget):
         self.instance_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.instance_table.verticalHeader().setVisible(False)
         self.instance_table.setShowGrid(False)
-        self.instance_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.instance_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.instance_table.verticalHeader().setDefaultSectionSize(42)
+        header = self.instance_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
 
         self.tabs.addTab(self.template_table, "工作流模板")
         self.tabs.addTab(self.instance_table, "工作流实例")
@@ -107,18 +120,28 @@ class WorkflowsPage(QWidget):
 
             btn_widget = QWidget()
             btn_layout = QHBoxLayout(btn_widget)
-            btn_layout.setContentsMargins(4, 4, 4, 4)
+            btn_layout.setContentsMargins(4, 2, 4, 2)
+            btn_layout.setSpacing(4)
+            btn_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             run_btn = QPushButton("运行")
+            run_btn.setProperty("class", "table-run")
+            run_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             run_btn.clicked.connect(lambda checked, tid=t.id: self.run_template(tid))
-            edit_btn = QPushButton("编辑")
-            edit_btn.clicked.connect(lambda checked, tmpl=t: self.show_edit_template_dialog(tmpl))
-            delete_btn = QPushButton("删除")
-            delete_btn.clicked.connect(lambda checked, tid=t.id: self.delete_template(tid))
-
             btn_layout.addWidget(run_btn)
+
+            edit_btn = QPushButton("编辑")
+            edit_btn.setProperty("class", "table-edit")
+            edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            edit_btn.clicked.connect(lambda checked, tmpl=t: self.show_edit_template_dialog(tmpl))
             btn_layout.addWidget(edit_btn)
+
+            delete_btn = QPushButton("删除")
+            delete_btn.setProperty("class", "table-delete")
+            delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            delete_btn.clicked.connect(lambda checked, tid=t.id: self.delete_template(tid))
             btn_layout.addWidget(delete_btn)
+
             self.template_table.setCellWidget(row, 4, btn_widget)
 
     def _populate_instances(self, instances):
@@ -137,12 +160,16 @@ class WorkflowsPage(QWidget):
 
             btn_widget = QWidget()
             btn_layout = QHBoxLayout(btn_widget)
-            btn_layout.setContentsMargins(4, 4, 4, 4)
+            btn_layout.setContentsMargins(4, 2, 4, 2)
+            btn_layout.setSpacing(4)
+            btn_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             view_btn = QPushButton("查看")
+            view_btn.setProperty("class", "table-view")
+            view_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             view_btn.clicked.connect(lambda checked, i=inst: self.show_instance_detail(i))
-
             btn_layout.addWidget(view_btn)
+
             self.instance_table.setCellWidget(row, 5, btn_widget)
 
     def show_add_template_dialog(self):
@@ -195,18 +222,23 @@ class WorkflowTemplateDialog(QDialog):
         super().__init__(parent)
         self.template = template
         self.setWindowTitle("编辑模板" if template else "添加模板")
-        self.setFixedSize(500, 400)
+        self.setMinimumSize(500, 400)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.init_ui()
         if template:
             self._populate_data()
 
     def init_ui(self):
         layout = QFormLayout()
+        layout.setSpacing(10)
+        layout.setContentsMargins(20, 16, 20, 16)
 
         self.name_input = QLineEdit()
+        self.name_input.setMinimumHeight(34)
         layout.addRow("名称:", self.name_input)
 
         self.desc_input = QLineEdit()
+        self.desc_input.setMinimumHeight(34)
         layout.addRow("描述:", self.desc_input)
 
         self.definition_input = QTextEdit()
@@ -215,13 +247,21 @@ class WorkflowTemplateDialog(QDialog):
         layout.addRow("定义(JSON):", self.definition_input)
 
         self.active_combo = QComboBox()
+        self.active_combo.setMinimumHeight(34)
         self.active_combo.addItems(["Y", "N"])
         layout.addRow("状态:", self.active_combo)
 
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(12)
         ok_btn = QPushButton("确定")
+        ok_btn.setProperty("class", "success")
+        ok_btn.setMinimumHeight(38)
+        ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         ok_btn.clicked.connect(self.accept)
         cancel_btn = QPushButton("取消")
+        cancel_btn.setProperty("class", "secondary")
+        cancel_btn.setMinimumHeight(38)
+        cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(ok_btn)
         btn_layout.addWidget(cancel_btn)
@@ -256,11 +296,14 @@ class WorkflowInstanceDialog(QDialog):
         self.instance = instance
         self.executions = executions or []
         self.setWindowTitle(f"工作流实例: {instance.name if instance else ''}")
-        self.setFixedSize(600, 400)
+        self.setMinimumSize(600, 400)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.init_ui()
 
     def init_ui(self):
         layout = QVBoxLayout()
+        layout.setSpacing(10)
+        layout.setContentsMargins(20, 16, 20, 16)
 
         info_layout = QHBoxLayout()
         info_layout.addWidget(QLabel(f"状态: {self.instance.status if self.instance else ''}"))
@@ -273,6 +316,12 @@ class WorkflowInstanceDialog(QDialog):
         table.setColumnCount(5)
         table.setHorizontalHeaderLabels(["步骤名称", "状态", "输出", "错误", "执行时间"])
         table.setRowCount(len(self.executions))
+        table.setAlternatingRowColors(True)
+        table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        table.verticalHeader().setVisible(False)
+        table.setShowGrid(False)
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        table.verticalHeader().setDefaultSectionSize(42)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         for row, exec in enumerate(self.executions):
@@ -286,6 +335,9 @@ class WorkflowInstanceDialog(QDialog):
         layout.addWidget(table)
 
         close_btn = QPushButton("关闭")
+        close_btn.setProperty("class", "secondary")
+        close_btn.setMinimumHeight(38)
+        close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn)
 

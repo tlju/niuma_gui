@@ -115,14 +115,12 @@ def test_create_dict_item(dict_service):
         dict_code="test_dict",
         item_code="item1",
         item_name="Item 1",
-        item_value="value1",
         sort_order=1
     )
     assert item is not None
     assert item.dict_code == "test_dict"
     assert item.item_code == "item1"
     assert item.item_name == "Item 1"
-    assert item.item_value == "value1"
     assert item.sort_order == 1
 
 def test_create_dict_item_non_existent_dict(dict_service):
@@ -167,12 +165,10 @@ def test_update_dict_item(dict_service):
 
     updated = dict_service.update_dict_item(
         item.id,
-        item_name="Updated Name",
-        item_value="updated_value"
+        item_name="Updated Name"
     )
     assert updated is not None
     assert updated.item_name == "Updated Name"
-    assert updated.item_value == "updated_value"
 
 def test_update_non_existent_dict_item(dict_service):
     result = dict_service.update_dict_item(999, item_name="New Name")

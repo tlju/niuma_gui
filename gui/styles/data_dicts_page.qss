@@ -1,5 +1,20 @@
-DataDictsPage QFrame {
-    background-color: #f8f9fa;
+DataDictsPage {
+    background-color: #f5f6fa;
+}
+
+DataDictsPage QFrame[class="toolbar"] {
+    background-color: #ffffff;
+    border: 1px solid #e9ecef;
     border-radius: 8px;
-    padding: 8px;
+    padding: 8px 12px;
+}
+
+DataDictsPage QTableWidget {
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+}
+
+DataDictsPage QTableWidget::item {
+    padding: 6px 4px;
 }

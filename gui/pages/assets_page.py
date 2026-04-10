@@ -16,20 +16,36 @@ logger = get_logger(__name__)
 
 
 class AssetsPage(QWidget):
-    def __init__(self, asset_service, current_user_id, parent=None):
+    def __init__(self, asset_service, current_user_id, dict_service=None, parent=None):
         super().__init__(parent)
         self.asset_service = asset_service
         self.current_user_id = current_user_id
+        self.dict_service = dict_service
         self.loading_worker = None
         self.all_assets = []
+        self.dict_cache = {}
+        self._load_dict_cache()
         self.init_ui()
         self.load_assets()
 
+    def _load_dict_cache(self):
+        if self.dict_service:
+            for dict_code in ["unit", "system", "location", "server_type"]:
+                items = self.dict_service.get_dict_items(dict_code)
+                self.dict_cache[dict_code] = {item.item_code: item.item_name for item in items}
+
+    def _get_item_name(self, dict_code, item_code):
+        if not item_code:
+            return ""
+        if dict_code in self.dict_cache and item_code in self.dict_cache[dict_code]:
+            return self.dict_cache[dict_code][item_code]
+        return item_code
+
     def init_ui(self):
         load_combined_stylesheet(QApplication.instance(), ["common", "assets_page"])
-        
+
         layout = QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
 
         toolbar_frame = QFrame()
@@ -40,13 +56,14 @@ class AssetsPage(QWidget):
 
         self.add_btn = QPushButton("  添加资产")
         self.add_btn.setIcon(icons.add_icon())
-        self.add_btn.setMinimumHeight(36)
+        self.add_btn.setProperty("class", "success")
+        self.add_btn.setMinimumHeight(34)
         self.add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         toolbar_layout.addWidget(self.add_btn)
 
         self.refresh_btn = QPushButton("  刷新")
         self.refresh_btn.setIcon(icons.refresh_icon())
-        self.refresh_btn.setMinimumHeight(36)
+        self.refresh_btn.setMinimumHeight(34)
         self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         toolbar_layout.addWidget(self.refresh_btn)
 
@@ -58,35 +75,39 @@ class AssetsPage(QWidget):
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("输入名称、IP或主机名搜索...")
         self.search_input.setMinimumWidth(250)
-        self.search_input.setMinimumHeight(36)
+        self.search_input.setMinimumHeight(34)
         self.search_input.textChanged.connect(self._filter_assets)
         toolbar_layout.addWidget(self.search_input)
 
         toolbar_layout.addStretch()
 
         self.count_label = QLabel("共 0 条记录")
+        self.count_label.setProperty("class", "count")
         toolbar_layout.addWidget(self.count_label)
 
         layout.addWidget(toolbar_frame)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(8)
+        self.table.setColumnCount(12)
         self.table.setHorizontalHeaderLabels([
-            "ID", "名称", "主机名", "IP地址", "端口", "系统", "状态", "操作"
+            "ID", "单位", "系统", "IP地址", "IPv6", "端口", "主机名", "用户名", "业务服务", "位置", "服务器类型", "操作"
         ])
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(False)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(7, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(7, 150)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(11, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(11, 150)
+
+        self.table.verticalHeader().setDefaultSectionSize(42)
 
         layout.addWidget(self.table)
         self.setLayout(layout)
@@ -128,9 +149,15 @@ class AssetsPage(QWidget):
             text = text.lower()
             filtered = [
                 a for a in self.all_assets
-                if text in (a.name or "").lower()
+                if text in (a.unit_name or "").lower()
+                or text in (a.system_name or "").lower()
                 or text in (a.ip or "").lower()
-                or text in (a.hostname or "").lower()
+                or text in (a.ipv6 or "").lower()
+                or text in (a.host_name or "").lower()
+                or text in (a.username or "").lower()
+                or text in (a.business_service or "").lower()
+                or text in (a.location or "").lower()
+                or text in (a.server_type or "").lower()
             ]
             self._populate_table(filtered)
         self._update_count_label()
@@ -151,86 +178,58 @@ class AssetsPage(QWidget):
             id_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.table.setItem(row, 0, id_item)
 
-            self.table.setItem(row, 1, QTableWidgetItem(asset.name or ""))
-            self.table.setItem(row, 2, QTableWidgetItem(asset.hostname or ""))
+            self.table.setItem(row, 1, QTableWidgetItem(self._get_item_name("unit", asset.unit_name)))
+            self.table.setItem(row, 2, QTableWidgetItem(self._get_item_name("system", asset.system_name)))
             self.table.setItem(row, 3, QTableWidgetItem(asset.ip or ""))
+            self.table.setItem(row, 4, QTableWidgetItem(asset.ipv6 or ""))
 
-            port_item = QTableWidgetItem(str(asset.port or 22))
+            port_item = QTableWidgetItem(str(asset.port or ""))
             port_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(row, 4, port_item)
+            self.table.setItem(row, 5, port_item)
 
-            os_item = QTableWidgetItem(asset.os_type or "-")
-            os_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(row, 5, os_item)
-
-            status_item = QTableWidgetItem("在线" if asset.is_active else "离线")
-            status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            if asset.is_active:
-                status_item.setForeground(Qt.GlobalColor.darkGreen)
-            else:
-                status_item.setForeground(Qt.GlobalColor.gray)
-            self.table.setItem(row, 6, status_item)
+            self.table.setItem(row, 6, QTableWidgetItem(asset.host_name or ""))
+            self.table.setItem(row, 7, QTableWidgetItem(asset.username or ""))
+            self.table.setItem(row, 8, QTableWidgetItem(asset.business_service or ""))
+            self.table.setItem(row, 9, QTableWidgetItem(self._get_item_name("location", asset.location)))
+            self.table.setItem(row, 10, QTableWidgetItem(self._get_item_name("server_type", asset.server_type)))
 
             btn_widget = QWidget()
             btn_layout = QHBoxLayout(btn_widget)
             btn_layout.setContentsMargins(4, 2, 4, 2)
             btn_layout.setSpacing(4)
+            btn_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             edit_btn = QPushButton("编辑")
-            edit_btn.setFixedSize(50, 28)
+            edit_btn.setProperty("class", "table-edit")
             edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            edit_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #3498db;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    font-size: 12px;
-                }
-                QPushButton:hover {
-                    background-color: #2980b9;
-                }
-            """)
             edit_btn.clicked.connect(lambda checked, a=asset: self.show_edit_dialog(a))
             btn_layout.addWidget(edit_btn)
 
             delete_btn = QPushButton("删除")
-            delete_btn.setFixedSize(50, 28)
+            delete_btn.setProperty("class", "table-delete")
             delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            delete_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #e74c3c;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    font-size: 12px;
-                }
-                QPushButton:hover {
-                    background-color: #c0392b;
-                }
-            """)
             delete_btn.clicked.connect(lambda checked, a=asset.id: self.delete_asset(a))
             btn_layout.addWidget(delete_btn)
 
-            self.table.setCellWidget(row, 7, btn_widget)
+            self.table.setCellWidget(row, 11, btn_widget)
 
     def show_add_dialog(self):
-        dialog = AssetDialog(self)
+        dialog = AssetDialog(self, dict_service=self.dict_service)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             data = dialog.get_data()
             try:
-                self.asset_service.create(**data, created_by=self.current_user_id)
+                self.asset_service.create(**data)
                 self.load_assets()
                 QMessageBox.information(self, "成功", "资产添加成功")
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"添加资产失败: {e}")
 
     def show_edit_dialog(self, asset):
-        dialog = AssetDialog(self, asset)
+        dialog = AssetDialog(self, asset, dict_service=self.dict_service)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             data = dialog.get_data()
             try:
-                self.asset_service.update(asset.id, **data, updated_by=self.current_user_id)
+                self.asset_service.update(asset.id, **data)
                 self.load_assets()
                 QMessageBox.information(self, "成功", "资产更新成功")
             except Exception as e:
@@ -255,156 +254,165 @@ class AssetsPage(QWidget):
 
 
 class AssetDialog(QDialog):
-    def __init__(self, parent=None, asset=None):
+    def __init__(self, parent=None, asset=None, dict_service=None):
         super().__init__(parent)
         self.asset = asset
+        self.dict_service = dict_service
         self.setWindowTitle("编辑资产" if asset else "添加资产")
-        self.setFixedSize(480, 520)
+        self.setMinimumSize(800, 520)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.init_ui()
+        self._load_dict_data()
         if asset:
             self._populate_data()
 
+    def _load_dict_data(self):
+        if self.dict_service:
+            unit_dict = self.dict_service.get_dict_by_code("unit")
+            if unit_dict:
+                unit_items = self.dict_service.get_dict_items("unit")
+                self.unit_name_combo.addItem("", None)
+                for item in unit_items:
+                    self.unit_name_combo.addItem(item.item_name, item.item_code)
+
+            system_dict = self.dict_service.get_dict_by_code("system")
+            if system_dict:
+                system_items = self.dict_service.get_dict_items("system")
+                self.system_name_combo.addItem("", None)
+                for item in system_items:
+                    self.system_name_combo.addItem(item.item_name, item.item_code)
+
+            location_dict = self.dict_service.get_dict_by_code("location")
+            if location_dict:
+                location_items = self.dict_service.get_dict_items("location")
+                self.location_combo.addItem("", None)
+                for item in location_items:
+                    self.location_combo.addItem(item.item_name, item.item_code)
+
+            server_type_dict = self.dict_service.get_dict_by_code("server_type")
+            if server_type_dict:
+                server_type_items = self.dict_service.get_dict_items("server_type")
+                self.server_type_combo.addItem("", None)
+                for item in server_type_items:
+                    self.server_type_combo.addItem(item.item_name, item.item_code)
+
     def init_ui(self):
         layout = QVBoxLayout()
-        layout.setSpacing(15)
-        layout.setContentsMargins(25, 20, 25, 20)
+        layout.setSpacing(12)
+        layout.setContentsMargins(24, 20, 24, 20)
 
         title_label = QLabel("编辑资产信息" if self.asset else "添加新资产")
-        title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50;")
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50;")
         layout.addWidget(title_label)
 
-        form_group = QGroupBox("基本信息")
-        form_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                margin-top: 12px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 0 8px;
-                color: #2c3e50;
-            }
-        """)
         form_layout = QFormLayout()
-        form_layout.setSpacing(12)
-        form_layout.setContentsMargins(15, 20, 15, 15)
+        form_layout.setSpacing(10)
+        form_layout.setContentsMargins(12, 12, 12, 12)
 
-        self.name_input = QLineEdit()
-        self.name_input.setPlaceholderText("请输入资产名称")
-        self.name_input.setMinimumHeight(36)
-        form_layout.addRow("名称 *:", self.name_input)
+        left_layout = QVBoxLayout()
+        left_layout.setSpacing(6)
+
+        self.unit_name_combo = QComboBox()
+        self.unit_name_combo.setMinimumHeight(34)
+        left_layout.addWidget(QLabel("单位名称 *:"))
+        left_layout.addWidget(self.unit_name_combo)
+
+        self.system_name_combo = QComboBox()
+        self.system_name_combo.setMinimumHeight(34)
+        left_layout.addWidget(QLabel("系统名称 *:"))
+        left_layout.addWidget(self.system_name_combo)
 
         self.ip_input = QLineEdit()
         self.ip_input.setPlaceholderText("例如: 192.168.1.100")
-        self.ip_input.setMinimumHeight(36)
-        form_layout.addRow("IP地址 *:", self.ip_input)
+        self.ip_input.setMinimumHeight(34)
+        left_layout.addWidget(QLabel("IP地址:"))
+        left_layout.addWidget(self.ip_input)
 
-        port_layout = QHBoxLayout()
+        self.ipv6_input = QLineEdit()
+        self.ipv6_input.setPlaceholderText("例如: 2001:db8::1")
+        self.ipv6_input.setMinimumHeight(34)
+        left_layout.addWidget(QLabel("IPv6地址:"))
+        left_layout.addWidget(self.ipv6_input)
+
         self.port_input = QSpinBox()
         self.port_input.setRange(1, 65535)
         self.port_input.setValue(22)
-        self.port_input.setMinimumHeight(36)
-        self.port_input.setMinimumWidth(120)
-        port_layout.addWidget(self.port_input)
-        port_layout.addStretch()
-        form_layout.addRow("端口:", port_layout)
+        self.port_input.setMinimumHeight(34)
+        left_layout.addWidget(QLabel("端口:"))
+        left_layout.addWidget(self.port_input)
 
-        self.hostname_input = QLineEdit()
-        self.hostname_input.setPlaceholderText("可选")
-        self.hostname_input.setMinimumHeight(36)
-        form_layout.addRow("主机名:", self.hostname_input)
+        self.host_name_input = QLineEdit()
+        self.host_name_input.setPlaceholderText("可选")
+        self.host_name_input.setMinimumHeight(34)
+        left_layout.addWidget(QLabel("主机名:"))
+        left_layout.addWidget(self.host_name_input)
 
-        form_group.setLayout(form_layout)
-        layout.addWidget(form_group)
+        right_layout = QVBoxLayout()
+        right_layout.setSpacing(6)
 
-        auth_group = QGroupBox("认证信息")
-        auth_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                margin-top: 12px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 0 8px;
-                color: #2c3e50;
-            }
-        """)
-        auth_layout = QFormLayout()
-        auth_layout.setSpacing(12)
-        auth_layout.setContentsMargins(15, 20, 15, 15)
+        self.location_combo = QComboBox()
+        self.location_combo.setMinimumHeight(34)
+        right_layout.addWidget(QLabel("位置:"))
+        right_layout.addWidget(self.location_combo)
+
+        self.server_type_combo = QComboBox()
+        self.server_type_combo.setMinimumHeight(34)
+        right_layout.addWidget(QLabel("服务器类型:"))
+        right_layout.addWidget(self.server_type_combo)
+
+        self.vip_input = QLineEdit()
+        self.vip_input.setPlaceholderText("可选")
+        self.vip_input.setMinimumHeight(34)
+        right_layout.addWidget(QLabel("VIP:"))
+        right_layout.addWidget(self.vip_input)
+
+        self.business_service_input = QLineEdit()
+        self.business_service_input.setPlaceholderText("可选")
+        self.business_service_input.setMinimumHeight(34)
+        right_layout.addWidget(QLabel("业务服务:"))
+        right_layout.addWidget(self.business_service_input)
 
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("SSH 登录用户名")
-        self.username_input.setMinimumHeight(36)
-        auth_layout.addRow("用户名:", self.username_input)
+        self.username_input.setMinimumHeight(34)
+        right_layout.addWidget(QLabel("用户名 *:"))
+        right_layout.addWidget(self.username_input)
 
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("SSH 登录密码")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
-        self.password_input.setMinimumHeight(36)
-        auth_layout.addRow("密码:", self.password_input)
+        self.password_input.setMinimumHeight(34)
+        right_layout.addWidget(QLabel("密码 *:"))
+        right_layout.addWidget(self.password_input)
 
-        os_layout = QHBoxLayout()
-        self.os_combo = QComboBox()
-        self.os_combo.addItems(["Linux", "Windows", "macOS", "Other"])
-        self.os_combo.setMinimumHeight(36)
-        self.os_combo.setMinimumWidth(150)
-        os_layout.addWidget(self.os_combo)
-        os_layout.addStretch()
-        auth_layout.addRow("操作系统:", os_layout)
+        self.notes_input = QLineEdit()
+        self.notes_input.setPlaceholderText("可选")
+        self.notes_input.setMinimumHeight(34)
+        right_layout.addWidget(QLabel("备注:"))
+        right_layout.addWidget(self.notes_input)
 
-        auth_group.setLayout(auth_layout)
-        layout.addWidget(auth_group)
+        columns_layout = QHBoxLayout()
+        columns_layout.addLayout(left_layout)
+        columns_layout.addSpacing(20)
+        columns_layout.addLayout(right_layout)
+        columns_layout.addStretch()
 
-        layout.addStretch()
+        layout.addLayout(columns_layout)
 
         btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(15)
+        btn_layout.setSpacing(12)
 
         self.cancel_btn = QPushButton("取消")
-        self.cancel_btn.setMinimumHeight(42)
+        self.cancel_btn.setProperty("class", "secondary")
+        self.cancel_btn.setMinimumHeight(40)
         self.cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.cancel_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #bdc3c7;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #95a5a6;
-            }
-        """)
         self.cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(self.cancel_btn)
 
         self.ok_btn = QPushButton("确定")
-        self.ok_btn.setMinimumHeight(42)
+        self.ok_btn.setProperty("class", "success")
+        self.ok_btn.setMinimumHeight(40)
         self.ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.ok_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #1abc9c;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #16a085;
-            }
-        """)
         self.ok_btn.clicked.connect(self._validate_and_accept)
         btn_layout.addWidget(self.ok_btn)
 
@@ -412,35 +420,59 @@ class AssetDialog(QDialog):
         self.setLayout(layout)
 
     def _populate_data(self):
-        self.name_input.setText(self.asset.name or "")
+        self._set_combo_value(self.unit_name_combo, self.asset.unit_name or "")
+        self._set_combo_value(self.system_name_combo, self.asset.system_name or "")
         self.ip_input.setText(self.asset.ip or "")
+        self.ipv6_input.setText(self.asset.ipv6 or "")
         self.port_input.setValue(self.asset.port or 22)
-        self.hostname_input.setText(self.asset.hostname or "")
+        self.host_name_input.setText(self.asset.host_name or "")
+        self._set_combo_value(self.location_combo, self.asset.location or "")
+        self._set_combo_value(self.server_type_combo, self.asset.server_type or "")
+        self.vip_input.setText(self.asset.vip or "")
+        self.business_service_input.setText(self.asset.business_service or "")
         self.username_input.setText(self.asset.username or "")
         self.password_input.setText(self.asset.password or "")
-        os_type = self.asset.os_type or "Linux"
-        index = self.os_combo.findText(os_type)
-        if index >= 0:
-            self.os_combo.setCurrentIndex(index)
+        self.notes_input.setText(self.asset.notes or "")
+
+    def _set_combo_value(self, combo, value):
+        for i in range(combo.count()):
+            if combo.itemData(i) == value:
+                combo.setCurrentIndex(i)
+                return
+        combo.setCurrentIndex(0)
 
     def _validate_and_accept(self):
-        if not self.name_input.text().strip():
-            QMessageBox.warning(self, "提示", "请输入资产名称")
-            self.name_input.setFocus()
+        if not self.unit_name_combo.currentText().strip():
+            QMessageBox.warning(self, "提示", "请选择单位名称")
+            self.unit_name_combo.setFocus()
             return
-        if not self.ip_input.text().strip():
-            QMessageBox.warning(self, "提示", "请输入IP地址")
-            self.ip_input.setFocus()
+        if not self.system_name_combo.currentText().strip():
+            QMessageBox.warning(self, "提示", "请选择系统名称")
+            self.system_name_combo.setFocus()
+            return
+        if not self.username_input.text().strip():
+            QMessageBox.warning(self, "提示", "请输入用户名")
+            self.username_input.setFocus()
+            return
+        if not self.password_input.text():
+            QMessageBox.warning(self, "提示", "请输入密码")
+            self.password_input.setFocus()
             return
         self.accept()
 
     def get_data(self):
         return {
-            "name": self.name_input.text().strip(),
-            "ip": self.ip_input.text().strip(),
-            "port": self.port_input.value(),
-            "hostname": self.hostname_input.text().strip() or None,
-            "os_type": self.os_combo.currentText(),
-            "username": self.username_input.text().strip() or None,
-            "password": self.password_input.text() or None
+            "unit_name": self.unit_name_combo.currentData() or None,
+            "system_name": self.system_name_combo.currentData() or None,
+            "ip": self.ip_input.text().strip() or None,
+            "ipv6": self.ipv6_input.text().strip() or None,
+            "port": self.port_input.value() if self.port_input.value() != 22 else None,
+            "host_name": self.host_name_input.text().strip() or None,
+            "business_service": self.business_service_input.text().strip() or None,
+            "location": self.location_combo.currentData() or None,
+            "server_type": self.server_type_combo.currentData() or None,
+            "vip": self.vip_input.text().strip() or None,
+            "username": self.username_input.text().strip(),
+            "password": self.password_input.text(),
+            "notes": self.notes_input.text().strip() or None,
         }

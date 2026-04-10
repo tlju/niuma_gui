@@ -1,17 +1,18 @@
 QMainWindow {
-    background-color: #f5f5f5;
+    background-color: #f5f6fa;
 }
 
 QMenuBar {
     background-color: #2c3e50;
     color: #ecf0f1;
-    padding: 4px 8px;
-    border-bottom: 1px solid #34495e;
+    padding: 2px 8px;
+    border-bottom: 2px solid #1a252f;
+    font-weight: 500;
 }
 
 QMenuBar::item {
     background-color: transparent;
-    padding: 6px 12px;
+    padding: 6px 14px;
     border-radius: 4px;
 }
 
@@ -26,13 +27,13 @@ QMenuBar::item:pressed {
 QMenu {
     background-color: #2c3e50;
     color: #ecf0f1;
-    border: 1px solid #34495e;
-    border-radius: 4px;
-    padding: 4px;
+    border: 1px solid #1a252f;
+    border-radius: 6px;
+    padding: 6px;
 }
 
 QMenu::item {
-    padding: 8px 24px 8px 12px;
+    padding: 8px 28px 8px 14px;
     border-radius: 4px;
 }
 
@@ -40,15 +41,35 @@ QMenu::item:selected {
     background-color: #1abc9c;
 }
 
+QMenu::item:disabled {
+    color: #7f8c8d;
+}
+
 QMenu::separator {
     height: 1px;
     background-color: #34495e;
-    margin: 4px 8px;
+    margin: 4px 10px;
+}
+
+QMenu::indicator {
+    width: 14px;
+    height: 14px;
+    margin-left: 4px;
 }
 
 QStatusBar {
     background-color: #2c3e50;
     color: #ecf0f1;
-    padding: 4px 8px;
-    border-top: 1px solid #34495e;
+    padding: 4px 12px;
+    border-top: 2px solid #1a252f;
+    font-size: 12px;
+}
+
+QStatusBar::item {
+    border: none;
+}
+
+QStatusBar QLabel {
+    color: #bdc3c7;
+    padding: 0 8px;
 }

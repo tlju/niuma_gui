@@ -24,24 +24,29 @@ class TodosPage(QWidget):
 
     def init_ui(self):
         load_combined_stylesheet(QApplication.instance(), ["common", "todos_page"])
-        
+
         layout = QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
 
         toolbar_frame = QFrame()
+        toolbar_frame.setProperty("class", "toolbar")
         toolbar_layout = QHBoxLayout(toolbar_frame)
         toolbar_layout.setContentsMargins(10, 8, 10, 8)
+        toolbar_layout.setSpacing(10)
 
         self.add_btn = QPushButton("  添加待办")
         self.add_btn.setIcon(icons.add_icon())
-        self.add_btn.setMinimumHeight(36)
+        self.add_btn.setProperty("class", "success")
+        self.add_btn.setMinimumHeight(34)
+        self.add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.add_btn.clicked.connect(self.show_add_dialog)
         toolbar_layout.addWidget(self.add_btn)
 
         self.refresh_btn = QPushButton("  刷新")
         self.refresh_btn.setIcon(icons.refresh_icon())
-        self.refresh_btn.setMinimumHeight(36)
+        self.refresh_btn.setMinimumHeight(34)
+        self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.refresh_btn.clicked.connect(self.load_todos)
         toolbar_layout.addWidget(self.refresh_btn)
 
@@ -51,6 +56,7 @@ class TodosPage(QWidget):
         toolbar_layout.addWidget(status_label)
 
         self.status_combo = QComboBox()
+        self.status_combo.setMinimumHeight(34)
         self.status_combo.addItem("全部", "")
         self.status_combo.addItem("待处理", TodoStatus.PENDING)
         self.status_combo.addItem("进行中", TodoStatus.IN_PROGRESS)
@@ -72,6 +78,8 @@ class TodosPage(QWidget):
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(False)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.verticalHeader().setDefaultSectionSize(42)
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -109,18 +117,28 @@ class TodosPage(QWidget):
 
             btn_widget = QWidget()
             btn_layout = QHBoxLayout(btn_widget)
-            btn_layout.setContentsMargins(4, 4, 4, 4)
+            btn_layout.setContentsMargins(4, 2, 4, 2)
+            btn_layout.setSpacing(4)
+            btn_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             complete_btn = QPushButton("完成")
+            complete_btn.setProperty("class", "table-complete")
+            complete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             complete_btn.clicked.connect(lambda checked, tid=todo.id: self.complete_todo(tid))
-            edit_btn = QPushButton("编辑")
-            edit_btn.clicked.connect(lambda checked, t=todo: self.show_edit_dialog(t))
-            delete_btn = QPushButton("删除")
-            delete_btn.clicked.connect(lambda checked, tid=todo.id: self.delete_todo(tid))
-
             btn_layout.addWidget(complete_btn)
+
+            edit_btn = QPushButton("编辑")
+            edit_btn.setProperty("class", "table-edit")
+            edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            edit_btn.clicked.connect(lambda checked, t=todo: self.show_edit_dialog(t))
             btn_layout.addWidget(edit_btn)
+
+            delete_btn = QPushButton("删除")
+            delete_btn.setProperty("class", "table-delete")
+            delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            delete_btn.clicked.connect(lambda checked, tid=todo.id: self.delete_todo(tid))
             btn_layout.addWidget(delete_btn)
+
             self.table.setCellWidget(row, 6, btn_widget)
 
     def show_add_dialog(self):
@@ -166,15 +184,19 @@ class TodoDialog(QDialog):
         super().__init__(parent)
         self.todo = todo
         self.setWindowTitle("编辑待办" if todo else "添加待办")
-        self.setFixedSize(450, 350)
+        self.setMinimumSize(450, 380)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.init_ui()
         if todo:
             self._populate_data()
 
     def init_ui(self):
         layout = QFormLayout()
+        layout.setSpacing(10)
+        layout.setContentsMargins(20, 16, 20, 16)
 
         self.title_input = QLineEdit()
+        self.title_input.setMinimumHeight(34)
         layout.addRow("标题:", self.title_input)
 
         self.desc_input = QTextEdit()
@@ -182,6 +204,7 @@ class TodoDialog(QDialog):
         layout.addRow("描述:", self.desc_input)
 
         self.status_combo = QComboBox()
+        self.status_combo.setMinimumHeight(34)
         self.status_combo.addItem("待处理", TodoStatus.PENDING)
         self.status_combo.addItem("进行中", TodoStatus.IN_PROGRESS)
         self.status_combo.addItem("已完成", TodoStatus.COMPLETED)
@@ -189,17 +212,26 @@ class TodoDialog(QDialog):
 
         self.priority_input = QLineEdit()
         self.priority_input.setPlaceholderText("1-10, 数字越大优先级越高")
+        self.priority_input.setMinimumHeight(34)
         layout.addRow("优先级:", self.priority_input)
 
         self.due_date_input = QDateEdit()
         self.due_date_input.setCalendarPopup(True)
+        self.due_date_input.setMinimumHeight(34)
         self.due_date_input.setDateTime(datetime.now())
         layout.addRow("截止日期:", self.due_date_input)
 
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(12)
         ok_btn = QPushButton("确定")
+        ok_btn.setProperty("class", "success")
+        ok_btn.setMinimumHeight(38)
+        ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         ok_btn.clicked.connect(self.accept)
         cancel_btn = QPushButton("取消")
+        cancel_btn.setProperty("class", "secondary")
+        cancel_btn.setMinimumHeight(38)
+        cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(ok_btn)
         btn_layout.addWidget(cancel_btn)

@@ -22,24 +22,29 @@ class DocumentsPage(QWidget):
 
     def init_ui(self):
         load_combined_stylesheet(QApplication.instance(), ["common", "documents_page"])
-        
+
         layout = QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
 
         toolbar_frame = QFrame()
+        toolbar_frame.setProperty("class", "toolbar")
         toolbar_layout = QHBoxLayout(toolbar_frame)
         toolbar_layout.setContentsMargins(10, 8, 10, 8)
+        toolbar_layout.setSpacing(10)
 
         self.add_btn = QPushButton("  添加文档")
         self.add_btn.setIcon(icons.add_icon())
-        self.add_btn.setMinimumHeight(36)
+        self.add_btn.setProperty("class", "success")
+        self.add_btn.setMinimumHeight(34)
+        self.add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.add_btn.clicked.connect(self.show_add_dialog)
         toolbar_layout.addWidget(self.add_btn)
 
         self.refresh_btn = QPushButton("  刷新")
         self.refresh_btn.setIcon(icons.refresh_icon())
-        self.refresh_btn.setMinimumHeight(36)
+        self.refresh_btn.setMinimumHeight(34)
+        self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.refresh_btn.clicked.connect(self.load_documents)
         toolbar_layout.addWidget(self.refresh_btn)
 
@@ -49,6 +54,7 @@ class DocumentsPage(QWidget):
         toolbar_layout.addWidget(category_label)
 
         self.category_combo = QComboBox()
+        self.category_combo.setMinimumHeight(34)
         self.category_combo.addItem("全部", "")
         self.category_combo.currentIndexChanged.connect(self.load_documents)
         toolbar_layout.addWidget(self.category_combo)
@@ -61,6 +67,7 @@ class DocumentsPage(QWidget):
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("搜索标题或内容...")
         self.search_input.setMinimumWidth(200)
+        self.search_input.setMinimumHeight(34)
         self.search_input.textChanged.connect(self._filter_documents)
         toolbar_layout.addWidget(self.search_input)
 
@@ -78,6 +85,8 @@ class DocumentsPage(QWidget):
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(False)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.verticalHeader().setDefaultSectionSize(42)
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -134,18 +143,28 @@ class DocumentsPage(QWidget):
 
             btn_widget = QWidget()
             btn_layout = QHBoxLayout(btn_widget)
-            btn_layout.setContentsMargins(4, 4, 4, 4)
+            btn_layout.setContentsMargins(4, 2, 4, 2)
+            btn_layout.setSpacing(4)
+            btn_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             view_btn = QPushButton("查看")
+            view_btn.setProperty("class", "table-view")
+            view_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             view_btn.clicked.connect(lambda checked, d=doc: self.show_view_dialog(d))
-            edit_btn = QPushButton("编辑")
-            edit_btn.clicked.connect(lambda checked, d=doc: self.show_edit_dialog(d))
-            delete_btn = QPushButton("删除")
-            delete_btn.clicked.connect(lambda checked, did=doc.id: self.delete_document(did))
-
             btn_layout.addWidget(view_btn)
+
+            edit_btn = QPushButton("编辑")
+            edit_btn.setProperty("class", "table-edit")
+            edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            edit_btn.clicked.connect(lambda checked, d=doc: self.show_edit_dialog(d))
             btn_layout.addWidget(edit_btn)
+
+            delete_btn = QPushButton("删除")
+            delete_btn.setProperty("class", "table-delete")
+            delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            delete_btn.clicked.connect(lambda checked, did=doc.id: self.delete_document(did))
             btn_layout.addWidget(delete_btn)
+
             self.table.setCellWidget(row, 5, btn_widget)
 
     def _filter_documents(self, text):
@@ -198,27 +217,33 @@ class DocumentDialog(QDialog):
         self.document = document
         self.readonly = readonly
         self.setWindowTitle("查看文档" if readonly else ("编辑文档" if document else "添加文档"))
-        self.setFixedSize(600, 500)
+        self.setMinimumSize(600, 500)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.init_ui()
         if document:
             self._populate_data()
 
     def init_ui(self):
         layout = QFormLayout()
+        layout.setSpacing(10)
+        layout.setContentsMargins(20, 16, 20, 16)
 
         self.title_input = QLineEdit()
+        self.title_input.setMinimumHeight(34)
         if self.readonly:
             self.title_input.setReadOnly(True)
         layout.addRow("标题:", self.title_input)
 
         self.category_input = QLineEdit()
         self.category_input.setPlaceholderText("如: 技术文档、操作手册等")
+        self.category_input.setMinimumHeight(34)
         if self.readonly:
             self.category_input.setReadOnly(True)
         layout.addRow("分类:", self.category_input)
 
         self.tags_input = QLineEdit()
         self.tags_input.setPlaceholderText("多个标签用逗号分隔")
+        self.tags_input.setMinimumHeight(34)
         if self.readonly:
             self.tags_input.setReadOnly(True)
         layout.addRow("标签:", self.tags_input)
@@ -229,11 +254,18 @@ class DocumentDialog(QDialog):
         layout.addRow("内容:", self.content_input)
 
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(12)
         if not self.readonly:
             ok_btn = QPushButton("确定")
+            ok_btn.setProperty("class", "success")
+            ok_btn.setMinimumHeight(38)
+            ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             ok_btn.clicked.connect(self.accept)
             btn_layout.addWidget(ok_btn)
         cancel_btn = QPushButton("关闭" if self.readonly else "取消")
+        cancel_btn.setProperty("class", "secondary")
+        cancel_btn.setMinimumHeight(38)
+        cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
         layout.addRow(btn_layout)

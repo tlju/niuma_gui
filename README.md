@@ -1,4 +1,4 @@
-# 牛马运维辅助系统 - GUI 版本
+# 运维辅助工具 - GUI 版本
 
 纯 Python GUI 版本，基于 PyQt6 实现，支持 x64/arm64 和 Windows/Linux。
 
@@ -30,9 +30,6 @@ python main.py
 ```bash
 # 使用构建脚本
 python build.py
-
-# 或直接使用 PyInstaller
-pyinstaller pyinstaller.spec
 ```
 
 ## GitHub Actions 自动构建

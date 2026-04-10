@@ -31,11 +31,11 @@ def test_create_user(db_session):
 
 def test_create_server_asset(db_session):
     asset = ServerAsset(
-        name="Test Server",
-        hostname="test.example.com",
+        unit_name="Test Unit",
+        system_name="Test System",
         ip="192.168.1.100",
         port=22,
-        os_type="Linux",
+        host_name="test.example.com",
         username="admin",
         password_cipher="encrypted_password"
     )
@@ -43,7 +43,7 @@ def test_create_server_asset(db_session):
     db_session.commit()
 
     retrieved = db_session.query(ServerAsset).filter(
-        ServerAsset.name == "Test Server"
+        ServerAsset.unit_name == "Test Unit"
     ).first()
     assert retrieved is not None
     assert retrieved.ip == "192.168.1.100"

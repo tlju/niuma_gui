@@ -50,7 +50,7 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         self.setWindowTitle("运维辅助工具")
         self.resize(1400, 900)
-        self.setMinimumSize(1024, 768)
+        self.setMinimumSize(1280, 800)
 
         load_combined_stylesheet(QApplication.instance(), ["common", "main_window"])
 
@@ -172,7 +172,7 @@ class MainWindow(QMainWindow):
         from gui.pages.documents_page import DocumentsPage
         from gui.pages.workflows_page import WorkflowsPage
 
-        self.assets_page = AssetsPage(self.asset_service, self.current_user_id)
+        self.assets_page = AssetsPage(self.asset_service, self.current_user_id, self.dict_service)
         self.scripts_page = ScriptsPage(self.script_service, self.current_user_id)
         self.audit_page = AuditPage(self.audit_service)
         self.params_page = SystemParamsPage(self.param_service)
@@ -220,7 +220,7 @@ class MainWindow(QMainWindow):
             "<p>纯 Python GUI 版本，基于 PyQt6</p>"
             "<p><b>技术栈:</b> PyQt6, SQLAlchemy, Paramiko</p>"
             "<hr>"
-            "<p style='color: #7f8c8d;'>© 2024 Niuma Team</p>"
+            "<p style='color: #7f8c8d;'>© 2026 Niuma Team</p>"
         )
 
     def closeEvent(self, event):

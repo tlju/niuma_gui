@@ -15,26 +15,36 @@ class AssetService:
 
     def create(
         self,
-        name: str,
-        ip: str,
-        port: int = 22,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-        hostname: Optional[str] = None,
-        os_type: str = "Linux",
-        description: Optional[str] = None
+        unit_name: str,
+        system_name: str,
+        username: str,
+        password: str,
+        ip: Optional[str] = None,
+        ipv6: Optional[str] = None,
+        port: Optional[int] = None,
+        host_name: Optional[str] = None,
+        notes: Optional[str] = None,
+        business_service: Optional[str] = None,
+        location: Optional[str] = None,
+        server_type: Optional[str] = None,
+        vip: Optional[str] = None
     ) -> Optional[int]:
-        password_cipher = self.crypto.encrypt(password) if password else None
+        password_cipher = self.crypto.encrypt(password) if password else ""
 
         asset = ServerAsset(
-            name=name,
-            hostname=hostname,
+            unit_name=unit_name,
+            system_name=system_name,
             ip=ip,
+            ipv6=ipv6,
             port=port,
-            os_type=os_type,
-            description=description,
+            host_name=host_name,
             username=username,
-            password_cipher=password_cipher
+            password_cipher=password_cipher,
+            notes=notes,
+            business_service=business_service,
+            location=location,
+            server_type=server_type,
+            vip=vip
         )
         self.db.add(asset)
         self.db.commit()

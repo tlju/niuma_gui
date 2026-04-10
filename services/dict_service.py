@@ -69,7 +69,7 @@ class DictService:
         return False
 
     def create_dict_item(self, dict_code: str, item_code: str, item_name: str,
-                         item_value: str = None, sort_order: int = 0) -> DataDictItem:
+                         sort_order: int = 0) -> DataDictItem:
         dict_obj = self.get_dict_by_code(dict_code)
         if not dict_obj:
             raise ValueError(f"字典 {dict_code} 不存在")
@@ -85,7 +85,6 @@ class DictService:
             dict_code=dict_code,
             item_code=item_code,
             item_name=item_name,
-            item_value=item_value,
             sort_order=sort_order
         )
         self.db.add(item)

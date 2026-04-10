@@ -1,0 +1,10 @@
+QFrame[class="toolbar"] {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 6px;
+}
+
+QFrame[class="toolbar"]:hover {
+    border-color: #dee2e6;
+}

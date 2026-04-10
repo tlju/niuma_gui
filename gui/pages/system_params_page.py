@@ -21,25 +21,29 @@ class SystemParamsPage(QWidget):
 
     def init_ui(self):
         load_combined_stylesheet(QApplication.instance(), ["common", "system_params_page"])
-        
+
         layout = QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
 
         toolbar_frame = QFrame()
+        toolbar_frame.setProperty("class", "toolbar")
         toolbar_layout = QHBoxLayout(toolbar_frame)
         toolbar_layout.setContentsMargins(10, 8, 10, 8)
         toolbar_layout.setSpacing(10)
 
         self.add_btn = QPushButton("  添加参数")
         self.add_btn.setIcon(icons.add_icon())
-        self.add_btn.setMinimumHeight(36)
+        self.add_btn.setProperty("class", "success")
+        self.add_btn.setMinimumHeight(34)
+        self.add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.add_btn.clicked.connect(self.show_add_dialog)
         toolbar_layout.addWidget(self.add_btn)
 
         self.refresh_btn = QPushButton("  刷新")
         self.refresh_btn.setIcon(icons.refresh_icon())
-        self.refresh_btn.setMinimumHeight(36)
+        self.refresh_btn.setMinimumHeight(34)
+        self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.refresh_btn.clicked.connect(self.load_params)
         toolbar_layout.addWidget(self.refresh_btn)
 
@@ -51,7 +55,7 @@ class SystemParamsPage(QWidget):
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("输入参数名称、代码或描述搜索...")
         self.search_input.setMinimumWidth(250)
-        self.search_input.setMinimumHeight(36)
+        self.search_input.setMinimumHeight(34)
         self.search_input.textChanged.connect(self._filter_params)
         toolbar_layout.addWidget(self.search_input)
 
@@ -63,19 +67,19 @@ class SystemParamsPage(QWidget):
         layout.addWidget(toolbar_frame)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(7)
-        self.table.setHorizontalHeaderLabels(["ID", "参数名称", "参数代码", "参数值", "状态", "描述", "操作"])
+        self.table.setColumnCount(6)
+        self.table.setHorizontalHeaderLabels(["参数名称", "参数代码", "参数值", "状态", "描述", "操作"])
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(False)
-        self.table.verticalHeader().setDefaultSectionSize(60)
+        self.table.verticalHeader().setDefaultSectionSize(42)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(5, 120)
 
         layout.addWidget(self.table)
         self.setLayout(layout)
@@ -95,28 +99,32 @@ class SystemParamsPage(QWidget):
     def _populate_table(self, params):
         self.table.setRowCount(len(params))
         for row, param in enumerate(params):
-            self.table.setItem(row, 0, QTableWidgetItem(str(param.id)))
-            self.table.setItem(row, 1, QTableWidgetItem(param.param_name or ""))
-            self.table.setItem(row, 2, QTableWidgetItem(param.param_code or ""))
-            self.table.setItem(row, 3, QTableWidgetItem(param.param_value or ""))
+            self.table.setItem(row, 0, QTableWidgetItem(param.param_name or ""))
+            self.table.setItem(row, 1, QTableWidgetItem(param.param_code or ""))
+            self.table.setItem(row, 2, QTableWidgetItem(param.param_value or ""))
             status_text = "启用" if param.status == 1 else "禁用"
-            self.table.setItem(row, 4, QTableWidgetItem(status_text))
-            self.table.setItem(row, 5, QTableWidgetItem(param.description or ""))
-
-            edit_btn = QPushButton("编辑")
-            edit_btn.setIcon(icons.edit_icon())
-            edit_btn.clicked.connect(lambda checked, p=param: self.show_edit_dialog(p))
-            delete_btn = QPushButton("删除")
-            delete_btn.setIcon(icons.delete_icon())
-            delete_btn.clicked.connect(lambda checked, pid=param.id: self.delete_param(pid))
+            self.table.setItem(row, 3, QTableWidgetItem(status_text))
+            self.table.setItem(row, 4, QTableWidgetItem(param.description or ""))
 
             btn_widget = QWidget()
             btn_layout = QHBoxLayout(btn_widget)
-            btn_layout.setContentsMargins(4, 4, 4, 4)
+            btn_layout.setContentsMargins(4, 2, 4, 2)
+            btn_layout.setSpacing(4)
+            btn_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            edit_btn = QPushButton("编辑")
+            edit_btn.setProperty("class", "table-edit")
+            edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            edit_btn.clicked.connect(lambda checked, p=param: self.show_edit_dialog(p))
             btn_layout.addWidget(edit_btn)
+
+            delete_btn = QPushButton("删除")
+            delete_btn.setProperty("class", "table-delete")
+            delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            delete_btn.clicked.connect(lambda checked, pid=param.id: self.delete_param(pid))
             btn_layout.addWidget(delete_btn)
-            btn_layout.addStretch()
-            self.table.setCellWidget(row, 6, btn_widget)
+
+            self.table.setCellWidget(row, 5, btn_widget)
 
     def _filter_params(self, text):
         if not text:
@@ -164,18 +172,23 @@ class ParamDialog(QDialog):
         super().__init__(parent)
         self.param = param
         self.setWindowTitle("编辑参数" if param else "添加参数")
-        self.setFixedSize(450, 300)
+        self.setMinimumSize(450, 320)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.init_ui()
         if param:
             self._populate_data()
 
     def init_ui(self):
         layout = QFormLayout()
+        layout.setSpacing(10)
+        layout.setContentsMargins(20, 16, 20, 16)
 
         self.name_input = QLineEdit()
+        self.name_input.setMinimumHeight(34)
         layout.addRow("参数名称:", self.name_input)
 
         self.code_input = QLineEdit()
+        self.code_input.setMinimumHeight(34)
         layout.addRow("参数代码:", self.code_input)
 
         self.value_input = QTextEdit()
@@ -183,17 +196,26 @@ class ParamDialog(QDialog):
         layout.addRow("参数值:", self.value_input)
 
         self.status_combo = QComboBox()
+        self.status_combo.setMinimumHeight(34)
         self.status_combo.addItem("启用", 1)
         self.status_combo.addItem("禁用", 0)
         layout.addRow("状态:", self.status_combo)
 
         self.desc_input = QLineEdit()
+        self.desc_input.setMinimumHeight(34)
         layout.addRow("描述:", self.desc_input)
 
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(12)
         ok_btn = QPushButton("确定")
+        ok_btn.setProperty("class", "success")
+        ok_btn.setMinimumHeight(38)
+        ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         ok_btn.clicked.connect(self.accept)
         cancel_btn = QPushButton("取消")
+        cancel_btn.setProperty("class", "secondary")
+        cancel_btn.setMinimumHeight(38)
+        cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(ok_btn)
         btn_layout.addWidget(cancel_btn)
