@@ -431,7 +431,7 @@ class AssetDialog(QDialog):
         self.vip_input.setText(self.asset.vip or "")
         self.business_service_input.setText(self.asset.business_service or "")
         self.username_input.setText(self.asset.username or "")
-        self.password_input.setText(self.asset.password or "")
+        self.password_input.setText(self.asset.password_cipher or "")
         self.notes_input.setText(self.asset.notes or "")
 
     def _set_combo_value(self, combo, value):
