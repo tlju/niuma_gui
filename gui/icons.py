@@ -355,28 +355,6 @@ class IconProvider:
             line_w = size * 0.4 if i == 3 else size * 0.5
             painter.drawLine(int(margin + size * 0.1), int(y), int(margin + size * 0.1 + line_w), int(y))
 
-    def _draw_workflow(self, painter, size):
-        color = QColor("#16a085")
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(color)
-        box_size = size * 0.22
-        gap = size * 0.08
-        painter.drawRoundedRect(QRectF(size * 0.1, size * 0.1, box_size, box_size), 3, 3)
-        painter.drawRoundedRect(QRectF(size * 0.1, size * 0.68 - gap, box_size, box_size), 3, 3)
-        painter.drawRoundedRect(QRectF(size * 0.68 - gap, size * 0.39 - box_size / 2, box_size, box_size), 3, 3)
-        pen = QPen(color, max(2, size * 0.05), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
-        painter.setPen(pen)
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        start_x = size * 0.1 + box_size
-        mid_x = size * 0.68 - gap
-        top_y = size * 0.1 + box_size / 2
-        bot_y = size * 0.68 - gap + box_size / 2
-        right_y = size * 0.39
-        painter.drawLine(int(start_x), int(top_y), int(mid_x), int(top_y))
-        painter.drawLine(int(mid_x), int(top_y), int(mid_x), int(right_y - box_size / 2))
-        painter.drawLine(int(start_x), int(bot_y), int(mid_x), int(bot_y))
-        painter.drawLine(int(mid_x), int(bot_y), int(mid_x), int(right_y + box_size / 2))
-
     def _draw_about(self, painter, size):
         color = QColor("#3498db")
         painter.setPen(Qt.PenStyle.NoPen)
@@ -445,9 +423,6 @@ class IconProvider:
 
     def document_icon(self):
         return self._create_icon(self._draw_document)
-
-    def workflow_icon(self):
-        return self._create_icon(self._draw_workflow)
 
     def about_icon(self):
         return self._create_icon(self._draw_about)

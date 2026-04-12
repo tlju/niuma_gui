@@ -27,7 +27,6 @@ def create_tables():
     from models import (
         User, ServerAsset, Script, ExecLog, AuditLog,
         SystemConfig, DataDict, DataDictItem, SystemParam,
-        WorkflowTemplate, WorkflowInstance, WorkflowExecution,
         Todo, Document
     )
     Base.metadata.create_all(bind=engine)

@@ -13,7 +13,6 @@ from services.param_service import ParamService
 from services.dict_service import DictService
 from services.todo_service import TodoService
 from services.document_service import DocumentService
-from services.workflow_service import WorkflowService
 from core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -35,7 +34,6 @@ class MainWindow(QMainWindow):
         self.dict_service = DictService(self.db)
         self.todo_service = TodoService(self.db)
         self.document_service = DocumentService(self.db)
-        self.workflow_service = WorkflowService(self.db)
 
         self.init_ui()
         self.status_bar.showMessage(f"当前用户: {username}  |  状态: 在线")
@@ -69,7 +67,6 @@ class MainWindow(QMainWindow):
         self.dicts_page = None
         self.todos_page = None
         self.documents_page = None
-        self.workflows_page = None
 
     def create_menu_bar(self):
         menubar = self.menuBar()
@@ -128,12 +125,6 @@ class MainWindow(QMainWindow):
         docs_action.triggered.connect(lambda: self.switch_page("documents"))
         function_menu.addAction(docs_action)
 
-        workflows_action = QAction("工作流", self)
-        workflows_action.setIcon(icons.workflow_icon())
-        workflows_action.setShortcut("Ctrl+F")
-        workflows_action.triggered.connect(lambda: self.switch_page("workflows"))
-        function_menu.addAction(workflows_action)
-
         help_menu = menubar.addMenu("帮助")
 
         about_action = QAction("关于", self)
@@ -156,7 +147,6 @@ class MainWindow(QMainWindow):
         from gui.pages.data_dicts_page import DataDictsPage
         from gui.pages.todos_page import TodosPage
         from gui.pages.documents_page import DocumentsPage
-        from gui.pages.workflows_page import WorkflowsPage
 
         self.assets_page = AssetsPage(self.asset_service, self.current_user_id, self.dict_service)
         self.scripts_page = ScriptsPage(self.script_service, self.current_user_id, self.dict_service, self.param_service)
@@ -165,7 +155,6 @@ class MainWindow(QMainWindow):
         self.dicts_page = DataDictsPage(self.dict_service)
         self.todos_page = TodosPage(self.todo_service, self.current_user_id)
         self.documents_page = DocumentsPage(self.document_service, self.current_user_id)
-        self.workflows_page = WorkflowsPage(self.workflow_service, self.current_user_id)
 
         self.stacked_widget.addWidget(self.assets_page)
         self.stacked_widget.addWidget(self.scripts_page)
@@ -174,7 +163,6 @@ class MainWindow(QMainWindow):
         self.stacked_widget.addWidget(self.dicts_page)
         self.stacked_widget.addWidget(self.todos_page)
         self.stacked_widget.addWidget(self.documents_page)
-        self.stacked_widget.addWidget(self.workflows_page)
 
         self.layout.addWidget(self.stacked_widget)
 
@@ -190,7 +178,6 @@ class MainWindow(QMainWindow):
             "dicts": (self.dicts_page, "数据字典"),
             "todos": (self.todos_page, "待办事项"),
             "documents": (self.documents_page, "文档管理"),
-            "workflows": (self.workflows_page, "工作流"),
         }
 
         if page_name in page_map:
@@ -225,7 +212,6 @@ class MainWindow(QMainWindow):
             self.dicts_page = None
             self.todos_page = None
             self.documents_page = None
-            self.workflows_page = None
 
         if self.db:
             self.db.close()
