@@ -2,16 +2,37 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
     QTableWidgetItem, QPushButton, QDialog, QLabel,
     QLineEdit, QComboBox, QMessageBox, QHeaderView,
-    QFrame, QFormLayout, QTextEdit, QDateEdit, QApplication
+    QFrame, QFormLayout, QTextEdit, QDateEdit, QApplication,
+    QSpinBox
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor, QBrush
 from datetime import datetime
-from models.todo import TodoStatus
+from models.todo import TodoStatus, RecurrenceType
 from core.logger import get_logger
 from gui.icons import icons
 from gui.style_manager import load_combined_stylesheet
 
 logger = get_logger(__name__)
+
+STATUS_DISPLAY = {
+    TodoStatus.PENDING: "待处理",
+    TodoStatus.IN_PROGRESS: "进行中",
+    TodoStatus.COMPLETED: "已完成"
+}
+
+STATUS_COLORS = {
+    TodoStatus.PENDING: "#f39c12",
+    TodoStatus.IN_PROGRESS: "#3498db",
+    TodoStatus.COMPLETED: "#27ae60"
+}
+
+RECURRENCE_DISPLAY = {
+    RecurrenceType.NONE: "无",
+    RecurrenceType.DAILY: "每日",
+    RecurrenceType.WEEKLY: "每周",
+    RecurrenceType.MONTHLY: "每月"
+}
 
 
 class TodosPage(QWidget):
@@ -72,8 +93,8 @@ class TodosPage(QWidget):
         layout.addWidget(toolbar_frame)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(7)
-        self.table.setHorizontalHeaderLabels(["ID", "标题", "描述", "状态", "优先级", "截止日期", "操作"])
+        self.table.setColumnCount(8)
+        self.table.setHorizontalHeaderLabels(["ID", "标题", "描述", "状态", "优先级", "截止日期", "循环", "操作"])
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.verticalHeader().setVisible(False)
@@ -89,6 +110,12 @@ class TodosPage(QWidget):
         self.setLayout(layout)
 
         self.all_todos = []
+
+    def _get_bold_font(self):
+        from PyQt6.QtGui import QFont
+        font = QFont()
+        font.setBold(True)
+        return font
 
     def load_todos(self):
         try:
@@ -110,10 +137,22 @@ class TodosPage(QWidget):
             self.table.setItem(row, 0, QTableWidgetItem(str(todo.id)))
             self.table.setItem(row, 1, QTableWidgetItem(todo.title or ""))
             self.table.setItem(row, 2, QTableWidgetItem((todo.description or "")[:50]))
-            self.table.setItem(row, 3, QTableWidgetItem(todo.status or ""))
+            
+            status_text = STATUS_DISPLAY.get(todo.status, todo.status or "")
+            status_item = QTableWidgetItem(status_text)
+            status_color = STATUS_COLORS.get(todo.status, "#666666")
+            status_item.setForeground(QBrush(QColor(status_color)))
+            status_item.setFont(self._get_bold_font())
+            self.table.setItem(row, 3, status_item)
+            
             self.table.setItem(row, 4, QTableWidgetItem(str(todo.priority or 5)))
             due_date = todo.due_date.strftime("%Y-%m-%d") if todo.due_date else ""
             self.table.setItem(row, 5, QTableWidgetItem(due_date))
+            
+            recurrence_text = RECURRENCE_DISPLAY.get(todo.recurrence_type, "无")
+            if todo.recurrence_type and todo.recurrence_type != RecurrenceType.NONE and todo.recurrence_interval > 1:
+                recurrence_text = f"{recurrence_text}({todo.recurrence_interval})"
+            self.table.setItem(row, 6, QTableWidgetItem(recurrence_text))
 
             btn_widget = QWidget()
             btn_layout = QHBoxLayout(btn_widget)
@@ -139,7 +178,7 @@ class TodosPage(QWidget):
             delete_btn.clicked.connect(lambda checked, tid=todo.id: self.delete_todo(tid))
             btn_layout.addWidget(delete_btn)
 
-            self.table.setCellWidget(row, 6, btn_widget)
+            self.table.setCellWidget(row, 7, btn_widget)
 
     def show_add_dialog(self):
         dialog = TodoDialog(self)
@@ -184,7 +223,7 @@ class TodoDialog(QDialog):
         super().__init__(parent)
         self.todo = todo
         self.setWindowTitle("编辑待办" if todo else "添加待办")
-        self.setMinimumSize(450, 380)
+        self.setMinimumSize(450, 450)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.init_ui()
         if todo:
@@ -221,6 +260,29 @@ class TodoDialog(QDialog):
         self.due_date_input.setDateTime(datetime.now())
         layout.addRow("截止日期:", self.due_date_input)
 
+        recurrence_layout = QHBoxLayout()
+        self.recurrence_combo = QComboBox()
+        self.recurrence_combo.setMinimumHeight(34)
+        self.recurrence_combo.addItem("无", RecurrenceType.NONE)
+        self.recurrence_combo.addItem("每日", RecurrenceType.DAILY)
+        self.recurrence_combo.addItem("每周", RecurrenceType.WEEKLY)
+        self.recurrence_combo.addItem("每月", RecurrenceType.MONTHLY)
+        recurrence_layout.addWidget(self.recurrence_combo)
+        
+        interval_label = QLabel("间隔:")
+        interval_label.setContentsMargins(10, 0, 5, 0)
+        recurrence_layout.addWidget(interval_label)
+        
+        self.recurrence_interval = QSpinBox()
+        self.recurrence_interval.setMinimumHeight(34)
+        self.recurrence_interval.setMinimum(1)
+        self.recurrence_interval.setMaximum(99)
+        self.recurrence_interval.setValue(1)
+        self.recurrence_interval.setFixedWidth(60)
+        recurrence_layout.addWidget(self.recurrence_interval)
+        recurrence_layout.addStretch()
+        layout.addRow("循环:", recurrence_layout)
+
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(12)
         ok_btn = QPushButton("确定")
@@ -248,6 +310,11 @@ class TodoDialog(QDialog):
         self.priority_input.setText(str(self.todo.priority or 5))
         if self.todo.due_date:
             self.due_date_input.setDateTime(self.todo.due_date)
+        
+        recurrence_index = self.recurrence_combo.findData(self.todo.recurrence_type or RecurrenceType.NONE)
+        if recurrence_index >= 0:
+            self.recurrence_combo.setCurrentIndex(recurrence_index)
+        self.recurrence_interval.setValue(self.todo.recurrence_interval or 1)
 
     def get_data(self):
         priority = 5
@@ -255,10 +322,14 @@ class TodoDialog(QDialog):
             priority = int(self.priority_input.text())
         except ValueError:
             pass
+        
+        recurrence_type = self.recurrence_combo.currentData()
         return {
             "title": self.title_input.text(),
             "description": self.desc_input.toPlainText(),
             "status": self.status_combo.currentData(),
             "priority": priority,
-            "due_date": self.due_date_input.dateTime().toPyDateTime()
+            "due_date": self.due_date_input.dateTime().toPyDateTime(),
+            "recurrence_type": recurrence_type,
+            "recurrence_interval": self.recurrence_interval.value() if recurrence_type != RecurrenceType.NONE else 1
         }

@@ -13,12 +13,14 @@ class WorkflowService:
         self.db = db
 
     def create_template(self, name: str, description: str = None,
-                        definition: Dict = None, created_by: int = None) -> WorkflowTemplate:
+                        definition: Dict = None, created_by: int = None,
+                        is_active: str = "Y") -> WorkflowTemplate:
         template = WorkflowTemplate(
             name=name,
             description=description,
             definition=json.dumps(definition) if definition else "{}",
-            created_by=created_by
+            created_by=created_by,
+            is_active=is_active
         )
         self.db.add(template)
         self.db.commit()

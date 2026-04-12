@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
-from models.todo import Todo, TodoStatus
+from models.todo import Todo, TodoStatus, RecurrenceType
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -13,13 +13,17 @@ class TodoService:
 
     def create_todo(self, title: str, description: str = None, priority: int = 5,
                     assigned_to: int = None, due_date: datetime = None,
-                    created_by: int = None) -> Todo:
+                    created_by: int = None, status: str = None,
+                    recurrence_type: str = None, recurrence_interval: int = 1) -> Todo:
         todo = Todo(
             title=title,
             description=description,
             priority=priority,
             assigned_to=assigned_to,
-            due_date=due_date
+            due_date=due_date,
+            status=status if status else TodoStatus.PENDING,
+            recurrence_type=recurrence_type if recurrence_type else RecurrenceType.NONE,
+            recurrence_interval=recurrence_interval
         )
         self.db.add(todo)
         self.db.commit()
@@ -70,7 +74,62 @@ class TodoService:
         return False
 
     def complete_todo(self, todo_id: int) -> Optional[Todo]:
-        return self.update_todo(todo_id, status=TodoStatus.COMPLETED)
+        todo = self.get_todo(todo_id)
+        if not todo:
+            return None
+        
+        todo.status = TodoStatus.COMPLETED
+        todo.completed_at = datetime.now()
+        self.db.commit()
+        self.db.refresh(todo)
+        logger.info(f"完成待办事项: {todo.title}")
+        
+        if todo.recurrence_type and todo.recurrence_type != RecurrenceType.NONE:
+            self._create_next_recurrence(todo)
+        
+        return todo
+
+    def _create_next_recurrence(self, todo: Todo) -> Optional[Todo]:
+        next_due_date = self._calculate_next_due_date(
+            todo.due_date, 
+            todo.recurrence_type, 
+            todo.recurrence_interval
+        )
+        
+        new_todo = Todo(
+            title=todo.title,
+            description=todo.description,
+            priority=todo.priority,
+            assigned_to=todo.assigned_to,
+            due_date=next_due_date,
+            status=TodoStatus.PENDING,
+            recurrence_type=todo.recurrence_type,
+            recurrence_interval=todo.recurrence_interval
+        )
+        self.db.add(new_todo)
+        self.db.commit()
+        self.db.refresh(new_todo)
+        logger.info(f"创建循环待办事项: {new_todo.title}, 下次截止日期: {next_due_date}")
+        return new_todo
+
+    def _calculate_next_due_date(self, current_due_date: datetime, 
+                                  recurrence_type: str, interval: int) -> datetime:
+        if not current_due_date:
+            current_due_date = datetime.now()
+        
+        if recurrence_type == RecurrenceType.DAILY:
+            return current_due_date + timedelta(days=interval)
+        elif recurrence_type == RecurrenceType.WEEKLY:
+            return current_due_date + timedelta(weeks=interval)
+        elif recurrence_type == RecurrenceType.MONTHLY:
+            next_date = current_due_date
+            for _ in range(interval):
+                if next_date.month == 12:
+                    next_date = next_date.replace(year=next_date.year + 1, month=1)
+                else:
+                    next_date = next_date.replace(month=next_date.month + 1)
+            return next_date
+        return current_due_date
 
     def search_todos(self, keyword: str) -> List[Todo]:
         return self.db.query(Todo).filter(

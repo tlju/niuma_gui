@@ -103,8 +103,9 @@ class AssetsPage(QWidget):
         toolbar_layout.addWidget(unit_filter_label)
 
         self.unit_filter_combo = QComboBox()
-        self.unit_filter_combo.setMinimumWidth(120)
+        self.unit_filter_combo.setFixedWidth(120)
         self.unit_filter_combo.setMinimumHeight(34)
+        self.unit_filter_combo.view().setMinimumWidth(250)
         self.unit_filter_combo.addItem("全部", None)
         self.unit_filter_combo.currentTextChanged.connect(lambda: self._filter_assets(self.search_input.text()))
         toolbar_layout.addWidget(self.unit_filter_combo)
@@ -113,8 +114,9 @@ class AssetsPage(QWidget):
         toolbar_layout.addWidget(system_filter_label)
 
         self.system_filter_combo = QComboBox()
-        self.system_filter_combo.setMinimumWidth(120)
+        self.system_filter_combo.setFixedWidth(120)
         self.system_filter_combo.setMinimumHeight(34)
+        self.system_filter_combo.view().setMinimumWidth(350)
         self.system_filter_combo.addItem("全部", None)
         self.system_filter_combo.currentTextChanged.connect(lambda: self._filter_assets(self.search_input.text()))
         toolbar_layout.addWidget(self.system_filter_combo)
@@ -278,7 +280,8 @@ class AssetsPage(QWidget):
     def _on_cell_double_clicked(self, row, column):
         if row < len(self.all_assets):
             asset = self.all_assets[row]
-            self.show_edit_dialog(asset)
+            dialog = AssetDetailDialog(self, asset, self.dict_service, self.asset_service)
+            dialog.exec()
 
     def show_add_dialog(self):
         dialog = AssetDialog(self, dict_service=self.dict_service)
@@ -615,7 +618,7 @@ class AssetDialog(QDialog):
             "vip": self.vip_input.text().strip() or None,
             "username": self.username_input.text().strip(),
             "password": self.password_input.text(),
-            "notes": self.notes_input.text().strip() or None,
+            "notes": self.notes_input.toPlainText().strip() or None,
         }
 
 
@@ -748,3 +751,231 @@ class ImportDialog(QDialog):
             "update_existing": self.update_existing_check.isChecked(),
             "skip_errors": self.skip_errors_check.isChecked()
         }
+
+
+class AssetDetailDialog(QDialog):
+    def __init__(self, parent=None, asset=None, dict_service=None, asset_service=None):
+        super().__init__(parent)
+        self.asset = asset
+        self.dict_service = dict_service
+        self.asset_service = asset_service
+        self.setWindowTitle("资产详情")
+        self.setMinimumSize(600, 500)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self._init_ui()
+        self._populate_data()
+
+    def _get_item_name(self, dict_code, item_code):
+        if not item_code:
+            return "-"
+        if self.dict_service:
+            items = self.dict_service.get_dict_items(dict_code)
+            for item in items:
+                if item.item_code == item_code:
+                    return item.item_name
+        return item_code
+
+    def _init_ui(self):
+        layout = QVBoxLayout()
+        layout.setSpacing(12)
+        layout.setContentsMargins(24, 20, 24, 20)
+
+        title_label = QLabel("资产详情")
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50;")
+        layout.addWidget(title_label)
+
+        info_frame = QFrame()
+        info_frame.setStyleSheet("""
+            QFrame {
+                background-color: #f8f9fa;
+                border: 1px solid #e9ecef;
+                border-radius: 6px;
+                padding: 10px;
+            }
+            QLabel {
+                background-color: transparent;
+            }
+        """)
+        info_layout = QVBoxLayout(info_frame)
+        info_layout.setSpacing(8)
+
+        grid_layout = QHBoxLayout()
+        grid_layout.setSpacing(40)
+
+        left_layout = QVBoxLayout()
+        left_layout.setSpacing(8)
+
+        left_layout.addWidget(self._create_field_row("单位:", "unit_label"))
+        left_layout.addWidget(self._create_field_row("系统:", "system_label"))
+        left_layout.addWidget(self._create_field_row("IP地址:", "ip_label"))
+        left_layout.addWidget(self._create_field_row("IPv6:", "ipv6_label"))
+        left_layout.addWidget(self._create_field_row("端口:", "port_label"))
+        left_layout.addWidget(self._create_field_row("主机名:", "host_name_label"))
+
+        right_layout = QVBoxLayout()
+        right_layout.setSpacing(8)
+
+        right_layout.addWidget(self._create_field_row("位置:", "location_label"))
+        right_layout.addWidget(self._create_field_row("服务器类型:", "server_type_label"))
+        right_layout.addWidget(self._create_field_row("VIP:", "vip_label"))
+        right_layout.addWidget(self._create_field_row("业务服务:", "business_service_label"))
+        right_layout.addWidget(self._create_field_row("用户名:", "username_label"))
+        right_layout.addWidget(self._create_password_row())
+
+        grid_layout.addLayout(left_layout)
+        grid_layout.addLayout(right_layout)
+        grid_layout.addStretch()
+
+        info_layout.addLayout(grid_layout)
+
+        notes_layout = QVBoxLayout()
+        notes_layout.setSpacing(4)
+        notes_title = QLabel("备注:")
+        notes_title.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        self.notes_text = QTextEdit()
+        self.notes_text.setReadOnly(True)
+        self.notes_text.setStyleSheet("color: #2c3e50; font-size: 13px; background-color: #ffffff; border: 1px solid #dee2e6; border-radius: 4px; padding: 8px;")
+        self.notes_text.setMinimumHeight(80)
+        self.notes_text.setMaximumHeight(120)
+        notes_layout.addWidget(notes_title)
+        notes_layout.addWidget(self.notes_text)
+        info_layout.addLayout(notes_layout)
+
+        layout.addWidget(info_frame)
+
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(12)
+        btn_layout.addStretch()
+
+        self.close_btn = QPushButton("关闭")
+        self.close_btn.setProperty("class", "secondary")
+        self.close_btn.setMinimumWidth(100)
+        self.close_btn.setMinimumHeight(40)
+        self.close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.close_btn.clicked.connect(self.accept)
+        btn_layout.addWidget(self.close_btn)
+
+        layout.addLayout(btn_layout)
+        self.setLayout(layout)
+
+    def _create_field_row(self, label_text, attr_name):
+        row_widget = QWidget()
+        row_layout = QHBoxLayout(row_widget)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.setSpacing(10)
+
+        label = QLabel(label_text)
+        label.setStyleSheet("color: #7f8c8d; font-size: 12px; min-width: 70px;")
+        label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+
+        value_label = QLabel("-")
+        value_label.setStyleSheet("color: #2c3e50; font-size: 13px;")
+        value_label.setWordWrap(True)
+        setattr(self, attr_name, value_label)
+
+        row_layout.addWidget(label)
+        row_layout.addWidget(value_label)
+        row_layout.addStretch()
+
+        return row_widget
+
+    def _create_password_row(self):
+        row_widget = QWidget()
+        row_layout = QHBoxLayout(row_widget)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.setSpacing(10)
+
+        label = QLabel("密码:")
+        label.setStyleSheet("color: #7f8c8d; font-size: 12px; min-width: 70px;")
+        label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+
+        self.password_btn = QPushButton("点击查看密码")
+        self.password_btn.setProperty("class", "secondary")
+        self.password_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.password_btn.clicked.connect(self._show_password)
+
+        row_layout.addWidget(label)
+        row_layout.addWidget(self.password_btn)
+        row_layout.addStretch()
+
+        return row_widget
+
+    def _show_password(self):
+        if not self.asset or not self.asset_service:
+            return
+        
+        password = self.asset_service.get_password(self.asset.id)
+        if password:
+            dialog = PasswordDialog(self, password)
+            dialog.exec()
+        else:
+            QMessageBox.information(self, "提示", "未设置密码")
+
+    def _populate_data(self):
+        if not self.asset:
+            return
+
+        self.unit_label.setText(self._get_item_name("unit", self.asset.unit_name) or "-")
+        self.system_label.setText(self._get_item_name("system", self.asset.system_name) or "-")
+        self.ip_label.setText(self.asset.ip or "-")
+        self.ipv6_label.setText(self.asset.ipv6 or "-")
+        self.port_label.setText(str(self.asset.port) if self.asset.port else "-")
+        self.host_name_label.setText(self.asset.host_name or "-")
+        self.location_label.setText(self._get_item_name("location", self.asset.location) or "-")
+        self.server_type_label.setText(self._get_item_name("server_type", self.asset.server_type) or "-")
+        self.vip_label.setText(self.asset.vip or "-")
+        self.business_service_label.setText(self.asset.business_service or "-")
+        self.username_label.setText(self.asset.username or "-")
+        self.notes_text.setText(self.asset.notes or "-")
+
+
+class PasswordDialog(QDialog):
+    def __init__(self, parent=None, password: str = ""):
+        super().__init__(parent)
+        self.password = password
+        self.setWindowTitle("密码详情")
+        self.setMinimumSize(400, 180)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self._init_ui()
+
+    def _init_ui(self):
+        layout = QVBoxLayout()
+        layout.setSpacing(12)
+        layout.setContentsMargins(24, 20, 24, 20)
+
+        title_label = QLabel("解密后的密码")
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50;")
+        layout.addWidget(title_label)
+
+        self.password_input = QLineEdit()
+        self.password_input.setText(self.password)
+        self.password_input.setReadOnly(True)
+        self.password_input.setMinimumHeight(36)
+        self.password_input.setStyleSheet("font-size: 14px;")
+        layout.addWidget(self.password_input)
+
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(12)
+
+        self.copy_btn = QPushButton("复制密码")
+        self.copy_btn.setProperty("class", "success")
+        self.copy_btn.setMinimumHeight(36)
+        self.copy_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.copy_btn.clicked.connect(self._copy_password)
+        btn_layout.addWidget(self.copy_btn)
+
+        self.close_btn = QPushButton("关闭")
+        self.close_btn.setProperty("class", "secondary")
+        self.close_btn.setMinimumHeight(36)
+        self.close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.close_btn.clicked.connect(self.accept)
+        btn_layout.addWidget(self.close_btn)
+
+        layout.addLayout(btn_layout)
+        self.setLayout(layout)
+
+    def _copy_password(self):
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.password)
+        self.copy_btn.setText("已复制!")
+        self.copy_btn.setEnabled(False)

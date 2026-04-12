@@ -1,6 +1,6 @@
 import pytest
 from services.todo_service import TodoService
-from models.todo import TodoStatus
+from models.todo import TodoStatus, RecurrenceType
 from datetime import datetime, timedelta
 
 @pytest.fixture
@@ -133,3 +133,52 @@ def test_search_todos(todo_service):
 
     results = todo_service.search_todos("Test")
     assert len(results) == 1
+
+
+def test_create_recurring_todo(todo_service):
+    todo = todo_service.create_todo(
+        title="Weekly Meeting",
+        description="Team sync",
+        recurrence_type=RecurrenceType.WEEKLY,
+        recurrence_interval=1
+    )
+    assert todo is not None
+    assert todo.recurrence_type == RecurrenceType.WEEKLY
+    assert todo.recurrence_interval == 1
+
+
+def test_complete_recurring_todo_creates_next(todo_service):
+    todo = todo_service.create_todo(
+        title="Weekly Meeting",
+        description="Team sync",
+        recurrence_type=RecurrenceType.WEEKLY,
+        recurrence_interval=1,
+        due_date=datetime.now()
+    )
+    
+    initial_count = len(todo_service.get_todos())
+    
+    completed = todo_service.complete_todo(todo.id)
+    assert completed.status == TodoStatus.COMPLETED
+    
+    all_todos = todo_service.get_todos()
+    assert len(all_todos) == initial_count + 1
+    
+    new_todo = [t for t in all_todos if t.status == TodoStatus.PENDING and t.title == "Weekly Meeting"][0]
+    assert new_todo.recurrence_type == RecurrenceType.WEEKLY
+    assert new_todo.recurrence_interval == 1
+
+
+def test_complete_non_recurring_todo_no_new(todo_service):
+    todo = todo_service.create_todo(
+        title="One-time Task",
+        description="Do once"
+    )
+    
+    initial_count = len(todo_service.get_todos())
+    
+    completed = todo_service.complete_todo(todo.id)
+    assert completed.status == TodoStatus.COMPLETED
+    
+    all_todos = todo_service.get_todos()
+    assert len(all_todos) == initial_count

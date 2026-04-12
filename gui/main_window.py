@@ -4,11 +4,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QAction
-from gui.login_dialog import LoginDialog
 from gui.icons import icons
 from gui.style_manager import load_combined_stylesheet
-from core.database import init_db, get_db_session
-from services.auth_service import AuthService
 from services.asset_service import AssetService
 from services.script_service import ScriptService
 from services.audit_service import AuditService
@@ -23,17 +20,14 @@ logger = get_logger(__name__)
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, user_id: int, username: str, db):
         super().__init__()
-        self.current_user_id = None
-        self.current_username = None
+        self.current_user_id = user_id
+        self.current_username = username
+        self.db = db
         self.setWindowIcon(icons.app_icon())
-        logger.info("启动运维辅助工具主窗口")
+        logger.info(f"启动运维辅助工具主窗口，用户: {username}")
 
-        init_db()
-
-        self.db = get_db_session()
-        self.auth_service = AuthService(self.db)
         self.asset_service = AssetService(self.db)
         self.script_service = ScriptService(self.db)
         self.audit_service = AuditService(self.db)
@@ -44,8 +38,8 @@ class MainWindow(QMainWindow):
         self.workflow_service = WorkflowService(self.db)
 
         self.init_ui()
-
-        self.show_login()
+        self.status_bar.showMessage(f"当前用户: {username}  |  状态: 在线")
+        self.create_main_tabs()
 
     def init_ui(self):
         self.setWindowTitle("运维辅助工具")
@@ -89,11 +83,13 @@ class MainWindow(QMainWindow):
         system_menu.addAction(audit_action)
 
         params_action = QAction("系统参数", self)
+        params_action.setIcon(icons.settings_icon())
         params_action.setShortcut("Ctrl+P")
         params_action.triggered.connect(lambda: self.switch_page("params"))
         system_menu.addAction(params_action)
 
         dicts_action = QAction("数据字典", self)
+        dicts_action.setIcon(icons.dict_icon())
         dicts_action.setShortcut("Ctrl+D")
         dicts_action.triggered.connect(lambda: self.switch_page("dicts"))
         system_menu.addAction(dicts_action)
@@ -121,16 +117,19 @@ class MainWindow(QMainWindow):
         function_menu.addAction(scripts_action)
 
         todos_action = QAction("待办事项", self)
+        todos_action.setIcon(icons.todo_icon())
         todos_action.setShortcut("Ctrl+T")
         todos_action.triggered.connect(lambda: self.switch_page("todos"))
         function_menu.addAction(todos_action)
 
         docs_action = QAction("文档管理", self)
+        docs_action.setIcon(icons.document_icon())
         docs_action.setShortcut("Ctrl+W")
         docs_action.triggered.connect(lambda: self.switch_page("documents"))
         function_menu.addAction(docs_action)
 
         workflows_action = QAction("工作流", self)
+        workflows_action.setIcon(icons.workflow_icon())
         workflows_action.setShortcut("Ctrl+F")
         workflows_action.triggered.connect(lambda: self.switch_page("workflows"))
         function_menu.addAction(workflows_action)
@@ -138,22 +137,9 @@ class MainWindow(QMainWindow):
         help_menu = menubar.addMenu("帮助")
 
         about_action = QAction("关于", self)
+        about_action.setIcon(icons.about_icon())
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
-
-    def show_login(self):
-        login_dialog = LoginDialog(self.auth_service, self)
-        login_dialog.login_success.connect(self.on_login_success)
-        login_dialog.exec()
-
-        if not self.current_user_id:
-            self.close()
-
-    def on_login_success(self, user_id: int, username: str):
-        self.current_user_id = user_id
-        self.current_username = username
-        self.status_bar.showMessage(f"当前用户: {username}  |  状态: 在线")
-        self.create_main_tabs()
 
     def create_main_tabs(self):
         while self.layout.count():
@@ -173,7 +159,7 @@ class MainWindow(QMainWindow):
         from gui.pages.workflows_page import WorkflowsPage
 
         self.assets_page = AssetsPage(self.asset_service, self.current_user_id, self.dict_service)
-        self.scripts_page = ScriptsPage(self.script_service, self.current_user_id)
+        self.scripts_page = ScriptsPage(self.script_service, self.current_user_id, self.dict_service, self.param_service)
         self.audit_page = AuditPage(self.audit_service)
         self.params_page = SystemParamsPage(self.param_service)
         self.dicts_page = DataDictsPage(self.dict_service)

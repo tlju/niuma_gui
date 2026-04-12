@@ -2,12 +2,13 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
     QTableWidgetItem, QPushButton, QDialog, QLabel,
     QLineEdit, QComboBox, QMessageBox, QHeaderView,
-    QFrame, QFormLayout, QTextEdit, QApplication
+    QFrame, QFormLayout, QApplication
 )
 from PyQt6.QtCore import Qt
 from core.logger import get_logger
 from gui.icons import icons
 from gui.style_manager import load_combined_stylesheet
+from gui.rich_text_editor import RichTextEditor
 
 logger = get_logger(__name__)
 
@@ -217,6 +218,7 @@ class DocumentDialog(QDialog):
         self.document = document
         self.readonly = readonly
         self.setWindowTitle("查看文档" if readonly else ("编辑文档" if document else "添加文档"))
+        self.resize(800, 600)
         self.setMinimumSize(600, 500)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.init_ui()
@@ -224,34 +226,45 @@ class DocumentDialog(QDialog):
             self._populate_data()
 
     def init_ui(self):
-        layout = QFormLayout()
-        layout.setSpacing(10)
-        layout.setContentsMargins(20, 16, 20, 16)
+        main_layout = QVBoxLayout()
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(20, 16, 20, 16)
+
+        form_widget = QWidget()
+        form_layout = QFormLayout(form_widget)
+        form_layout.setSpacing(10)
 
         self.title_input = QLineEdit()
         self.title_input.setMinimumHeight(34)
         if self.readonly:
             self.title_input.setReadOnly(True)
-        layout.addRow("标题:", self.title_input)
+        form_layout.addRow("标题:", self.title_input)
 
         self.category_input = QLineEdit()
         self.category_input.setPlaceholderText("如: 技术文档、操作手册等")
         self.category_input.setMinimumHeight(34)
         if self.readonly:
             self.category_input.setReadOnly(True)
-        layout.addRow("分类:", self.category_input)
+        form_layout.addRow("分类:", self.category_input)
 
         self.tags_input = QLineEdit()
         self.tags_input.setPlaceholderText("多个标签用逗号分隔")
         self.tags_input.setMinimumHeight(34)
         if self.readonly:
             self.tags_input.setReadOnly(True)
-        layout.addRow("标签:", self.tags_input)
+        form_layout.addRow("标签:", self.tags_input)
 
-        self.content_input = QTextEdit()
+        main_layout.addWidget(form_widget)
+
+        content_label = QLabel("内容:")
+        main_layout.addWidget(content_label)
+
+        self.content_input = RichTextEditor()
+        self.content_input.setMinimumHeight(300)
         if self.readonly:
-            self.content_input.setReadOnly(True)
-        layout.addRow("内容:", self.content_input)
+            self.content_input.set_read_only(True)
+
+        main_layout.addWidget(self.content_input)
 
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(12)
@@ -268,20 +281,20 @@ class DocumentDialog(QDialog):
         cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
-        layout.addRow(btn_layout)
+        main_layout.addLayout(btn_layout)
 
-        self.setLayout(layout)
+        self.setLayout(main_layout)
 
     def _populate_data(self):
         self.title_input.setText(self.document.title or "")
         self.category_input.setText(self.document.category or "")
         self.tags_input.setText(self.document.tags or "")
-        self.content_input.setPlainText(self.document.content or "")
+        self.content_input.set_text(self.document.content or "")
 
     def get_data(self):
         return {
             "title": self.title_input.text(),
             "category": self.category_input.text(),
             "tags": self.tags_input.text(),
-            "content": self.content_input.toPlainText()
+            "content": self.content_input.get_text()
         }

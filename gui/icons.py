@@ -38,7 +38,7 @@ class IconProvider:
         return icon
 
     def _draw_plus(self, painter, size):
-        color = QColor("#27ae60")
+        color = QColor("#145a32")
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(color)
         r = size / 2
@@ -46,7 +46,7 @@ class IconProvider:
         painter.drawRoundedRect(int(r - size * 0.35), int(r - size * 0.06), int(size * 0.7), int(size * 0.12), 2, 2)
 
     def _draw_refresh(self, painter, size):
-        color = QColor("#3498db")
+        color = QColor("#1a5276")
         pen = QPen(color, max(2, size * 0.08), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
@@ -71,7 +71,7 @@ class IconProvider:
         painter.drawPath(path)
 
     def _draw_play(self, painter, size):
-        color = QColor("#8e44ad")
+        color = QColor("#5b2c6f")
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(color)
         margin = size * 0.2
@@ -83,7 +83,7 @@ class IconProvider:
         painter.drawPath(path)
 
     def _draw_trash(self, painter, size):
-        color = QColor("#e74c3c")
+        color = QColor("#922b21")
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(color)
         body_top = size * 0.35
@@ -101,7 +101,7 @@ class IconProvider:
             painter.drawLine(int(x1), int(y), int(x2), int(y))
 
     def _draw_edit(self, painter, size):
-        color = QColor("#3498db")
+        color = QColor("#1a5276")
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(color)
         painter.save()
@@ -118,7 +118,7 @@ class IconProvider:
         painter.restore()
 
     def _draw_check(self, painter, size):
-        color = QColor("#27ae60")
+        color = QColor("#145a32")
         pen = QPen(color, max(2, size * 0.1), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
@@ -129,7 +129,7 @@ class IconProvider:
         painter.drawPath(path)
 
     def _draw_cross(self, painter, size):
-        color = QColor("#e74c3c")
+        color = QColor("#922b21")
         pen = QPen(color, max(2, size * 0.1), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
@@ -223,7 +223,7 @@ class IconProvider:
         painter.drawRoundedRect(QRectF(cx - bar_w / 2, cy - r * 0.15, bar_w, bar_h), 2, 2)
 
     def _draw_download(self, painter, size):
-        color = QColor("#27ae60")
+        color = QColor("#145a32")
         pen = QPen(color, max(2, size * 0.08), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
@@ -244,7 +244,7 @@ class IconProvider:
         painter.drawLine(int(cx - arrow_size * 0.6), int(base_y), int(cx + arrow_size * 0.6), int(base_y))
 
     def _draw_upload(self, painter, size):
-        color = QColor("#3498db")
+        color = QColor("#1a5276")
         pen = QPen(color, max(2, size * 0.08), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
@@ -263,6 +263,134 @@ class IconProvider:
         path.moveTo(cx, cy - arrow_size * 0.5)
         path.lineTo(cx + arrow_size * 0.5, cy)
         painter.drawPath(path)
+
+    def _draw_settings(self, painter, size):
+        color = QColor("#7f8c8d")
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(color)
+        cx = size / 2
+        cy = size / 2
+        outer_r = size * 0.4
+        inner_r = size * 0.15
+        painter.drawEllipse(QRectF(cx - outer_r, cy - outer_r, outer_r * 2, outer_r * 2))
+        painter.setBrush(QColor("#f5f6fa"))
+        painter.drawEllipse(QRectF(cx - inner_r, cy - inner_r, inner_r * 2, inner_r * 2))
+        painter.setBrush(color)
+        tooth_w = size * 0.1
+        tooth_h = size * 0.15
+        for i in range(8):
+            angle = i * 45
+            import math
+            rad = math.radians(angle)
+            tx = cx + (outer_r - tooth_h * 0.3) * math.cos(rad)
+            ty = cy + (outer_r - tooth_h * 0.3) * math.sin(rad)
+            painter.save()
+            painter.translate(tx, ty)
+            painter.rotate(angle + 90)
+            painter.drawRoundedRect(QRectF(-tooth_w / 2, 0, tooth_w, tooth_h), 2, 2)
+            painter.restore()
+
+    def _draw_book(self, painter, size):
+        color = QColor("#9b59b6")
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(color)
+        margin = size * 0.15
+        book_w = size - 2 * margin
+        book_h = size - 2 * margin
+        painter.drawRoundedRect(QRectF(margin, margin, book_w, book_h), 3, 3)
+        spine_x = margin + book_w * 0.15
+        painter.setPen(QPen(QColor("#8e44ad"), max(1, size * 0.03)))
+        painter.drawLine(int(spine_x), int(margin + size * 0.05), int(spine_x), int(margin + book_h - size * 0.05))
+        painter.setPen(QPen(QColor("#ffffff"), max(1, size * 0.025)))
+        for i in range(3):
+            y = margin + size * 0.2 + i * size * 0.18
+            painter.drawLine(int(spine_x + size * 0.08), int(y), int(margin + book_w - size * 0.1), int(y))
+
+    def _draw_checklist(self, painter, size):
+        color = QColor("#e67e22")
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(color)
+        margin = size * 0.15
+        list_w = size - 2 * margin
+        list_h = size - 2 * margin
+        painter.drawRoundedRect(QRectF(margin, margin, list_w, list_h), 4, 4)
+        painter.setPen(QPen(QColor("#ffffff"), max(1, size * 0.04)))
+        check_color = QColor("#27ae60")
+        for i in range(3):
+            y = margin + size * 0.22 + i * size * 0.2
+            box_size = size * 0.1
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.setPen(QPen(QColor("#ffffff"), max(1, size * 0.03)))
+            painter.drawRoundedRect(QRectF(margin + size * 0.08, y - box_size / 2, box_size, box_size), 2, 2)
+            painter.drawLine(int(margin + size * 0.25), int(y), int(margin + list_w - size * 0.1), int(y))
+        painter.setPen(QPen(check_color, max(1.5, size * 0.05), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        y1 = margin + size * 0.22
+        painter.drawLine(int(margin + size * 0.1), int(y1), int(margin + size * 0.14), int(y1 + size * 0.05))
+        painter.drawLine(int(margin + size * 0.14), int(y1 + size * 0.05), int(margin + size * 0.18), int(y1 - size * 0.03))
+
+    def _draw_document(self, painter, size):
+        color = QColor("#2980b9")
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(color)
+        margin = size * 0.15
+        fold = size * 0.12
+        path = QPainterPath()
+        path.moveTo(margin, margin)
+        path.lineTo(size - margin - fold, margin)
+        path.lineTo(size - margin, margin + fold)
+        path.lineTo(size - margin, size - margin)
+        path.lineTo(margin, size - margin)
+        path.closeSubpath()
+        painter.drawPath(path)
+        fold_path = QPainterPath()
+        fold_path.moveTo(size - margin - fold, margin)
+        fold_path.lineTo(size - margin - fold, margin + fold)
+        fold_path.lineTo(size - margin, margin + fold)
+        fold_path.closeSubpath()
+        painter.setBrush(QColor("#1a5276"))
+        painter.drawPath(fold_path)
+        painter.setPen(QPen(QColor("#ffffff"), max(1, size * 0.035)))
+        for i in range(4):
+            y = margin + size * 0.2 + i * size * 0.12
+            line_w = size * 0.4 if i == 3 else size * 0.5
+            painter.drawLine(int(margin + size * 0.1), int(y), int(margin + size * 0.1 + line_w), int(y))
+
+    def _draw_workflow(self, painter, size):
+        color = QColor("#16a085")
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(color)
+        box_size = size * 0.22
+        gap = size * 0.08
+        painter.drawRoundedRect(QRectF(size * 0.1, size * 0.1, box_size, box_size), 3, 3)
+        painter.drawRoundedRect(QRectF(size * 0.1, size * 0.68 - gap, box_size, box_size), 3, 3)
+        painter.drawRoundedRect(QRectF(size * 0.68 - gap, size * 0.39 - box_size / 2, box_size, box_size), 3, 3)
+        pen = QPen(color, max(2, size * 0.05), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        start_x = size * 0.1 + box_size
+        mid_x = size * 0.68 - gap
+        top_y = size * 0.1 + box_size / 2
+        bot_y = size * 0.68 - gap + box_size / 2
+        right_y = size * 0.39
+        painter.drawLine(int(start_x), int(top_y), int(mid_x), int(top_y))
+        painter.drawLine(int(mid_x), int(top_y), int(mid_x), int(right_y - box_size / 2))
+        painter.drawLine(int(start_x), int(bot_y), int(mid_x), int(bot_y))
+        painter.drawLine(int(mid_x), int(bot_y), int(mid_x), int(right_y + box_size / 2))
+
+    def _draw_about(self, painter, size):
+        color = QColor("#3498db")
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(color)
+        cx = size / 2
+        cy = size / 2
+        r = size * 0.38
+        painter.drawEllipse(QRectF(cx - r, cy - r, r * 2, r * 2))
+        painter.setBrush(QColor("#ffffff"))
+        dot_r = size * 0.055
+        painter.drawEllipse(QRectF(cx - dot_r, cy - r * 0.45, dot_r * 2, dot_r * 2))
+        bar_w = size * 0.09
+        bar_h = size * 0.22
+        painter.drawRoundedRect(QRectF(cx - bar_w / 2, cy - r * 0.1, bar_w, bar_h), 2, 2)
 
     def app_icon(self):
         return self._create_icon(self._draw_computer)
@@ -305,6 +433,24 @@ class IconProvider:
 
     def upload_icon(self):
         return self._create_icon(self._draw_upload)
+
+    def settings_icon(self):
+        return self._create_icon(self._draw_settings)
+
+    def dict_icon(self):
+        return self._create_icon(self._draw_book)
+
+    def todo_icon(self):
+        return self._create_icon(self._draw_checklist)
+
+    def document_icon(self):
+        return self._create_icon(self._draw_document)
+
+    def workflow_icon(self):
+        return self._create_icon(self._draw_workflow)
+
+    def about_icon(self):
+        return self._create_icon(self._draw_about)
 
 
 icons = IconProvider()

@@ -20,6 +20,7 @@ class ScriptService:
         name: str,
         content: str,
         description: Optional[str] = None,
+        language: Optional[str] = None,
         server_id: Optional[int] = None,
         created_by: Optional[int] = None
     ) -> Optional[int]:
@@ -27,6 +28,7 @@ class ScriptService:
             name=name,
             content=content,
             description=description,
+            language=language,
             server_id=server_id,
             created_by=created_by
         )
@@ -52,6 +54,42 @@ class ScriptService:
 
     def get_by_id(self, script_id: int) -> Optional[Script]:
         return self.db.query(Script).filter(Script.id == script_id).first()
+
+    def update(
+        self,
+        script_id: int,
+        name: Optional[str] = None,
+        content: Optional[str] = None,
+        description: Optional[str] = None,
+        language: Optional[str] = None,
+        updated_by: Optional[int] = None
+    ) -> bool:
+        script = self.get_by_id(script_id)
+        if not script:
+            return False
+
+        if name is not None:
+            script.name = name
+        if content is not None:
+            script.content = content
+        if description is not None:
+            script.description = description
+        if language is not None:
+            script.language = language
+
+        self.db.commit()
+
+        if updated_by:
+            audit = AuditLog(
+                user_id=updated_by,
+                action_type="update",
+                resource_type="script",
+                resource_id=script_id
+            )
+            self.db.add(audit)
+            self.db.commit()
+
+        return True
 
     def execute(
         self,

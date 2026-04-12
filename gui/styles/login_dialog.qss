@@ -59,7 +59,8 @@ LoginDialog QPushButton[class="login"] {
     font-weight: 700;
     padding: 12px 24px;
     letter-spacing: 4px;
-    color: #ffffff;
+    color: #2c3e50;
+    margin-bottom: 50px;
 }
 
 LoginDialog QPushButton[class="login"]:hover {
