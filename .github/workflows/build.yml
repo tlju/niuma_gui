@@ -98,7 +98,6 @@ jobs:
             --lto=yes \
             --assume-yes-for-downloads \
             --jobs=$(nproc) \
-            --cache \
             main.py
         fi
       shell: bash
