@@ -108,6 +108,7 @@ jobs:
             --assume-yes-for-downloads \
             --jobs=$(nproc) \
             --lto=yes \
+            --file-reference-choice=runtime \
             --include-package-data=pyqt6 \
             --remove-output \
             --no-progress-bar \
