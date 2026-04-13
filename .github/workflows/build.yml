@@ -1,4 +1,4 @@
-name: Build and Release
+name: 构建和发布
 
 on:
   workflow_dispatch:
@@ -32,51 +32,71 @@ jobs:
             output_name: niuma-windows-x64.exe
 
     steps:
-    - name: Checkout code
+    - name: 检出代码
       uses: actions/checkout@v4
 
-    - name: Set up QEMU (arm64)
+    - name: 设置 QEMU (arm64)
       if: matrix.arch == 'arm64'
       uses: docker/setup-qemu-action@v3
 
-    - name: Set up Python
+    - name: 设置 Python
       uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
+        cache-dependency-path: |
+          requirements.txt
+          .github/workflows/build.yml
 
-    - name: Install dependencies
+    - name: 缓存 pip 包
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: pip-${{ matrix.os }}-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          pip-${{ matrix.os }}-
+
+    - name: 安装依赖
       run: |
-        python -m pip install --upgrade pip
+        python -m pip install --upgrade pip setuptools wheel
         pip install -r requirements.txt
         pip install nuitka ordered-set zstandard
 
-    - name: Install build dependencies (Linux)
+    - name: 安装构建依赖 (Linux)
       if: matrix.platform == 'linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y ccache
+        sudo apt-get install -y ccache build-essential
 
-    - name: Cache Nuitka compilation
+    - name: 验证 Python 环境
+      run: |
+        python --version
+        pip --version
+        pip list | grep -i nuitka
+
+    - name: 缓存 Nuitka 编译
       uses: actions/cache@v4
       with:
         path: |
           ~/.cache/Nuitka
           ~/.nuitka
-        key: nuitka-${{ matrix.os }}-${{ hashFiles('**/*.py', 'requirements.txt') }}
+          build
+        key: nuitka-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('**/*.py', 'requirements.txt') }}
         restore-keys: |
+          nuitka-${{ matrix.os }}-${{ matrix.arch }}-
           nuitka-${{ matrix.os }}-
 
-    - name: Cache ccache (Linux)
+    - name: 缓存 ccache (Linux)
       if: matrix.platform == 'linux'
       uses: actions/cache@v4
       with:
         path: ~/.cache/ccache
-        key: ccache-${{ matrix.os }}-${{ hashFiles('**/*.py') }}
+        key: ccache-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('**/*.py') }}
         restore-keys: |
+          ccache-${{ matrix.os }}-${{ matrix.arch }}-
           ccache-${{ matrix.os }}-
 
-    - name: Build with Nuitka
+    - name: 使用 Nuitka 构建
       run: |
         if [ "${{ matrix.platform }}" = "windows" ]; then
           python -m nuitka --standalone --onefile --windows-disable-console \
@@ -87,6 +107,12 @@ jobs:
             --output-filename=${{ matrix.output_name }} \
             --assume-yes-for-downloads \
             --jobs=$(nproc) \
+            --lto=yes \
+            --file-reference-choice=runtime \
+            --module-reference-choice=runtime \
+            --include-package-data=pyqt6 \
+            --remove-output \
+            --no-progress-bar \
             main.py
         else
           python -m nuitka --standalone --onefile --disable-console \
@@ -98,17 +124,34 @@ jobs:
             --lto=yes \
             --assume-yes-for-downloads \
             --jobs=$(nproc) \
+            --file-reference-choice=runtime \
+            --module-reference-choice=runtime \
+            --include-package-data=pyqt6 \
+            --remove-output \
+            --no-progress-bar \
             main.py
         fi
       shell: bash
 
-    - name: Upload artifact
+    - name: 验证构建输出
+      run: |
+        if [ -f "dist/${{ matrix.output_name }}" ]; then
+          echo "构建成功: ${{ matrix.output_name }}"
+          ls -lh dist/${{ matrix.output_name }}
+        else
+          echo "构建失败: 输出文件未找到"
+          exit 1
+        fi
+      shell: bash
+
+    - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.output_name }}
         path: dist/${{ matrix.output_name }}
+        retention-days: 30
 
-    - name: Upload to Release
+    - name: 上传到发布
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v2
       with:
