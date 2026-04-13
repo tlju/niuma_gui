@@ -32,5 +32,3 @@ dist/
 *.log
 !logs/*.log
 
-alembic/
-

@@ -3,7 +3,6 @@
 import sys
 import os
 
-from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
 from gui.main_window import MainWindow

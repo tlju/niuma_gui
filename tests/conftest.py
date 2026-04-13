@@ -1,8 +1,6 @@
 import pytest
 import sys
 
-from PyQt6.QtWebEngineWidgets import QWebEngineView
-
 
 @pytest.fixture(scope="session")
 def qapp():
