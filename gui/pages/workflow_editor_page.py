@@ -814,15 +814,42 @@ class WorkflowEditorPage(QWidget):
         for edge_data in edges:
             source_key = edge_data.get("source_node_key")
             target_key = edge_data.get("target_node_key")
+            source_port_index = edge_data.get("source_port", 0)
+            target_port_index = edge_data.get("target_port", 0)
 
             if source_key in node_map and target_key in node_map:
                 source_node = node_map[source_key]
                 target_node = node_map[target_key]
 
-                source_port = source_node[PortType.output][0]
-                target_port = target_node[PortType.input][0]
+                source_ports = source_node[PortType.output]
+                target_ports = target_node[PortType.input]
 
-                self._scene.create_connection(source_port, target_port)
+                if source_port_index >= len(source_ports) or target_port_index >= len(target_ports):
+                    logger.warning(
+                        f"跳过无效连接: 端口索引越出范围 "
+                        f"(source_port={source_port_index}/{len(source_ports)}, "
+                        f"target_port={target_port_index}/{len(target_ports)})"
+                    )
+                    continue
+
+                source_port = source_ports[source_port_index]
+                target_port = target_ports[target_port_index]
+
+                if target_port.connections:
+                    from qtpynodeeditor import ConnectionPolicy
+                    target_policy = target_port.connection_policy
+                    if target_policy == ConnectionPolicy.one:
+                        logger.warning(
+                            f"跳过重复连接: 目标端口只允许一个连接 "
+                            f"(source={source_key}:{source_port_index}, "
+                            f"target={target_key}:{target_port_index})"
+                        )
+                        continue
+
+                    connection = self._scene.create_connection(source_port)
+                    connection.connect_to(target_port)
+                else:
+                    self._scene.create_connection(source_port, target_port)
 
         self._is_modified = False
         logger.info(f"加载工作流: {workflow_id}")
@@ -865,11 +892,14 @@ class WorkflowEditorPage(QWidget):
                     source_model = source_node.model
                     target_model = target_node.model
 
+                    source_port_index = conn.get_port_index(PortType.output)
+                    target_port_index = conn.get_port_index(PortType.input)
+
                     edges.append({
                         "source_node_key": source_model.node_key,
                         "target_node_key": target_model.node_key,
-                        "source_port": 0,
-                        "target_port": 0,
+                        "source_port": source_port_index,
+                        "target_port": target_port_index,
                         "condition_json": {}
                     })
 

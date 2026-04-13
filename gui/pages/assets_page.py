@@ -25,6 +25,7 @@ class AssetsPage(QWidget):
         self.dict_service = dict_service
         self.loading_worker = None
         self.all_assets = []
+        self.filtered_assets = []
         self.dict_cache = {}
         self._load_dict_cache()
         self.init_ui()
@@ -70,14 +71,14 @@ class AssetsPage(QWidget):
         toolbar_layout.setContentsMargins(10, 8, 10, 8)
         toolbar_layout.setSpacing(10)
 
-        self.add_btn = QPushButton("  添加资产")
+        self.add_btn = QPushButton("添加资产")
         self.add_btn.setIcon(icons.add_icon())
         self.add_btn.setProperty("class", "success")
         self.add_btn.setMinimumHeight(34)
         self.add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         toolbar_layout.addWidget(self.add_btn)
 
-        self.refresh_btn = QPushButton("  刷新")
+        self.refresh_btn = QPushButton("刷新")
         self.refresh_btn.setIcon(icons.refresh_icon())
         self.refresh_btn.setMinimumHeight(34)
         self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -85,13 +86,13 @@ class AssetsPage(QWidget):
 
         toolbar_layout.addSpacing(10)
 
-        self.export_btn = QPushButton("  导出")
+        self.export_btn = QPushButton("导出")
         self.export_btn.setIcon(icons.download_icon())
         self.export_btn.setMinimumHeight(34)
         self.export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         toolbar_layout.addWidget(self.export_btn)
 
-        self.import_btn = QPushButton("  导入")
+        self.import_btn = QPushButton("导入")
         self.import_btn.setIcon(icons.upload_icon())
         self.import_btn.setMinimumHeight(34)
         self.import_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -190,6 +191,7 @@ class AssetsPage(QWidget):
         self.refresh_btn.setEnabled(True)
         self.refresh_btn.setText("  刷新")
         self.all_assets = assets
+        self.filtered_assets = assets
         self._populate_table(assets)
         self._update_count_label()
         logger.info(f"成功加载 {len(assets)} 个资产")
@@ -227,6 +229,7 @@ class AssetsPage(QWidget):
                 or text in (self._get_item_name("server_type", a.server_type) or "").lower()
             ]
         
+        self.filtered_assets = filtered
         self._populate_table(filtered)
         self._update_count_label()
 
@@ -278,8 +281,8 @@ class AssetsPage(QWidget):
             self.table.setCellWidget(row, 10, btn_widget)
 
     def _on_cell_double_clicked(self, row, column):
-        if row < len(self.all_assets):
-            asset = self.all_assets[row]
+        if row < len(self.filtered_assets):
+            asset = self.filtered_assets[row]
             dialog = AssetDetailDialog(self, asset, self.dict_service, self.asset_service)
             dialog.exec()
 
@@ -336,7 +339,7 @@ class AssetsPage(QWidget):
                 
                 if file_path:
                     asset_ids = None if options["export_all"] else [
-                        self.all_assets[i].id for i in range(self.table.rowCount())
+                        self.filtered_assets[i].id for i in range(self.table.rowCount())
                     ]
                     
                     file_data = self.asset_service.export_assets(
