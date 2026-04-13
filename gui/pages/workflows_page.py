@@ -185,7 +185,7 @@ class WorkflowsPage(QWidget):
             btn_layout.addWidget(edit_btn)
 
             run_btn = QPushButton("执行")
-            run_btn.setProperty("class", "success")
+            run_btn.setProperty("class", "table-complete")
             run_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             run_btn.clicked.connect(
                 lambda checked, w=workflow: self.execute_workflow(w)
