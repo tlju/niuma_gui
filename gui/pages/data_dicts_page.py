@@ -32,7 +32,7 @@ class DataDictsPage(QWidget):
         toolbar_layout.setContentsMargins(10, 8, 10, 8)
         toolbar_layout.setSpacing(10)
 
-        self.add_btn = QPushButton("  添加字典")
+        self.add_btn = QPushButton("添加字典")
         self.add_btn.setIcon(icons.add_icon())
         self.add_btn.setProperty("class", "success")
         self.add_btn.setMinimumHeight(34)
@@ -40,7 +40,7 @@ class DataDictsPage(QWidget):
         self.add_btn.clicked.connect(self.show_add_dict_dialog)
         toolbar_layout.addWidget(self.add_btn)
 
-        self.add_item_btn = QPushButton("  添加字典项")
+        self.add_item_btn = QPushButton("添加字典项")
         self.add_item_btn.setIcon(icons.add_icon())
         self.add_item_btn.setProperty("class", "success")
         self.add_item_btn.setMinimumHeight(34)
@@ -49,7 +49,7 @@ class DataDictsPage(QWidget):
         self.add_item_btn.setEnabled(False)
         toolbar_layout.addWidget(self.add_item_btn)
 
-        self.refresh_btn = QPushButton("  刷新")
+        self.refresh_btn = QPushButton("刷新")
         self.refresh_btn.setIcon(icons.refresh_icon())
         self.refresh_btn.setMinimumHeight(34)
         self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)

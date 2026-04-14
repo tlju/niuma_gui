@@ -40,7 +40,7 @@ class AuditPage(QWidget):
         self.action_combo.currentIndexChanged.connect(self.load_logs)
         toolbar_layout.addWidget(self.action_combo)
 
-        self.refresh_btn = QPushButton("  刷新")
+        self.refresh_btn = QPushButton("刷新")
         self.refresh_btn.setIcon(icons.refresh_icon())
         self.refresh_btn.setMinimumHeight(34)
         self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)

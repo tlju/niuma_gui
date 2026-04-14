@@ -34,7 +34,7 @@ class DocumentsPage(QWidget):
         toolbar_layout.setContentsMargins(10, 8, 10, 8)
         toolbar_layout.setSpacing(10)
 
-        self.add_btn = QPushButton("  添加文档")
+        self.add_btn = QPushButton("添加文档")
         self.add_btn.setIcon(icons.add_icon())
         self.add_btn.setProperty("class", "success")
         self.add_btn.setMinimumHeight(34)
@@ -42,7 +42,7 @@ class DocumentsPage(QWidget):
         self.add_btn.clicked.connect(self.show_add_dialog)
         toolbar_layout.addWidget(self.add_btn)
 
-        self.refresh_btn = QPushButton("  刷新")
+        self.refresh_btn = QPushButton("刷新")
         self.refresh_btn.setIcon(icons.refresh_icon())
         self.refresh_btn.setMinimumHeight(34)
         self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)

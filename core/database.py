@@ -25,8 +25,7 @@ def init_db():
     from models import (
         User, ServerAsset, Script, ExecLog, AuditLog,
         SystemConfig, DataDict, DataDictItem, SystemParam,
-        Todo, Document, Workflow, WorkflowNode, WorkflowEdge,
-        WorkflowRun, WorkflowRunNode
+        Todo, Document
     )
     Base.metadata.create_all(bind=engine)
 
