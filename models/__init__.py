@@ -10,6 +10,7 @@ from models.data_dict_item import DataDictItem
 from models.system_param import SystemParam
 from models.todo import Todo, TodoStatus
 from models.document import Document
+from models.workflow import Workflow, WorkflowNode, WorkflowExecution, WorkflowNodeExecution
 
 __all__ = [
     "Base",
@@ -25,4 +26,8 @@ __all__ = [
     "Todo",
     "TodoStatus",
     "Document",
+    "Workflow",
+    "WorkflowNode",
+    "WorkflowExecution",
+    "WorkflowNodeExecution",
 ]

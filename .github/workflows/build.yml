@@ -3,7 +3,7 @@ name: 构建和发布
 on:
   workflow_dispatch:
   release:
-    types: [ published ]
+    types: [published]
 
 permissions:
   contents: write
@@ -156,3 +156,113 @@ jobs:
         files: dist/${{ matrix.output_name }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sync-to-gitee:
+    name: 同步到 Gitee
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'release' && secrets.GITEE_TOKEN != ''
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 获取 Release 信息
+      id: release-info
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+          "https://api.github.com/repos/${{ github.repository }}/releases/latest")
+
+        TAG_NAME=$(echo "$RELEASE_INFO" | jq -r '.tag_name')
+        RELEASE_NAME=$(echo "$RELEASE_INFO" | jq -r '.name')
+        RELEASE_BODY=$(echo "$RELEASE_INFO" | jq -r '.body')
+        TARGET_COMMITISH=$(echo "$RELEASE_INFO" | jq -r '.target_commitish')
+        PRERELEASE=$(echo "$RELEASE_INFO" | jq -r '.prerelease')
+
+        echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+        echo "release_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
+        echo "target_commitish=$TARGET_COMMITISH" >> $GITHUB_OUTPUT
+        echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+
+        RELEASE_BODY_ESCAPED=$(echo "$RELEASE_BODY" | jq -Rs .)
+        echo "release_body=$RELEASE_BODY_ESCAPED" >> $GITHUB_OUTPUT
+
+        echo "Release 标签: $TAG_NAME"
+
+    - name: 创建 Gitee Release
+      env:
+        GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+      run: |
+        GITEE_OWNER="${{ github.repository_owner }}"
+        GITEE_REPO="${{ github.event.repository.name }}"
+
+        RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer $GITEE_TOKEN" \
+          -d '{
+            "tag_name": "${{ steps.release-info.outputs.tag_name }}",
+            "name": "${{ steps.release-info.outputs.release_name }}",
+            "body": ${{ steps.release-info.outputs.release_body }},
+            "target_commitish": "${{ steps.release-info.outputs.target_commitish }}",
+            "prerelease": ${{ steps.release-info.outputs.prerelease }}
+          }' \
+          "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases")
+
+        HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+        BODY=$(echo "$RESPONSE" | sed '$d')
+
+        if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+          echo "✅ Gitee Release 创建成功"
+          GITEE_RELEASE_ID=$(echo "$BODY" | jq -r '.id')
+          echo "gitee_release_id=$GITEE_RELEASE_ID" >> $GITHUB_OUTPUT
+        else
+          echo "⚠️ Gitee Release 创建可能已存在或失败 (HTTP $HTTP_CODE)"
+          echo "响应: $BODY"
+        fi
+
+    - name: 下载构建产物
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+        pattern: niuma-*
+        merge-multiple: false
+
+    - name: 上传资产到 Gitee
+      env:
+        GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+      run: |
+        GITEE_OWNER="${{ github.repository_owner }}"
+        GITEE_REPO="${{ github.event.repository.name }}"
+
+        GITEE_RELEASE_ID=$(curl -s -H "Authorization: Bearer $GITEE_TOKEN" \
+          "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases/latest" | jq -r '.id')
+
+        if [ -z "$GITEE_RELEASE_ID" ] || [ "$GITEE_RELEASE_ID" = "null" ]; then
+          echo "❌ 无法获取 Gitee Release ID"
+          exit 1
+        fi
+
+        echo "Gitee Release ID: $GITEE_RELEASE_ID"
+        echo "开始上传资产..."
+
+        find artifacts -type f \( -name "niuma-linux-x64" -o -name "niuma-linux-arm64" -o -name "niuma-windows-x64.exe" \) | while read -r FILE; do
+          FILENAME=$(basename "$FILE")
+          echo "📤 上传: $FILENAME"
+
+          UPLOAD_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer $GITEE_TOKEN" \
+            -F "file=@$FILE" \
+            "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases/$GITEE_RELEASE_ID/attach_files?name=$FILENAME")
+
+          UPLOAD_HTTP_CODE=$(echo "$UPLOAD_RESPONSE" | tail -n1)
+          if [ "$UPLOAD_HTTP_CODE" -ge 200 ] && [ "$UPLOAD_HTTP_CODE" -lt 300 ]; then
+            echo "✅ 上传成功: $FILENAME"
+          else
+            echo "❌ 上传失败: $FILENAME (HTTP $UPLOAD_HTTP_CODE)"
+          fi
+        done
+
+    - name: 同步完成
+      run: |
+        echo "🎉 Release ${{ steps.release-info.outputs.tag_name }} 已成功同步到 Gitee！"
