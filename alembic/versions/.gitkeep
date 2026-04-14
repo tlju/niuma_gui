@@ -1,3 +1,0 @@
-# This directory is used by Alembic to store migration scripts.
-# Migration scripts should be named with a revision ID and a descriptive slug,
-# e.g. "001_create_users_table.py"

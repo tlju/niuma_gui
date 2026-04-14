@@ -5,4 +5,3 @@
 - Use virtual environment `venv` for Python dependencies
 - After completing any feature, write test code for it
 - Place all test code in the `tests` directory
-- Use `alembic` as the data migration tool
