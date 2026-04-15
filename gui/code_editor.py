@@ -1,3 +1,4 @@
+import sys
 from PyQt6.Qsci import QsciScintilla, QsciLexerPython, QsciLexerBash, QsciLexerSQL
 from PyQt6.QtGui import QFont, QColor
 from PyQt6.QtCore import Qt
@@ -10,6 +11,22 @@ class CodeEditor(QsciScintilla):
         "sql": QsciLexerSQL,
     }
 
+    @staticmethod
+    def _get_monospace_font(size: int = 10) -> QFont:
+        if sys.platform == "win32":
+            font = QFont("Consolas", size)
+        else:
+            font = QFont("DejaVu Sans Mono", size)
+            if not font.exactMatch():
+                font = QFont("Liberation Mono", size)
+            if not font.exactMatch():
+                font = QFont("Ubuntu Mono", size)
+            if not font.exactMatch():
+                font = QFont("Monospace", size)
+        font.setStyleHint(QFont.StyleHint.Monospace)
+        font.setFixedPitch(True)
+        return font
+
     def __init__(self, parent=None, param_service=None, dict_service=None):
         super().__init__(parent)
         self._param_service = param_service
@@ -20,9 +37,7 @@ class CodeEditor(QsciScintilla):
         self._setup_completion()
 
     def _setup_editor(self):
-        font = QFont("Consolas", 10)
-        font.setStyleHint(QFont.StyleHint.Monospace)
-        font.setFixedPitch(True)
+        font = self._get_monospace_font(12)
         self.setFont(font)
 
         self.setMarginLineNumbers(1, True)
@@ -157,19 +172,9 @@ class CodeEditor(QsciScintilla):
         return re.sub(pattern, replace_var, content)
 
     def _setup_python_lexer(self, lexer):
-        font = QFont("Consolas", 10)
-        font.setFixedPitch(True)
-        lexer.setFont(font, QsciLexerPython.Default)
-        lexer.setFont(font, QsciLexerPython.Comment)
-        lexer.setFont(font, QsciLexerPython.Number)
-        lexer.setFont(font, QsciLexerPython.DoubleQuotedString)
-        lexer.setFont(font, QsciLexerPython.SingleQuotedString)
-        lexer.setFont(font, QsciLexerPython.Keyword)
-        lexer.setFont(font, QsciLexerPython.TripleSingleQuotedString)
-        lexer.setFont(font, QsciLexerPython.TripleDoubleQuotedString)
-        lexer.setFont(font, QsciLexerPython.ClassName)
-        lexer.setFont(font, QsciLexerPython.FunctionMethodName)
-        lexer.setFont(font, QsciLexerPython.Operator)
+        font = self._get_monospace_font(12)
+        for style in range(20):
+            lexer.setFont(font, style)
 
         lexer.setColor(QColor("#000000"), QsciLexerPython.Default)
         lexer.setColor(QColor("#008000"), QsciLexerPython.Comment)
@@ -186,15 +191,9 @@ class CodeEditor(QsciScintilla):
         lexer.setPaper(QColor("#ffffff"), QsciLexerPython.Default)
 
     def _setup_bash_lexer(self, lexer):
-        font = QFont("Consolas", 10)
-        font.setFixedPitch(True)
-        lexer.setFont(font, QsciLexerBash.Default)
-        lexer.setFont(font, QsciLexerBash.Comment)
-        lexer.setFont(font, QsciLexerBash.Number)
-        lexer.setFont(font, QsciLexerBash.DoubleQuotedString)
-        lexer.setFont(font, QsciLexerBash.SingleQuotedString)
-        lexer.setFont(font, QsciLexerBash.Keyword)
-        lexer.setFont(font, QsciLexerBash.Operator)
+        font = self._get_monospace_font(12)
+        for style in range(20):
+            lexer.setFont(font, style)
 
         lexer.setColor(QColor("#000000"), QsciLexerBash.Default)
         lexer.setColor(QColor("#008000"), QsciLexerBash.Comment)
@@ -207,16 +206,9 @@ class CodeEditor(QsciScintilla):
         lexer.setPaper(QColor("#ffffff"), QsciLexerBash.Default)
 
     def _setup_sql_lexer(self, lexer):
-        font = QFont("Consolas", 10)
-        font.setFixedPitch(True)
-        lexer.setFont(font, QsciLexerSQL.Default)
-        lexer.setFont(font, QsciLexerSQL.Comment)
-        lexer.setFont(font, QsciLexerSQL.CommentLine)
-        lexer.setFont(font, QsciLexerSQL.Number)
-        lexer.setFont(font, QsciLexerSQL.DoubleQuotedString)
-        lexer.setFont(font, QsciLexerSQL.SingleQuotedString)
-        lexer.setFont(font, QsciLexerSQL.Keyword)
-        lexer.setFont(font, QsciLexerSQL.Operator)
+        font = self._get_monospace_font(12)
+        for style in range(20):
+            lexer.setFont(font, style)
 
         lexer.setColor(QColor("#000000"), QsciLexerSQL.Default)
         lexer.setColor(QColor("#008000"), QsciLexerSQL.Comment)

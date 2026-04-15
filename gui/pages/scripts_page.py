@@ -199,7 +199,7 @@ class ScriptDialog(QDialog):
         self.dict_service = dict_service
         self.param_service = param_service
         self.setWindowTitle("编辑脚本" if script else "添加脚本")
-        self.setMinimumSize(700, 600)
+        self.setMinimumSize(1024, 800)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.init_ui()
         self._load_dict_data()
@@ -207,8 +207,8 @@ class ScriptDialog(QDialog):
         if script:
             self.name_input.setText(script.name)
             self.desc_input.setText(script.description or "")
-            self.content_input.set_text(script.content or "")
             self._set_language(script.language)
+            self.content_input.set_text(script.content or "")
 
     def _load_dict_data(self):
         if self.dict_service:
@@ -302,7 +302,7 @@ class ScriptDetailDialog(QDialog):
         self.script = script
         self.dict_service = dict_service
         self.setWindowTitle(f"脚本详情: {script.name}")
-        self.setMinimumSize(700, 550)
+        self.setMinimumSize(1024, 800)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.init_ui()
 
@@ -343,11 +343,11 @@ class ScriptDetailDialog(QDialog):
 
         layout.addWidget(QLabel("脚本内容:"))
         self.content_display = CodeEditor()
+        if self.script.language:
+            self.content_display.set_language(self.script.language)
         self.content_display.set_text(self.script.content or "")
         self.content_display.set_read_only(True)
         self.content_display.setMinimumHeight(300)
-        if self.script.language:
-            self.content_display.set_language(self.script.language)
         layout.addWidget(self.content_display)
 
         btn_layout = QHBoxLayout()

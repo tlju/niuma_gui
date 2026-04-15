@@ -1,3 +1,4 @@
+import sys
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTextEdit,
     QFontComboBox, QComboBox, QToolButton, QColorDialog,
@@ -18,6 +19,20 @@ class RichTextEditor(QWidget):
         super().__init__(parent)
         self._setup_ui()
 
+    @staticmethod
+    def _get_default_font() -> QFont:
+        if sys.platform == "win32":
+            return QFont("Microsoft YaHei", 12)
+        else:
+            font = QFont("DejaVu Sans", 12)
+            if not font.exactMatch():
+                font = QFont("Liberation Sans", 12)
+            if not font.exactMatch():
+                font = QFont("Ubuntu", 12)
+            if not font.exactMatch():
+                font = QFont("SansSerif", 12)
+            return font
+
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -30,6 +45,7 @@ class RichTextEditor(QWidget):
         self._editor.setAcceptRichText(True)
         self._editor.setPlaceholderText("在此输入内容...")
         self._editor.setMinimumHeight(200)
+        self._editor.setFont(self._get_default_font())
         self._editor.currentCharFormatChanged.connect(self._update_toolbar_state)
         self._editor.cursorPositionChanged.connect(self._update_toolbar_state)
         layout.addWidget(self._editor)
@@ -76,7 +92,7 @@ class RichTextEditor(QWidget):
         row1_layout.addWidget(font_label)
 
         self._font_combo = QFontComboBox()
-        self._font_combo.setCurrentFont(QFont("Microsoft YaHei"))
+        self._font_combo.setCurrentFont(self._get_default_font())
         self._font_combo.setMinimumWidth(120)
         self._font_combo.setMaximumWidth(150)
         self._font_combo.currentFontChanged.connect(self._on_font_changed)
@@ -88,7 +104,7 @@ class RichTextEditor(QWidget):
 
         self._font_size = QSpinBox()
         self._font_size.setRange(6, 72)
-        self._font_size.setValue(11)
+        self._font_size.setValue(15)
         self._font_size.setMinimumWidth(50)
         self._font_size.valueChanged.connect(self._on_font_size_changed)
         row1_layout.addWidget(self._font_size)
