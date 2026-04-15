@@ -256,7 +256,12 @@ jobs:
         GITEE_OWNER="${{ github.repository_owner }}"
         GITEE_REPO="${{ github.event.repository.name }}"
 
-        GITEE_RELEASE_ID=$(curl -s -H "Authorization: Bearer $GITEE_TOKEN" \
+        echo "📁 检查 artifacts 目录结构:"
+        ls -la artifacts/ || echo "artifacts 目录不存在"
+        find artifacts -type f -exec ls -lh {} \; || echo "没有找到文件"
+
+        GITEE_RELEASE_ID=$(curl -s --connect-timeout 30 --max-time 60 \
+          -H "Authorization: Bearer $GITEE_TOKEN" \
           "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases/latest" | jq -r '.id')
 
         if [ -z "$GITEE_RELEASE_ID" ] || [ "$GITEE_RELEASE_ID" = "null" ]; then
@@ -267,20 +272,32 @@ jobs:
         echo "Gitee Release ID: $GITEE_RELEASE_ID"
         echo "开始上传资产..."
 
-        find artifacts -type f \( -name "niuma-linux-x64" -o -name "niuma-linux-arm64" -o -name "niuma-windows-x64.exe" \) | while read -r FILE; do
-          FILENAME=$(basename "$FILE")
-          echo "📤 上传: $FILENAME"
+        FILES=$(find artifacts -type f \( -name "niuma-linux-x64" -o -name "niuma-linux-arm64" -o -name "niuma-windows-x64.exe" \))
+        
+        if [ -z "$FILES" ]; then
+          echo "❌ 没有找到要上传的文件"
+          exit 1
+        fi
 
-          UPLOAD_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-            -H "Authorization: Bearer $GITEE_TOKEN" \
-            -F "file=@$FILE" \
-            "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases/$GITEE_RELEASE_ID/attach_files?name=$FILENAME")
+        echo "$FILES" | while IFS= read -r FILE; do
+          if [ -n "$FILE" ]; then
+            FILENAME=$(basename "$FILE")
+            echo "📤 上传: $FILENAME (大小: $(ls -lh "$FILE" | awk '{print $5}'))"
 
-          UPLOAD_HTTP_CODE=$(echo "$UPLOAD_RESPONSE" | tail -n1)
-          if [ "$UPLOAD_HTTP_CODE" -ge 200 ] && [ "$UPLOAD_HTTP_CODE" -lt 300 ]; then
-            echo "✅ 上传成功: $FILENAME"
-          else
-            echo "❌ 上传失败: $FILENAME (HTTP $UPLOAD_HTTP_CODE)"
+            UPLOAD_RESPONSE=$(curl -s --connect-timeout 60 --max-time 600 -w "\n%{http_code}" -X POST \
+              -H "Authorization: Bearer $GITEE_TOKEN" \
+              -F "file=@$FILE" \
+              "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases/$GITEE_RELEASE_ID/attach_files?name=$FILENAME")
+
+            UPLOAD_HTTP_CODE=$(echo "$UPLOAD_RESPONSE" | tail -n1)
+            UPLOAD_BODY=$(echo "$UPLOAD_RESPONSE" | sed '$d')
+            
+            if [ "$UPLOAD_HTTP_CODE" -ge 200 ] && [ "$UPLOAD_HTTP_CODE" -lt 300 ]; then
+              echo "✅ 上传成功: $FILENAME"
+            else
+              echo "❌ 上传失败: $FILENAME (HTTP $UPLOAD_HTTP_CODE)"
+              echo "响应内容: $UPLOAD_BODY"
+            fi
           fi
         done
 
