@@ -196,7 +196,7 @@ class DocumentsPage(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             data = dialog.get_data()
             try:
-                self.document_service.update_document(doc.id, **data)
+                self.document_service.update_document(doc.id, user_id=self.current_user_id, **data)
                 self.load_documents()
             except Exception as e:
                 QMessageBox.critical(self, "错误", str(e))
@@ -206,7 +206,7 @@ class DocumentsPage(QWidget):
                                      QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
             try:
-                self.document_service.delete_document(doc_id)
+                self.document_service.delete_document(doc_id, user_id=self.current_user_id)
                 self.load_documents()
             except Exception as e:
                 QMessageBox.critical(self, "错误", str(e))

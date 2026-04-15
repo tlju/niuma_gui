@@ -291,7 +291,7 @@ class AssetsPage(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             data = dialog.get_data()
             try:
-                self.asset_service.create(**data)
+                self.asset_service.create(**data, user_id=self.current_user_id)
                 self.load_assets()
                 QMessageBox.information(self, "成功", "资产添加成功")
             except Exception as e:
@@ -302,7 +302,7 @@ class AssetsPage(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             data = dialog.get_data()
             try:
-                self.asset_service.update(asset.id, **data)
+                self.asset_service.update(asset.id, user_id=self.current_user_id, **data)
                 self.load_assets()
                 QMessageBox.information(self, "成功", "资产更新成功")
             except Exception as e:

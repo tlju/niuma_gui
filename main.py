@@ -32,6 +32,11 @@ def main():
 
     app.setWindowIcon(icons.app_icon())
 
+    if sys.platform == "win32":
+        import ctypes
+        app_id = "Niuma.运维辅助工具.1.0.0"
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+
     setup_app_fonts(app)
     load_stylesheet(app)
 

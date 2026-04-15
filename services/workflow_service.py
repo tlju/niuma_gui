@@ -4,6 +4,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from models.workflow import Workflow, WorkflowNode, WorkflowExecution, WorkflowNodeExecution
+from models.audit_log import AuditLog
 from core.logger import get_logger
 from core.workflow_engine import WorkflowExecutor
 from core.node_types import NodeStatus
@@ -34,9 +35,21 @@ class WorkflowService:
         self.db.commit()
         self.db.refresh(workflow)
         logger.info(f"创建工作流: {name}, ID: {workflow.id}")
+
+        if user_id:
+            audit = AuditLog(
+                user_id=user_id,
+                action_type="create",
+                resource_type="workflow",
+                resource_id=workflow.id,
+                details=f"创建工作流: {name}"
+            )
+            self.db.add(audit)
+            self.db.commit()
+
         return workflow
 
-    def update(self, workflow_id: int, **kwargs) -> Optional[Workflow]:
+    def update(self, workflow_id: int, user_id: int = None, **kwargs) -> Optional[Workflow]:
         workflow = self.get_by_id(workflow_id)
         if not workflow:
             return None
@@ -48,19 +61,41 @@ class WorkflowService:
         self.db.commit()
         self.db.refresh(workflow)
         logger.info(f"更新工作流: {workflow.name}, ID: {workflow_id}")
+
+        if user_id:
+            audit = AuditLog(
+                user_id=user_id,
+                action_type="update",
+                resource_type="workflow",
+                resource_id=workflow_id,
+                details=f"更新工作流: {workflow.name}"
+            )
+            self.db.add(audit)
+            self.db.commit()
+
         return workflow
 
-    def delete(self, workflow_id: int) -> bool:
+    def delete(self, workflow_id: int, user_id: int = None) -> bool:
         workflow = self.get_by_id(workflow_id)
         if not workflow:
             return False
+
+        if user_id:
+            audit = AuditLog(
+                user_id=user_id,
+                action_type="delete",
+                resource_type="workflow",
+                resource_id=workflow_id,
+                details=f"删除工作流: {workflow.name}"
+            )
+            self.db.add(audit)
 
         workflow.is_active = False
         self.db.commit()
         logger.info(f"删除工作流: {workflow.name}, ID: {workflow_id}")
         return True
 
-    def save_graph(self, workflow_id: int, nodes: List[Dict], connections: List[Dict]) -> Optional[Workflow]:
+    def save_graph(self, workflow_id: int, nodes: List[Dict], connections: List[Dict], user_id: int = None) -> Optional[Workflow]:
         workflow = self.get_by_id(workflow_id)
         if not workflow:
             return None
@@ -84,6 +119,18 @@ class WorkflowService:
         self.db.commit()
         self.db.refresh(workflow)
         logger.info(f"保存工作流图形: {workflow.name}, 节点数: {len(nodes)}")
+
+        if user_id:
+            audit = AuditLog(
+                user_id=user_id,
+                action_type="update",
+                resource_type="workflow",
+                resource_id=workflow_id,
+                details=f"保存工作流图形: {workflow.name}"
+            )
+            self.db.add(audit)
+            self.db.commit()
+
         return workflow
 
     def get_executions(self, workflow_id: int = None, limit: int = 50) -> List[WorkflowExecution]:
@@ -145,7 +192,7 @@ class WorkflowService:
         self.db.refresh(node_exec)
         return node_exec
 
-    def execute_workflow(self, workflow_id: int, max_workers: int = 4,
+    def execute_workflow(self, workflow_id: int, user_id: int = None, max_workers: int = 4,
                          execution_callback=None, log_callback=None) -> Dict[str, Any]:
         workflow = self.get_by_id(workflow_id)
         if not workflow:
@@ -159,6 +206,17 @@ class WorkflowService:
             return {"status": "failed", "error": "工作流没有节点"}
 
         execution = self.create_execution(workflow_id)
+
+        if user_id:
+            audit = AuditLog(
+                user_id=user_id,
+                action_type="execute",
+                resource_type="workflow",
+                resource_id=workflow_id,
+                details=f"执行工作流: {workflow.name}"
+            )
+            self.db.add(audit)
+            self.db.commit()
 
         executor = WorkflowExecutor(workflow_id, nodes, connections)
         executor.set_callbacks(execution_callback, log_callback)

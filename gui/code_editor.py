@@ -22,6 +22,7 @@ class CodeEditor(QsciScintilla):
     def _setup_editor(self):
         font = QFont("Consolas", 10)
         font.setStyleHint(QFont.StyleHint.Monospace)
+        font.setFixedPitch(True)
         self.setFont(font)
 
         self.setMarginLineNumbers(1, True)
@@ -44,6 +45,13 @@ class CodeEditor(QsciScintilla):
         self.setWhitespaceVisibility(QsciScintilla.WhitespaceVisibility.WsInvisible)
 
         self.SendScintilla(QsciScintilla.SCI_SETHSCROLLBAR, 1)
+
+        self.SendScintilla(QsciScintilla.SCI_SETEXTRAASCENT, 2)
+        self.SendScintilla(QsciScintilla.SCI_SETEXTRADESCENT, 2)
+
+        self.SendScintilla(QsciScintilla.SCI_SETFONTQUALITY, 2)
+
+        self.SendScintilla(QsciScintilla.SCI_SETXOFFSET, 0)
 
     def _setup_completion(self):
         self.setAutoCompletionThreshold(-1)
@@ -150,6 +158,7 @@ class CodeEditor(QsciScintilla):
 
     def _setup_python_lexer(self, lexer):
         font = QFont("Consolas", 10)
+        font.setFixedPitch(True)
         lexer.setFont(font, QsciLexerPython.Default)
         lexer.setFont(font, QsciLexerPython.Comment)
         lexer.setFont(font, QsciLexerPython.Number)
@@ -178,6 +187,7 @@ class CodeEditor(QsciScintilla):
 
     def _setup_bash_lexer(self, lexer):
         font = QFont("Consolas", 10)
+        font.setFixedPitch(True)
         lexer.setFont(font, QsciLexerBash.Default)
         lexer.setFont(font, QsciLexerBash.Comment)
         lexer.setFont(font, QsciLexerBash.Number)
@@ -198,6 +208,7 @@ class CodeEditor(QsciScintilla):
 
     def _setup_sql_lexer(self, lexer):
         font = QFont("Consolas", 10)
+        font.setFixedPitch(True)
         lexer.setFont(font, QsciLexerSQL.Default)
         lexer.setFont(font, QsciLexerSQL.Comment)
         lexer.setFont(font, QsciLexerSQL.CommentLine)

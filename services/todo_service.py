@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from models.todo import Todo, TodoStatus, RecurrenceType
+from models.audit_log import AuditLog
 from typing import List, Optional
 from datetime import datetime, timedelta
 from core.logger import get_logger
@@ -29,6 +30,18 @@ class TodoService:
         self.db.commit()
         self.db.refresh(todo)
         logger.info(f"创建待办事项: {title}")
+
+        if created_by:
+            audit = AuditLog(
+                user_id=created_by,
+                action_type="create",
+                resource_type="todo",
+                resource_id=todo.id,
+                details=f"创建待办: {title}"
+            )
+            self.db.add(audit)
+            self.db.commit()
+
         return todo
 
     def get_todos(self, status: str = None, skip: int = 0, limit: int = 100) -> List[Todo]:
@@ -46,7 +59,7 @@ class TodoService:
             query = query.filter(Todo.status == status)
         return query.order_by(Todo.created_at.desc()).all()
 
-    def update_todo(self, todo_id: int, **kwargs) -> Optional[Todo]:
+    def update_todo(self, todo_id: int, user_id: Optional[int] = None, **kwargs) -> Optional[Todo]:
         todo = self.get_todo(todo_id)
         if not todo:
             return None
@@ -62,18 +75,39 @@ class TodoService:
         self.db.commit()
         self.db.refresh(todo)
         logger.info(f"更新待办事项: {todo.title}")
+
+        if user_id:
+            audit = AuditLog(
+                user_id=user_id,
+                action_type="update",
+                resource_type="todo",
+                resource_id=todo_id,
+                details=f"更新待办: {todo.title}"
+            )
+            self.db.add(audit)
+            self.db.commit()
+
         return todo
 
-    def delete_todo(self, todo_id: int) -> bool:
+    def delete_todo(self, todo_id: int, user_id: Optional[int] = None) -> bool:
         todo = self.get_todo(todo_id)
         if todo:
+            if user_id:
+                audit = AuditLog(
+                    user_id=user_id,
+                    action_type="delete",
+                    resource_type="todo",
+                    resource_id=todo_id,
+                    details=f"删除待办: {todo.title}"
+                )
+                self.db.add(audit)
             self.db.delete(todo)
             self.db.commit()
             logger.info(f"删除待办事项: {todo.title}")
             return True
         return False
 
-    def complete_todo(self, todo_id: int) -> Optional[Todo]:
+    def complete_todo(self, todo_id: int, user_id: Optional[int] = None) -> Optional[Todo]:
         todo = self.get_todo(todo_id)
         if not todo:
             return None
@@ -83,6 +117,17 @@ class TodoService:
         self.db.commit()
         self.db.refresh(todo)
         logger.info(f"完成待办事项: {todo.title}")
+
+        if user_id:
+            audit = AuditLog(
+                user_id=user_id,
+                action_type="update",
+                resource_type="todo",
+                resource_id=todo_id,
+                details=f"完成待办: {todo.title}"
+            )
+            self.db.add(audit)
+            self.db.commit()
         
         if todo.recurrence_type and todo.recurrence_type != RecurrenceType.NONE:
             self._create_next_recurrence(todo)

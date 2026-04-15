@@ -1,13 +1,8 @@
 from sqlalchemy.orm import Session
 from models.script import Script
-from models.exec_log import ExecLog
 from models.audit_log import AuditLog
-from models.server_asset import ServerAsset
-from services.crypto import CryptoManager
 from typing import List, Optional
-from core.config import settings
 from core.logger import get_logger
-import paramiko
 
 logger = get_logger(__name__)
 
@@ -36,13 +31,13 @@ class ScriptService:
         self.db.commit()
         self.db.refresh(script)
 
-        # 记录审计日志
         if created_by:
             audit = AuditLog(
                 user_id=created_by,
                 action_type="create",
                 resource_type="script",
-                resource_id=script.id
+                resource_id=script.id,
+                details=f"创建脚本: {name}"
             )
             self.db.add(audit)
             self.db.commit()
@@ -84,82 +79,13 @@ class ScriptService:
                 user_id=updated_by,
                 action_type="update",
                 resource_type="script",
-                resource_id=script_id
+                resource_id=script_id,
+                details=f"更新脚本: {script.name}"
             )
             self.db.add(audit)
             self.db.commit()
 
         return True
-
-    def execute(
-        self,
-        script: Script,
-        server_id: int,
-        executed_by: Optional[int] = None
-    ) -> Optional[int]:
-        server = self.db.query(ServerAsset).filter(
-            ServerAsset.id == server_id
-        ).first()
-        if not server:
-            return None
-
-        # 获取服务器密码
-        from services.asset_service import AssetService
-        asset_service = AssetService(self.db)
-        password = asset_service.get_password(server_id)
-
-        # 创建执行日志
-        exec_log = ExecLog(
-            script_id=script.id,
-            server_id=server_id,
-            status="running",
-            executed_by=executed_by
-        )
-        self.db.add(exec_log)
-        self.db.commit()
-        self.db.refresh(exec_log)
-
-        # 执行脚本
-        try:
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(
-                hostname=server.ip,
-                port=server.port,
-                username=server.username,
-                password=password,
-                timeout=30
-            )
-
-            stdin, stdout, stderr = ssh.exec_command(script.content)
-            output = stdout.read().decode('utf-8', errors='ignore')
-            error = stderr.read().decode('utf-8', errors='ignore')
-
-            exec_log.status = "success" if not error else "failed"
-            exec_log.output = output
-            exec_log.error = error
-
-            ssh.close()
-
-        except Exception as e:
-            exec_log.status = "failed"
-            exec_log.error = str(e)
-
-        self.db.commit()
-
-        # 记录审计日志
-        if executed_by:
-            audit = AuditLog(
-                user_id=executed_by,
-                action_type="execute",
-                resource_type="script",
-                resource_id=script.id,
-                details=f"Executed on server {server_id}"
-            )
-            self.db.add(audit)
-            self.db.commit()
-
-        return exec_log.id
 
     def delete(self, script_id: int, user_id: int) -> bool:
         script = self.get_by_id(script_id)
@@ -170,7 +96,8 @@ class ScriptService:
             user_id=user_id,
             action_type="delete",
             resource_type="script",
-            resource_id=script_id
+            resource_id=script_id,
+            details=f"删除脚本: {script.name}"
         )
         self.db.add(audit)
 

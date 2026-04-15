@@ -35,10 +35,11 @@ class WorkflowExecutionWorker(BaseWorker):
     progress = pyqtSignal(dict)
     log = pyqtSignal(dict)
 
-    def __init__(self, workflow_service, workflow_id: int, max_workers: int = 4):
+    def __init__(self, workflow_service, workflow_id: int, user_id: int = None, max_workers: int = 4):
         super().__init__()
         self.workflow_service = workflow_service
         self.workflow_id = workflow_id
+        self.user_id = user_id
         self.max_workers = max_workers
 
     def execute(self) -> dict:
@@ -50,6 +51,7 @@ class WorkflowExecutionWorker(BaseWorker):
 
         return self.workflow_service.execute_workflow(
             self.workflow_id,
+            user_id=self.user_id,
             max_workers=self.max_workers,
             execution_callback=on_execution_update,
             log_callback=on_log
@@ -57,11 +59,21 @@ class WorkflowExecutionWorker(BaseWorker):
 
 
 class WorkflowEditDialog(QDialog):
-    def __init__(self, workflow_service, workflow=None, parent=None):
+    MODE_EDIT = "edit"
+    MODE_EXECUTE = "execute"
+
+    def __init__(self, workflow_service, workflow=None, mode="edit", current_user_id=None, parent=None):
         super().__init__(parent)
         self.workflow_service = workflow_service
         self.workflow = workflow
-        self.setWindowTitle("编辑工作流" if workflow else "新建工作流")
+        self.mode = mode
+        self.current_user_id = current_user_id
+
+        if mode == self.MODE_EXECUTE:
+            self.setWindowTitle(f"执行工作流 - {workflow.name}" if workflow else "执行工作流")
+        else:
+            self.setWindowTitle("编辑工作流" if workflow else "新建工作流")
+
         self.setMinimumSize(1200, 800)
         self.init_ui()
 
@@ -81,12 +93,17 @@ class WorkflowEditDialog(QDialog):
         toolbar.addWidget(QLabel("名称:"))
         toolbar.addWidget(self.name_edit)
 
+        if self.mode == self.MODE_EXECUTE:
+            self.name_edit.setReadOnly(True)
+
         toolbar.addStretch()
 
-        save_btn = QPushButton("保存")
-        save_btn.setIcon(icons.save_icon())
-        save_btn.clicked.connect(self.save)
-        toolbar.addWidget(save_btn)
+        self.save_btn = QPushButton("保存")
+        self.save_btn.setIcon(icons.save_icon())
+        self.save_btn.clicked.connect(self.save)
+
+        if self.mode == self.MODE_EDIT:
+            toolbar.addWidget(self.save_btn)
 
         layout.addLayout(toolbar)
 
@@ -122,7 +139,12 @@ class WorkflowEditDialog(QDialog):
 
         splitter.addWidget(self.log_panel)
 
-        splitter.setSizes([200, 700, 300])
+        if self.mode == self.MODE_EDIT:
+            self.log_panel.hide()
+            splitter.setSizes([200, 1000, 0])
+        else:
+            self.node_palette.hide()
+            splitter.setSizes([0, 700, 500])
 
         layout.addWidget(splitter)
 
@@ -173,11 +195,12 @@ class WorkflowEditDialog(QDialog):
         if self.workflow:
             self.workflow_service.update(
                 self.workflow.id,
+                user_id=self.current_user_id,
                 name=name,
                 graph_data=graph_data
             )
         else:
-            self.workflow = self.workflow_service.create(name=name, graph_data=graph_data)
+            self.workflow = self.workflow_service.create(name=name, user_id=self.current_user_id, graph_data=graph_data)
 
         QMessageBox.information(self, "成功", "工作流保存成功")
         self.accept()
@@ -306,23 +329,24 @@ class WorkflowPage(QWidget):
 
             btn_widget = QWidget()
             btn_layout = QHBoxLayout(btn_widget)
-            btn_layout.setContentsMargins(4, 4, 4, 4)
+            btn_layout.setContentsMargins(4, 2, 4, 2)
             btn_layout.setSpacing(4)
+            btn_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             edit_btn = QPushButton("编辑")
-            edit_btn.setProperty("class", "primary")
+            edit_btn.setProperty("class", "table-edit")
             edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             edit_btn.clicked.connect(lambda checked, w=workflow: self.show_edit_dialog(w))
             btn_layout.addWidget(edit_btn)
 
             run_btn = QPushButton("执行")
-            run_btn.setProperty("class", "success")
+            run_btn.setProperty("class", "table-run")
             run_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             run_btn.clicked.connect(lambda checked, w=workflow: self.execute_workflow(w))
             btn_layout.addWidget(run_btn)
 
             delete_btn = QPushButton("删除")
-            delete_btn.setProperty("class", "danger")
+            delete_btn.setProperty("class", "table-delete")
             delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             delete_btn.clicked.connect(lambda checked, w=workflow: self.delete_workflow(w))
             btn_layout.addWidget(delete_btn)
@@ -334,7 +358,7 @@ class WorkflowPage(QWidget):
         QMessageBox.critical(self, "错误", f"加载工作流失败: {error_msg}")
 
     def show_create_dialog(self):
-        dialog = WorkflowEditDialog(self.workflow_service, parent=self)
+        dialog = WorkflowEditDialog(self.workflow_service, current_user_id=self.current_user_id, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.load_workflows()
 
@@ -346,7 +370,7 @@ class WorkflowPage(QWidget):
             else:
                 return
 
-        dialog = WorkflowEditDialog(self.workflow_service, workflow, parent=self)
+        dialog = WorkflowEditDialog(self.workflow_service, workflow, current_user_id=self.current_user_id, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.load_workflows()
 
@@ -355,28 +379,24 @@ class WorkflowPage(QWidget):
             QMessageBox.warning(self, "警告", "工作流没有节点，请先编辑添加节点")
             return
 
-        reply = QMessageBox.question(
-            self, "确认执行",
-            f"确定要执行工作流 '{workflow.name}' 吗？",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-
-        if reply != QMessageBox.StandardButton.Yes:
-            return
-
         if self.execution_worker and self.execution_worker.isRunning():
             QMessageBox.warning(self, "警告", "已有工作流正在执行中")
             return
 
-        dialog = WorkflowEditDialog(self.workflow_service, workflow, parent=self)
-        dialog.setWindowTitle(f"执行工作流 - {workflow.name}")
+        dialog = WorkflowEditDialog(
+            self.workflow_service, workflow,
+            mode=WorkflowEditDialog.MODE_EXECUTE,
+            current_user_id=self.current_user_id,
+            parent=self
+        )
 
-        exec_btn = QPushButton("执行")
-        exec_btn.setProperty("class", "success")
-        exec_btn.clicked.connect(lambda: self._start_execution(dialog, workflow.id))
-        dialog.findChild(QHBoxLayout).insertWidget(0, exec_btn)
+        re_exec_btn = QPushButton("重新执行")
+        re_exec_btn.setProperty("class", "success")
+        re_exec_btn.clicked.connect(lambda: self._start_execution(dialog, workflow.id))
+        dialog.findChild(QHBoxLayout).insertWidget(0, re_exec_btn)
 
-        dialog.exec()
+        dialog.show()
+        self._start_execution(dialog, workflow.id)
 
     def _start_execution(self, dialog: WorkflowEditDialog, workflow_id: int):
         if self.execution_worker and self.execution_worker.isRunning():
@@ -387,6 +407,7 @@ class WorkflowPage(QWidget):
         self.execution_worker = WorkflowExecutionWorker(
             self.workflow_service,
             workflow_id,
+            user_id=self.current_user_id,
             max_workers=4
         )
         self.execution_worker.progress.connect(
@@ -415,10 +436,8 @@ class WorkflowPage(QWidget):
         status = result.get("status")
         if status == "success":
             dialog._append_log("SUCCESS", "工作流执行完成")
-            QMessageBox.information(dialog, "成功", "工作流执行成功")
         else:
             dialog._append_log("ERROR", f"工作流执行失败: {result.get('error', '未知错误')}")
-            QMessageBox.warning(dialog, "失败", f"工作流执行失败: {result.get('error', '未知错误')}")
 
         self.load_executions()
 
@@ -430,7 +449,7 @@ class WorkflowPage(QWidget):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            self.workflow_service.delete(workflow.id)
+            self.workflow_service.delete(workflow.id, user_id=self.current_user_id)
             self.load_workflows()
 
     def load_executions(self):

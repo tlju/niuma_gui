@@ -16,6 +16,7 @@ QMenuBar::item {
     background-color: transparent;
     padding: 10px 16px;
     border-radius: 4px;
+    icon-size: 16px 16px;
 }
 
 QMenuBar::item:selected {
@@ -38,6 +39,7 @@ QMenu {
 QMenu::item {
     padding: 8px 28px 8px 14px;
     border-radius: 4px;
+    icon-size: 16px 16px;
 }
 
 QMenu::item:selected {

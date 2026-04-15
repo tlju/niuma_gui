@@ -22,6 +22,4 @@ class ServerAsset(Base):
     vip = Column(String(200), nullable=True)
     created_at = Column(DateTime, default=func.now())
 
-    # 关系
     scripts = relationship("Script", back_populates="server")
-    exec_logs = relationship("ExecLog", back_populates="server")

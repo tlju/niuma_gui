@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTextEdit,
     QFontComboBox, QComboBox, QToolButton, QColorDialog,
-    QFileDialog, QSpinBox, QLabel, QFrame, QMenu
+    QFileDialog, QSpinBox, QLabel, QFrame, QMenu, QGridLayout
 )
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import (
@@ -39,9 +39,15 @@ class RichTextEditor(QWidget):
     def _create_toolbar(self):
         toolbar = QFrame()
         toolbar.setProperty("class", "rich-text-toolbar")
-        layout = QHBoxLayout(toolbar)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(2)
+        main_layout = QVBoxLayout(toolbar)
+        main_layout.setContentsMargins(4, 4, 4, 4)
+        main_layout.setSpacing(4)
+
+        row1_layout = QHBoxLayout()
+        row1_layout.setSpacing(4)
+
+        row2_layout = QHBoxLayout()
+        row2_layout.setSpacing(4)
 
         btn_style = """
             QToolButton {
@@ -67,27 +73,27 @@ class RichTextEditor(QWidget):
 
         font_label = QLabel("字体:")
         font_label.setStyleSheet("color: #495057; font-size: 12px;")
-        layout.addWidget(font_label)
+        row1_layout.addWidget(font_label)
 
         self._font_combo = QFontComboBox()
         self._font_combo.setCurrentFont(QFont("Microsoft YaHei"))
         self._font_combo.setMinimumWidth(120)
         self._font_combo.setMaximumWidth(150)
         self._font_combo.currentFontChanged.connect(self._on_font_changed)
-        layout.addWidget(self._font_combo)
+        row1_layout.addWidget(self._font_combo)
 
         size_label = QLabel("字号:")
         size_label.setStyleSheet("color: #495057; font-size: 12px; margin-left: 8px;")
-        layout.addWidget(size_label)
+        row1_layout.addWidget(size_label)
 
         self._font_size = QSpinBox()
         self._font_size.setRange(6, 72)
         self._font_size.setValue(11)
         self._font_size.setMinimumWidth(50)
         self._font_size.valueChanged.connect(self._on_font_size_changed)
-        layout.addWidget(self._font_size)
+        row1_layout.addWidget(self._font_size)
 
-        layout.addSpacing(8)
+        row1_layout.addSpacing(8)
 
         self._bold_btn = QToolButton()
         self._bold_btn.setText("B")
@@ -95,7 +101,7 @@ class RichTextEditor(QWidget):
         self._bold_btn.setStyleSheet(btn_style + "QToolButton { font-weight: bold; }")
         self._bold_btn.setCheckable(True)
         self._bold_btn.clicked.connect(self._toggle_bold)
-        layout.addWidget(self._bold_btn)
+        row1_layout.addWidget(self._bold_btn)
 
         self._italic_btn = QToolButton()
         self._italic_btn.setText("I")
@@ -103,7 +109,7 @@ class RichTextEditor(QWidget):
         self._italic_btn.setStyleSheet(btn_style + "QToolButton { font-style: italic; }")
         self._italic_btn.setCheckable(True)
         self._italic_btn.clicked.connect(self._toggle_italic)
-        layout.addWidget(self._italic_btn)
+        row1_layout.addWidget(self._italic_btn)
 
         self._underline_btn = QToolButton()
         self._underline_btn.setText("U")
@@ -111,7 +117,7 @@ class RichTextEditor(QWidget):
         self._underline_btn.setStyleSheet(btn_style + "QToolButton { text-decoration: underline; }")
         self._underline_btn.setCheckable(True)
         self._underline_btn.clicked.connect(self._toggle_underline)
-        layout.addWidget(self._underline_btn)
+        row1_layout.addWidget(self._underline_btn)
 
         self._strike_btn = QToolButton()
         self._strike_btn.setText("S")
@@ -119,16 +125,16 @@ class RichTextEditor(QWidget):
         self._strike_btn.setStyleSheet(btn_style + "QToolButton { text-decoration: line-through; }")
         self._strike_btn.setCheckable(True)
         self._strike_btn.clicked.connect(self._toggle_strikethrough)
-        layout.addWidget(self._strike_btn)
+        row1_layout.addWidget(self._strike_btn)
 
-        layout.addSpacing(8)
+        row1_layout.addSpacing(8)
 
         self._color_btn = QToolButton()
         self._color_btn.setText("A")
         self._color_btn.setToolTip("文字颜色")
         self._color_btn.setStyleSheet(btn_style)
         self._color_btn.clicked.connect(self._choose_color)
-        layout.addWidget(self._color_btn)
+        row1_layout.addWidget(self._color_btn)
 
         self._highlight_btn = QToolButton()
         self._highlight_btn.setToolTip("背景高亮")
@@ -137,32 +143,32 @@ class RichTextEditor(QWidget):
         highlight_icon = self._create_highlight_icon()
         self._highlight_btn.setIcon(highlight_icon)
         self._highlight_btn.setIconSize(QSize(16, 16))
-        layout.addWidget(self._highlight_btn)
+        row1_layout.addWidget(self._highlight_btn)
 
-        layout.addSpacing(8)
+        row1_layout.addStretch()
 
         align_left_btn = QToolButton()
         align_left_btn.setToolTip("左对齐")
         align_left_btn.setStyleSheet(btn_style)
         align_left_btn.clicked.connect(lambda: self._set_alignment(Qt.AlignmentFlag.AlignLeft))
         align_left_btn.setText("≡")
-        layout.addWidget(align_left_btn)
+        row2_layout.addWidget(align_left_btn)
 
         align_center_btn = QToolButton()
         align_center_btn.setToolTip("居中对齐")
         align_center_btn.setStyleSheet(btn_style)
         align_center_btn.clicked.connect(lambda: self._set_alignment(Qt.AlignmentFlag.AlignHCenter))
         align_center_btn.setText("☰")
-        layout.addWidget(align_center_btn)
+        row2_layout.addWidget(align_center_btn)
 
         align_right_btn = QToolButton()
         align_right_btn.setToolTip("右对齐")
         align_right_btn.setStyleSheet(btn_style)
         align_right_btn.clicked.connect(lambda: self._set_alignment(Qt.AlignmentFlag.AlignRight))
         align_right_btn.setText("≡")
-        layout.addWidget(align_right_btn)
+        row2_layout.addWidget(align_right_btn)
 
-        layout.addSpacing(8)
+        row2_layout.addSpacing(8)
 
         self._list_menu = QMenu(self)
         bullet_action = QAction("无序列表", self)
@@ -178,62 +184,65 @@ class RichTextEditor(QWidget):
         list_btn.setText("≡≡")
         list_btn.setMenu(self._list_menu)
         list_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        layout.addWidget(list_btn)
+        row2_layout.addWidget(list_btn)
 
         indent_btn = QToolButton()
         indent_btn.setToolTip("增加缩进")
         indent_btn.setStyleSheet(btn_style)
         indent_btn.clicked.connect(self._indent)
         indent_btn.setText("→")
-        layout.addWidget(indent_btn)
+        row2_layout.addWidget(indent_btn)
 
         unindent_btn = QToolButton()
         unindent_btn.setToolTip("减少缩进")
         unindent_btn.setStyleSheet(btn_style)
         unindent_btn.clicked.connect(self._unindent)
         unindent_btn.setText("←")
-        layout.addWidget(unindent_btn)
+        row2_layout.addWidget(unindent_btn)
 
-        layout.addSpacing(8)
+        row2_layout.addSpacing(8)
 
         link_btn = QToolButton()
         link_btn.setToolTip("插入链接")
         link_btn.setStyleSheet(btn_style)
         link_btn.clicked.connect(self._insert_link)
         link_btn.setText("🔗")
-        layout.addWidget(link_btn)
+        row2_layout.addWidget(link_btn)
 
         image_btn = QToolButton()
         image_btn.setToolTip("插入图片")
         image_btn.setStyleSheet(btn_style)
         image_btn.clicked.connect(self._insert_image)
         image_btn.setText("🖼")
-        layout.addWidget(image_btn)
+        row2_layout.addWidget(image_btn)
 
         table_btn = QToolButton()
         table_btn.setToolTip("插入表格")
         table_btn.setStyleSheet(btn_style)
         table_btn.clicked.connect(self._insert_table)
         table_btn.setText("⊞")
-        layout.addWidget(table_btn)
+        row2_layout.addWidget(table_btn)
 
-        layout.addSpacing(8)
+        row2_layout.addSpacing(8)
 
         hr_btn = QToolButton()
         hr_btn.setToolTip("插入分割线")
         hr_btn.setStyleSheet(btn_style)
         hr_btn.clicked.connect(self._insert_horizontal_rule)
         hr_btn.setText("—")
-        layout.addWidget(hr_btn)
+        row2_layout.addWidget(hr_btn)
 
         clear_btn = QToolButton()
         clear_btn.setToolTip("清除格式")
         clear_btn.setStyleSheet(btn_style)
         clear_btn.clicked.connect(self._clear_format)
         clear_btn.setText("✕")
-        layout.addWidget(clear_btn)
+        row2_layout.addWidget(clear_btn)
 
-        layout.addStretch()
+        row2_layout.addStretch()
+
+        main_layout.addLayout(row1_layout)
+        main_layout.addLayout(row2_layout)
 
         return toolbar
 

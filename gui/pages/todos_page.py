@@ -185,7 +185,7 @@ class TodosPage(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             data = dialog.get_data()
             try:
-                self.todo_service.create_todo(**data, assigned_to=self.current_user_id)
+                self.todo_service.create_todo(**data, assigned_to=self.current_user_id, created_by=self.current_user_id)
                 self.load_todos()
             except Exception as e:
                 QMessageBox.critical(self, "错误", str(e))
@@ -195,14 +195,14 @@ class TodosPage(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             data = dialog.get_data()
             try:
-                self.todo_service.update_todo(todo.id, **data)
+                self.todo_service.update_todo(todo.id, user_id=self.current_user_id, **data)
                 self.load_todos()
             except Exception as e:
                 QMessageBox.critical(self, "错误", str(e))
 
     def complete_todo(self, todo_id):
         try:
-            self.todo_service.complete_todo(todo_id)
+            self.todo_service.complete_todo(todo_id, user_id=self.current_user_id)
             self.load_todos()
         except Exception as e:
             QMessageBox.critical(self, "错误", str(e))
@@ -212,7 +212,7 @@ class TodosPage(QWidget):
                                      QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
             try:
-                self.todo_service.delete_todo(todo_id)
+                self.todo_service.delete_todo(todo_id, user_id=self.current_user_id)
                 self.load_todos()
             except Exception as e:
                 QMessageBox.critical(self, "错误", str(e))

@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from models.document import Document
+from models.audit_log import AuditLog
 from typing import List, Optional
 from core.logger import get_logger
 
@@ -23,6 +24,18 @@ class DocumentService:
         self.db.commit()
         self.db.refresh(document)
         logger.info(f"创建文档: {title}")
+
+        if created_by:
+            audit = AuditLog(
+                user_id=created_by,
+                action_type="create",
+                resource_type="document",
+                resource_id=document.id,
+                details=f"创建文档: {title}"
+            )
+            self.db.add(audit)
+            self.db.commit()
+
         return document
 
     def get_documents(self, category: str = None, skip: int = 0, limit: int = 100) -> List[Document]:
@@ -40,7 +53,7 @@ class DocumentService:
             query = query.filter(Document.category == category)
         return query.order_by(Document.created_at.desc()).all()
 
-    def update_document(self, document_id: int, **kwargs) -> Optional[Document]:
+    def update_document(self, document_id: int, user_id: int = None, **kwargs) -> Optional[Document]:
         document = self.get_document(document_id)
         if not document:
             return None
@@ -52,11 +65,32 @@ class DocumentService:
         self.db.commit()
         self.db.refresh(document)
         logger.info(f"更新文档: {document.title}")
+
+        if user_id:
+            audit = AuditLog(
+                user_id=user_id,
+                action_type="update",
+                resource_type="document",
+                resource_id=document_id,
+                details=f"更新文档: {document.title}"
+            )
+            self.db.add(audit)
+            self.db.commit()
+
         return document
 
-    def delete_document(self, document_id: int) -> bool:
+    def delete_document(self, document_id: int, user_id: int = None) -> bool:
         document = self.get_document(document_id)
         if document:
+            if user_id:
+                audit = AuditLog(
+                    user_id=user_id,
+                    action_type="delete",
+                    resource_type="document",
+                    resource_id=document_id,
+                    details=f"删除文档: {document.title}"
+                )
+                self.db.add(audit)
             self.db.delete(document)
             self.db.commit()
             logger.info(f"删除文档: {document.title}")

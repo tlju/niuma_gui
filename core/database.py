@@ -23,8 +23,8 @@ def get_db() -> Session:
 def init_db():
     """初始化数据库表"""
     from models import (
-        User, ServerAsset, Script, ExecLog, AuditLog,
-        SystemConfig, DataDict, DataDictItem, SystemParam,
+        User, ServerAsset, Script, AuditLog,
+        DataDict, DataDictItem, SystemParam,
         Todo, Document
     )
     Base.metadata.create_all(bind=engine)

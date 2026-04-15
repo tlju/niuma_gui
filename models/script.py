@@ -18,6 +18,4 @@ class Script(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # 关系
     server = relationship("ServerAsset", back_populates="scripts")
-    exec_logs = relationship("ExecLog", back_populates="script")

@@ -94,7 +94,9 @@ class WorkflowNodeItem(QGraphicsItem):
 
         node_rect = QRectF(0, 0, self.NODE_WIDTH, self.NODE_HEIGHT)
         painter.setBrush(QBrush(gradient))
-        if self.isSelected():
+        if self.status == "failed":
+            painter.setPen(QPen(QColor("#F44336"), 4))
+        elif self.isSelected():
             painter.setPen(QPen(QColor("#1976D2"), 2))
         else:
             painter.setPen(QPen(base_color.darker(130), 1))
@@ -179,6 +181,8 @@ class WorkflowNodeItem(QGraphicsItem):
 
 
 class ConnectionItem(QGraphicsPathItem):
+    ARROW_SIZE = 20
+
     def __init__(self, source_node: WorkflowNodeItem, target_node: WorkflowNodeItem,
                  source_port: int = 0, target_port: int = 0, parent=None):
         super().__init__(parent)
@@ -186,6 +190,8 @@ class ConnectionItem(QGraphicsPathItem):
         self.target_node = target_node
         self.source_port = source_port
         self.target_port = target_port
+        self._end_point = QPointF()
+        self._arrow_direction = QPointF(1, 0)
 
         self.setZValue(0)
         self.setPen(QPen(QColor("#666666"), 2))
@@ -196,6 +202,7 @@ class ConnectionItem(QGraphicsPathItem):
     def _update_path(self):
         start = self.source_node.get_output_port_pos(self.source_port)
         end = self.target_node.get_input_port_pos(self.target_port)
+        self._end_point = end
 
         path = QPainterPath()
         path.moveTo(start)
@@ -208,6 +215,19 @@ class ConnectionItem(QGraphicsPathItem):
 
         path.cubicTo(ctrl1, ctrl2, end)
 
+        t = 0.95
+        pre_end_x = (1-t)**3 * start.x() + 3*(1-t)**2*t * ctrl1.x() + 3*(1-t)*t**2 * ctrl2.x() + t**3 * end.x()
+        pre_end_y = (1-t)**3 * start.y() + 3*(1-t)**2*t * ctrl1.y() + 3*(1-t)*t**2 * ctrl2.y() + t**3 * end.y()
+        pre_end = QPointF(pre_end_x, pre_end_y)
+
+        dir_x = end.x() - pre_end.x()
+        dir_y = end.y() - pre_end.y()
+        length = math.sqrt(dir_x**2 + dir_y**2)
+        if length > 0:
+            self._arrow_direction = QPointF(dir_x / length, dir_y / length)
+        else:
+            self._arrow_direction = QPointF(1, 0)
+
         self.setPath(path)
 
     def paint(self, painter: QPainter, option, widget=None):
@@ -218,6 +238,30 @@ class ConnectionItem(QGraphicsPathItem):
         self.setPen(pen)
 
         super().paint(painter, option, widget)
+
+        arrow_color = QColor("#666666")
+        painter.setBrush(QBrush(arrow_color))
+        painter.setPen(QPen(arrow_color, 1))
+
+        angle = math.atan2(self._arrow_direction.y(), self._arrow_direction.x())
+
+        p1 = self._end_point
+        p2 = QPointF(
+            self._end_point.x() - self.ARROW_SIZE * math.cos(angle - math.pi / 6),
+            self._end_point.y() - self.ARROW_SIZE * math.sin(angle - math.pi / 6)
+        )
+        p3 = QPointF(
+            self._end_point.x() - self.ARROW_SIZE * math.cos(angle + math.pi / 6),
+            self._end_point.y() - self.ARROW_SIZE * math.sin(angle + math.pi / 6)
+        )
+
+        arrow_path = QPainterPath()
+        arrow_path.moveTo(p1)
+        arrow_path.lineTo(p2)
+        arrow_path.lineTo(p3)
+        arrow_path.closeSubpath()
+
+        painter.drawPath(arrow_path)
 
     def to_dict(self) -> Dict[str, Any]:
         return {

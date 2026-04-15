@@ -68,33 +68,6 @@ def test_get_script_by_id(script_service):
     non_existent = script_service.get_by_id(999)
     assert non_existent is None
 
-def test_execute_script_mock(script_service):
-    from services.asset_service import AssetService
-    asset_service = AssetService(script_service.db)
-    server_id = asset_service.create("Test Server", "192.168.1.1", 22, "admin", "password")
-
-    script_id = script_service.create("test_script", "echo 'Hello'", created_by=1)
-    script = script_service.get_by_id(script_id)
-
-    with patch('paramiko.SSHClient') as mock_ssh_class:
-        mock_ssh = Mock()
-        mock_ssh_class.return_value = mock_ssh
-        mock_stdout = Mock()
-        mock_stdout.read.return_value = b"Hello\n"
-        mock_stderr = Mock()
-        mock_stderr.read.return_value = b""
-        mock_ssh.exec_command.return_value = (Mock(), mock_stdout, mock_stderr)
-
-        exec_log_id = script_service.execute(script, server_id, executed_by=1)
-        assert exec_log_id is not None
-
-def test_execute_script_non_existent_server(script_service):
-    script_id = script_service.create("test_script", "echo 'Hello'", created_by=1)
-    script = script_service.get_by_id(script_id)
-
-    exec_log_id = script_service.execute(script, 999, executed_by=1)
-    assert exec_log_id is None
-
 def test_delete_script(script_service):
     script_id = script_service.create("test_script", "echo 'Hello'", created_by=1)
 

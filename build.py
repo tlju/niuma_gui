@@ -42,18 +42,27 @@ def build():
         '--onefile',
         '--enable-plugin=pyqt6',
         '--follow-imports',
-        '--nofollow-import-to=tkinter,matplotlib,numpy,scipy',
+        '--nofollow-import-to=tkinter,matplotlib,numpy,pandas,scipy',
         '--output-dir=dist',
         f'--output-filename={output_name}',
         '--assume-yes-for-downloads',
+        f'--jobs={os.cpu_count()}',
+        '--lto=yes',
+        '--include-package-data=pyqt6',
+        '--remove-output',
+        '--no-progress-bar',
         'main.py'
     ]
 
     if system == 'windows':
         cmd.insert(4, '--windows-disable-console')
+        if os.path.exists('icons/app.ico'):
+            cmd.append('--windows-icon-from-ico=icons/app.ico')
     else:
         cmd.insert(4, '--disable-console')
-        cmd.append('--lto=yes')
+        cmd.append('--file-reference-choice=runtime')
+        if os.path.exists('icons/app.png'):
+            cmd.append('--linux-icon=icons/app.png')
 
     print(f"执行命令: {' '.join(cmd)}")
     result = subprocess.run(cmd)

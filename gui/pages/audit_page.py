@@ -11,6 +11,15 @@ from gui.style_manager import load_combined_stylesheet
 
 logger = get_logger(__name__)
 
+ACTION_TYPE_NAMES = {
+    "login": "登录",
+    "logout": "登出",
+    "create": "创建",
+    "update": "更新",
+    "delete": "删除",
+    "execute": "执行"
+}
+
 class AuditPage(QWidget):
     def __init__(self, audit_service, parent=None):
         super().__init__(parent)
@@ -35,7 +44,12 @@ class AuditPage(QWidget):
         toolbar_layout.addWidget(QLabel("操作类型:"))
         self.action_combo = QComboBox()
         self.action_combo.addItem("全部", "")
-        self.action_combo.addItems(["login", "create", "update", "delete", "execute"])
+        self.action_combo.addItem("登录", "login")
+        self.action_combo.addItem("登出", "logout")
+        self.action_combo.addItem("创建", "create")
+        self.action_combo.addItem("更新", "update")
+        self.action_combo.addItem("删除", "delete")
+        self.action_combo.addItem("执行", "execute")
         self.action_combo.setMinimumHeight(34)
         self.action_combo.currentIndexChanged.connect(self.load_logs)
         toolbar_layout.addWidget(self.action_combo)
@@ -51,9 +65,9 @@ class AuditPage(QWidget):
         layout.addWidget(toolbar_frame)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
+        self.table.setColumnCount(3)
         self.table.setHorizontalHeaderLabels([
-            "ID", "用户ID", "操作类型", "资源类型", "资源ID", "时间"
+            "操作类型", "详情", "时间"
         ])
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -63,8 +77,9 @@ class AuditPage(QWidget):
         self.table.verticalHeader().setDefaultSectionSize(42)
 
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
 
         layout.addWidget(self.table)
         self.setLayout(layout)
@@ -94,14 +109,12 @@ class AuditPage(QWidget):
         self.table.setRowCount(len(logs))
 
         for row, log in enumerate(logs):
-            self.table.setItem(row, 0, QTableWidgetItem(str(log.id)))
-            self.table.setItem(row, 1, QTableWidgetItem(str(log.user_id)))
-            self.table.setItem(row, 2, QTableWidgetItem(log.action_type))
-            self.table.setItem(row, 3, QTableWidgetItem(log.resource_type or ""))
-            self.table.setItem(row, 4, QTableWidgetItem(str(log.resource_id) if log.resource_id else ""))
+            action_name = ACTION_TYPE_NAMES.get(log.action_type, log.action_type)
+            self.table.setItem(row, 0, QTableWidgetItem(action_name))
+            self.table.setItem(row, 1, QTableWidgetItem(log.details or ""))
 
             from datetime import datetime
             dt = log.created_at or datetime.now()
-            self.table.setItem(row, 5, QTableWidgetItem(
+            self.table.setItem(row, 2, QTableWidgetItem(
                 dt.strftime("%Y-%m-%d %H:%M:%S")
             ))

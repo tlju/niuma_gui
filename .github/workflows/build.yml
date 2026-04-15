@@ -74,6 +74,9 @@ jobs:
         pip --version
         pip list | grep -i nuitka
 
+    - name: 生成应用图标
+      run: python generate_icon.py
+
     - name: 缓存 Nuitka 编译
       uses: actions/cache@v4
       with:
@@ -108,8 +111,8 @@ jobs:
             --assume-yes-for-downloads \
             --jobs=$(nproc) \
             --lto=yes \
-            --file-reference-choice=runtime \
             --include-package-data=pyqt6 \
+            --windows-icon-from-ico=icons/app.ico \
             --remove-output \
             --no-progress-bar \
             main.py
@@ -125,6 +128,7 @@ jobs:
             --jobs=$(nproc) \
             --file-reference-choice=runtime \
             --include-package-data=pyqt6 \
+            --linux-icon=icons/app.png \
             --remove-output \
             --no-progress-bar \
             main.py

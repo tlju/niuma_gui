@@ -34,7 +34,8 @@ class AssetService:
         business_service: Optional[str] = None,
         location: Optional[str] = None,
         server_type: Optional[str] = None,
-        vip: Optional[str] = None
+        vip: Optional[str] = None,
+        user_id: Optional[int] = None
     ) -> Optional[int]:
         password_cipher = self.crypto.encrypt(password) if password else ""
 
@@ -56,6 +57,17 @@ class AssetService:
         self.db.add(asset)
         self.db.commit()
         self.db.refresh(asset)
+
+        if user_id:
+            audit = AuditLog(
+                user_id=user_id,
+                action_type="create",
+                resource_type="asset",
+                resource_id=asset.id,
+                details=f"创建资产: {unit_name} - {system_name} ({ip or ipv6})"
+            )
+            self.db.add(audit)
+            self.db.commit()
 
         return asset.id
 
@@ -100,7 +112,7 @@ class AssetService:
     def get_by_id(self, asset_id: int) -> Optional[ServerAsset]:
         return self.db.query(ServerAsset).filter(ServerAsset.id == asset_id).first()
 
-    def update(self, asset_id: int, **kwargs) -> bool:
+    def update(self, asset_id: int, user_id: Optional[int] = None, **kwargs) -> bool:
         asset = self.get_by_id(asset_id)
         if not asset:
             return False
@@ -113,6 +125,18 @@ class AssetService:
                     setattr(asset, key, value)
 
         self.db.commit()
+
+        if user_id:
+            audit = AuditLog(
+                user_id=user_id,
+                action_type="update",
+                resource_type="asset",
+                resource_id=asset_id,
+                details=f"更新资产: {asset.unit_name} - {asset.system_name} ({asset.ip or asset.ipv6})"
+            )
+            self.db.add(audit)
+            self.db.commit()
+
         return True
 
     def delete(self, asset_id: int, user_id: int) -> bool:
@@ -124,7 +148,8 @@ class AssetService:
             user_id=user_id,
             action_type="delete",
             resource_type="asset",
-            resource_id=asset_id
+            resource_id=asset_id,
+            details=f"删除资产: {asset.unit_name} - {asset.system_name} ({asset.ip or asset.ipv6})"
         )
         self.db.add(audit)
 

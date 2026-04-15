@@ -25,8 +25,8 @@ def create_tables():
     """创建所有数据库表"""
     logger.info("正在创建数据库表...")
     from models import (
-        User, ServerAsset, Script, ExecLog, AuditLog,
-        SystemConfig, DataDict, DataDictItem, SystemParam,
+        User, ServerAsset, Script, AuditLog,
+        DataDict, DataDictItem, SystemParam,
         Todo, Document, Workflow, WorkflowNode, WorkflowExecution, WorkflowNodeExecution
     )
     Base.metadata.create_all(bind=engine)

@@ -14,6 +14,7 @@ from services.dict_service import DictService
 from services.todo_service import TodoService
 from services.document_service import DocumentService
 from services.workflow_service import WorkflowService
+from services.auth_service import AuthService
 from core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -210,6 +211,10 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event):
+        if self.current_user_id:
+            auth_service = AuthService(self.db)
+            auth_service.logout(self.current_user_id, self.current_username)
+
         self.current_user_id = None
         self.current_username = None
         self.status_bar.clearMessage()
