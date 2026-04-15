@@ -3,19 +3,9 @@ import os
 import platform
 import subprocess
 import sys
-import shutil
 
 def build():
     print("开始构建 运维辅助工具 GUI...")
-
-    if os.path.exists('build'):
-        shutil.rmtree('build')
-    if os.path.exists('dist'):
-        shutil.rmtree('dist')
-    if os.path.exists('main.build'):
-        shutil.rmtree('main.build')
-    if os.path.exists('main.dist'):
-        shutil.rmtree('main.dist')
 
     system = platform.system().lower()
     arch = platform.machine().lower()
