@@ -98,6 +98,18 @@ jobs:
             --enable-plugin=pyqt6 \
             --follow-imports \
             --nofollow-import-to=tkinter,matplotlib,numpy,pandas,scipy \
+            --include-package=paramiko \
+            --include-package=bcrypt \
+            --include-package=cryptography \
+            --include-package=openpyxl \
+            --include-package=xlsxwriter \
+            --include-package=sqlalchemy \
+            --include-package=pydantic \
+            --include-package=pydantic_settings \
+            --include-data-dir=gui/styles=gui/styles \
+            --include-data-file=icons/app.ico=icons/app.ico \
+            --include-dll=bcrypt*.dll \
+            --include-dll=cryptography*.dll \
             --output-dir=dist \
             --output-filename=${{ matrix.output_name }} \
             --assume-yes-for-downloads \
@@ -113,6 +125,15 @@ jobs:
             --enable-plugin=pyqt6 \
             --follow-imports \
             --nofollow-import-to=tkinter,matplotlib,numpy,pandas,scipy \
+            --include-package=paramiko \
+            --include-package=bcrypt \
+            --include-package=cryptography \
+            --include-package=openpyxl \
+            --include-package=xlsxwriter \
+            --include-package=sqlalchemy \
+            --include-package=pydantic \
+            --include-package=pydantic_settings \
+            --include-data-dir=gui/styles=gui/styles \
             --output-dir=dist \
             --output-filename=${{ matrix.output_name }} \
             --lto=yes \

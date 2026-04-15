@@ -43,6 +43,15 @@ def build():
         '--enable-plugin=pyqt6',
         '--follow-imports',
         '--nofollow-import-to=tkinter,matplotlib,numpy,pandas,scipy',
+        '--include-package=paramiko',
+        '--include-package=bcrypt',
+        '--include-package=cryptography',
+        '--include-package=openpyxl',
+        '--include-package=xlsxwriter',
+        '--include-package=sqlalchemy',
+        '--include-package=pydantic',
+        '--include-package=pydantic_settings',
+        '--include-data-dir=gui/styles=gui/styles',
         '--output-dir=dist',
         f'--output-filename={output_name}',
         '--assume-yes-for-downloads',
@@ -58,6 +67,8 @@ def build():
         cmd.insert(4, '--windows-disable-console')
         if os.path.exists('icons/app.ico'):
             cmd.append('--windows-icon-from-ico=icons/app.ico')
+        cmd.append('--include-dll=bcrypt*.dll')
+        cmd.append('--include-dll=cryptography*.dll')
     else:
         cmd.insert(4, '--disable-console')
         cmd.append('--file-reference-choice=runtime')

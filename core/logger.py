@@ -4,8 +4,20 @@
 """
 import logging
 import os
+import sys
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
+
+
+def _get_base_path():
+    """
+    获取程序的基础路径
+    在编译后的程序中使用可执行文件所在目录，否则使用脚本所在目录
+    """
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    else:
+        return os.path.dirname(os.path.dirname(__file__))
 
 
 def setup_logger(log_level=logging.INFO):
@@ -16,7 +28,8 @@ def setup_logger(log_level=logging.INFO):
         log_level: 日志级别，默认为INFO
     """
     # 创建logs目录
-    log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
+    base_path = _get_base_path()
+    log_dir = os.path.join(base_path, 'logs')
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 

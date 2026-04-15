@@ -5,6 +5,15 @@ from PyQt6.QtGui import QFont, QFontDatabase
 from PyQt6.QtCore import QSysInfo
 
 
+def _get_resource_path(relative_path: str) -> Path:
+    if getattr(sys, 'frozen', False):
+        base_path = Path(sys.executable).parent
+        return base_path / relative_path
+    else:
+        base_path = Path(__file__).parent.parent
+        return base_path / relative_path
+
+
 def _detect_platform_font() -> list:
     font_list = []
     if sys.platform == "win32":
@@ -51,7 +60,7 @@ def _detect_font_size() -> int:
 
 
 def load_stylesheet(app: QApplication, style_name: str = None) -> None:
-    styles_dir = Path(__file__).parent / "styles"
+    styles_dir = _get_resource_path("gui/styles")
 
     if style_name:
         style_path = styles_dir / f"{style_name}.qss"
@@ -66,7 +75,7 @@ def load_stylesheet(app: QApplication, style_name: str = None) -> None:
 
 
 def load_combined_stylesheet(app: QApplication, style_names: list) -> None:
-    styles_dir = Path(__file__).parent / "styles"
+    styles_dir = _get_resource_path("gui/styles")
     combined_styles = ""
 
     for style_name in style_names:
