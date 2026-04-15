@@ -53,27 +53,6 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
         pip install -r requirements.txt
         pip install nuitka ordered-set zstandard
-        pip install clcache
-
-    - name: 设置 clcache 缓存
-      if: matrix.platform == 'windows'
-      uses: actions/cache@v4
-      with:
-        path: ~/clcache
-        key: clcache-${{ runner.os }}-${{ matrix.arch }}-${{ github.sha }}
-        restore-keys: |
-          clcache-${{ runner.os }}-${{ matrix.arch }}-
-          clcache-${{ runner.os }}-
-
-    - name: 设置 ccache 缓存
-      if: matrix.platform == 'linux'
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/ccache
-        key: ccache-${{ runner.os }}-${{ matrix.arch }}-${{ github.sha }}
-        restore-keys: |
-          ccache-${{ runner.os }}-${{ matrix.arch }}-
-          ccache-${{ runner.os }}-
 
     - name: 安装构建依赖 (Linux)
       if: matrix.platform == 'linux'
@@ -92,9 +71,6 @@ jobs:
         pip list | grep -i nuitka
 
     - name: 使用 Nuitka 构建
-      env:
-        CLCACHE_DIR: ${{ matrix.platform == 'windows' && '~/clcache' || '' }}
-        CCACHE_DIR: ${{ matrix.platform == 'linux' && '~/.cache/ccache' || '' }}
       run: |
         if [ "${{ matrix.platform }}" = "windows" ]; then
           python -m nuitka --standalone --onefile \
@@ -147,7 +123,6 @@ jobs:
             --lto=yes \
             --assume-yes-for-downloads \
             --jobs=$(nproc) \
-            --ccache \
             --file-reference-choice=runtime \
             --include-package-data=pyqt6 \
             --linux-icon=icons/app.png \
@@ -166,18 +141,6 @@ jobs:
           echo "构建失败: 输出文件未找到"
           exit 1
         fi
-      shell: bash
-
-    - name: 显示缓存统计 (Windows)
-      if: matrix.platform == 'windows'
-      run: |
-        python -m clcache -s
-      shell: bash
-
-    - name: 显示缓存统计 (Linux)
-      if: matrix.platform == 'linux'
-      run: |
-        ccache -s
       shell: bash
 
     - name: 上传构建产物
