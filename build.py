@@ -42,7 +42,7 @@ def build():
         '--onefile',
         '--enable-plugin=pyqt6',
         '--follow-imports',
-        '--nofollow-import-to=tkinter,matplotlib,numpy,pandas,scipy',
+        '--nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,unittest,doctest',
         '--include-package=paramiko',
         '--include-package=bcrypt',
         '--include-package=cryptography',
@@ -51,26 +51,25 @@ def build():
         '--include-package=sqlalchemy',
         '--include-package=pydantic',
         '--include-package=pydantic_settings',
+        '--include-package=numpy',
+        '--include-package=pyqtgraph',
+        '--include-package=dotenv',
         '--include-data-dir=gui/styles=gui/styles',
         '--output-dir=dist',
         f'--output-filename={output_name}',
         '--assume-yes-for-downloads',
         f'--jobs={os.cpu_count()}',
-        '--lto=yes',
         '--include-package-data=pyqt6',
-        '--remove-output',
-        '--no-progress-bar',
         'main.py'
     ]
 
     if system == 'windows':
-        cmd.insert(4, '--windows-disable-console')
+        cmd.append('--windows-console-mode=disable')
+        cmd.append('--include-data-file=icons/app.ico=icons/app.ico')
         if os.path.exists('icons/app.ico'):
             cmd.append('--windows-icon-from-ico=icons/app.ico')
-        cmd.append('--include-dll=bcrypt*.dll')
-        cmd.append('--include-dll=cryptography*.dll')
     else:
-        cmd.insert(4, '--disable-console')
+        cmd.append('--windows-console-mode=disable')
         cmd.append('--file-reference-choice=runtime')
         if os.path.exists('icons/app.png'):
             cmd.append('--linux-icon=icons/app.png')
