@@ -284,7 +284,7 @@ class RichTextEditor(QWidget):
         self._font_size.blockSignals(True)
         font_size = char_format.fontPointSize()
         if font_size == 0:
-            font_size = 11
+            font_size = 15
         self._font_size.setValue(int(font_size))
         self._font_size.blockSignals(False)
 
