@@ -207,69 +207,93 @@ jobs:
         BODY="${{ github.event.release.body }}"
         PRERELEASE="${{ github.event.release.prerelease }}"
 
-        echo " 创建 Gitee Release..."
+        echo "🔍 创建 Gitee Release..."
+        echo "📋 Tag: $TAG"
+        echo "📋 Name: $NAME"
+        echo "📋 Prerelease: $PRERELEASE"
+        
+        # 转义JSON中的特殊字符
+        BODY_ESCAPED=$(echo "$BODY" | sed 's/\\/\\\\/g; s/"/\\"/g; s/$/\\$/g')
+        
+        # 构建JSON数据
+        JSON_DATA="{\"tag_name\":\"$TAG\",\"name\":\"$NAME\",\"body\":\"$BODY_ESCAPED\",\"prerelease\":$PRERELEASE}"
+        
+        echo "📋 请求数据: $JSON_DATA"
+        
         RELEASE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
           "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases" \
           -H "Authorization: Bearer $GITEE_TOKEN" \
           -H "Content-Type: application/json" \
-          -d "{\"tag_name\":\"$TAG\",\"name\":\"$NAME\",\"body\":\"$BODY\",\"prerelease\":$PRERELEASE}")
+          -d "$JSON_DATA")
 
         HTTP_CODE=$(echo "$RELEASE_RESPONSE" | tail -n1)
-        BODY=$(echo "$RELEASE_RESPONSE" | sed '$d')
+        RESPONSE_BODY=$(echo "$RELEASE_RESPONSE" | sed '$d')
+
+        echo "📋 响应内容: $RESPONSE_BODY"
 
         if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
           echo "✅ Gitee Release 创建成功"
         else
           echo "⚠️ Gitee Release 创建可能已存在或失败 (HTTP $HTTP_CODE)"
-          echo "响应: $BODY"
+          echo "响应: $RESPONSE_BODY"
         fi
 
   upload-assets-to-gitee:
-    name: 上传 ${{ matrix.output_name }}
+    name: 上传构建产物到 Gitee
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'release'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - output_name: niuma-linux-x64
-          - output_name: niuma-linux-arm64
-          - output_name: niuma-windows-x64.exe
     steps:
-    - name: 下载构建产物
-      uses: actions/download-artifact@v4
-      with:
-        name: ${{ matrix.output_name }}
-        path: /tmp
-
-    - name: 上传到 Gitee
+    - name: 检查 GITEE_TOKEN
       env:
         GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
       run: |
-        GITEE_OWNER="${{ github.repository_owner }}"
-        GITEE_REPO="${{ github.event.repository.name }}"
-        ASSET_NAME="${{ matrix.output_name }}"
-        ASSET_PATH="/tmp/${{ matrix.output_name }}"
-
-        if [ ! -f "$ASSET_PATH" ]; then
-          echo "❌ 文件不存在: $ASSET_PATH"
-          exit 1
+        if [ -z "$GITEE_TOKEN" ]; then
+          echo "⚠️ GITEE_TOKEN 未配置，跳过上传到 Gitee"
+          exit 0
         fi
+        echo "has_token=true" >> $GITHUB_OUTPUT
+      id: check-token
 
-        echo "📤 上传到 Gitee: $ASSET_NAME (大小: $(ls -lh "$ASSET_PATH" | awk '{print $5}'))"
-        UPLOAD_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-          "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases/latest/assets?name=$ASSET_NAME" \
-          -H "Authorization: Bearer $GITEE_TOKEN" \
-          -F "file=@$ASSET_PATH")
+    - name: 下载构建产物
+      if: steps.check-token.outputs.has_token == 'true'
+      uses: actions/download-artifact@v4
+      with:
+        pattern: niuma-*
+        path: /tmp/artifacts
+        merge-multiple: true
 
-        UPLOAD_HTTP_CODE=$(echo "$UPLOAD_RESPONSE" | tail -n1)
-        UPLOAD_BODY=$(echo "$UPLOAD_RESPONSE" | sed '$d')
-        
-        if [ "$UPLOAD_HTTP_CODE" -ge 200 ] && [ "$UPLOAD_HTTP_CODE" -lt 300 ]; then
-          echo "✅ 上传成功: $ASSET_NAME"
-        else
-          echo "❌ 上传失败: $ASSET_NAME (HTTP $UPLOAD_HTTP_CODE)"
-          echo "响应内容: $UPLOAD_BODY"
-          exit 1
-        fi
+    - name: 检出 Gitee 仓库
+      if: steps.check-token.outputs.has_token == 'true'
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ github.repository_owner }}/${{ github.event.repository.name }}
+        token: ${{ secrets.GITEE_TOKEN }}
+        ref: ${{ github.event.release.tag_name }}
+
+    - name: 设置 Git
+      if: steps.check-token.outputs.has_token == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+    - name: 复制构建产物
+      if: steps.check-token.outputs.has_token == 'true'
+      run: |
+        mkdir -p releases
+        cp /tmp/artifacts/* releases/
+        ls -lh releases/
+
+    - name: 提交到 Gitee
+      if: steps.check-token.outputs.has_token == 'true'
+      run: |
+        git add releases/
+        git commit -m "chore: upload release assets for ${{ github.event.release.tag_name }}" || echo "No changes to commit"
+
+    - name: 推送到 Gitee
+      if: steps.check-token.outputs.has_token == 'true'
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITEE_TOKEN }}
+        branch: ${{ github.event.release.tag_name }}
+        repository: ${{ github.repository_owner }}/${{ github.event.repository.name }}
