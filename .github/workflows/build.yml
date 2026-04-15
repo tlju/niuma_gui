@@ -85,20 +85,11 @@ jobs:
           ~/.cache/Nuitka
           ~/.nuitka
           build
-        key: nuitka-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('**/*.py', 'requirements.txt') }}
+          ~/.cache/ccache
+        key: nuitka-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('*.py', 'gui/*.py', 'core/*.py', 'models/*.py', 'services/*.py', 'requirements.txt') }}
         restore-keys: |
           nuitka-${{ matrix.os }}-${{ matrix.arch }}-
           nuitka-${{ matrix.os }}-
-
-    - name: 缓存 ccache (Linux)
-      if: matrix.platform == 'linux'
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/ccache
-        key: ccache-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('**/*.py') }}
-        restore-keys: |
-          ccache-${{ matrix.os }}-${{ matrix.arch }}-
-          ccache-${{ matrix.os }}-
 
     - name: 使用 Nuitka 构建
       run: |
@@ -183,31 +174,6 @@ jobs:
       if: steps.check-token.outputs.has_token == 'true'
       uses: actions/checkout@v4
 
-    - name: 获取 Release 信息
-      if: steps.check-token.outputs.has_token == 'true'
-      id: release-info
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-          "https://api.github.com/repos/${{ github.repository }}/releases/latest")
-
-        TAG_NAME=$(echo "$RELEASE_INFO" | jq -r '.tag_name')
-        RELEASE_NAME=$(echo "$RELEASE_INFO" | jq -r '.name')
-        RELEASE_BODY=$(echo "$RELEASE_INFO" | jq -r '.body')
-        TARGET_COMMITISH=$(echo "$RELEASE_INFO" | jq -r '.target_commitish')
-        PRERELEASE=$(echo "$RELEASE_INFO" | jq -r '.prerelease')
-
-        echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-        echo "release_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
-        echo "target_commitish=$TARGET_COMMITISH" >> $GITHUB_OUTPUT
-        echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
-
-        RELEASE_BODY_ESCAPED=$(echo "$RELEASE_BODY" | jq -Rs .)
-        echo "release_body=$RELEASE_BODY_ESCAPED" >> $GITHUB_OUTPUT
-
-        echo "Release 标签: $TAG_NAME"
-
     - name: 创建 Gitee Release
       if: steps.check-token.outputs.has_token == 'true'
       env:
@@ -215,93 +181,74 @@ jobs:
       run: |
         GITEE_OWNER="${{ github.repository_owner }}"
         GITEE_REPO="${{ github.event.repository.name }}"
+        TAG="${{ github.event.release.tag_name }}"
+        NAME="${{ github.event.release.name }}"
+        BODY="${{ github.event.release.body }}"
+        PRERELEASE="${{ github.event.release.prerelease }}"
 
-        RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-          -H "Content-Type: application/json" \
+        echo " 创建 Gitee Release..."
+        RELEASE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+          "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases" \
           -H "Authorization: Bearer $GITEE_TOKEN" \
-          -d '{
-            "tag_name": "${{ steps.release-info.outputs.tag_name }}",
-            "name": "${{ steps.release-info.outputs.release_name }}",
-            "body": ${{ steps.release-info.outputs.release_body }},
-            "target_commitish": "${{ steps.release-info.outputs.target_commitish }}",
-            "prerelease": ${{ steps.release-info.outputs.prerelease }}
-          }' \
-          "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases")
+          -H "Content-Type: application/json" \
+          -d "{\"tag_name\":\"$TAG\",\"name\":\"$NAME\",\"body\":\"$BODY\",\"prerelease\":$PRERELEASE}")
 
-        HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-        BODY=$(echo "$RESPONSE" | sed '$d')
+        HTTP_CODE=$(echo "$RELEASE_RESPONSE" | tail -n1)
+        BODY=$(echo "$RELEASE_RESPONSE" | sed '$d')
 
         if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
           echo "✅ Gitee Release 创建成功"
-          GITEE_RELEASE_ID=$(echo "$BODY" | jq -r '.id')
-          echo "gitee_release_id=$GITEE_RELEASE_ID" >> $GITHUB_OUTPUT
         else
           echo "⚠️ Gitee Release 创建可能已存在或失败 (HTTP $HTTP_CODE)"
           echo "响应: $BODY"
         fi
 
+  upload-assets-to-gitee:
+    name: 上传 ${{ matrix.output_name }}
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'release'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - output_name: niuma-linux-x64
+          - output_name: niuma-linux-arm64
+          - output_name: niuma-windows-x64.exe
+    steps:
     - name: 下载构建产物
-      if: steps.check-token.outputs.has_token == 'true'
       uses: actions/download-artifact@v4
       with:
-        path: artifacts
-        pattern: niuma-*
-        merge-multiple: false
+        name: ${{ matrix.output_name }}
+        path: /tmp
 
-    - name: 上传资产到 Gitee
-      if: steps.check-token.outputs.has_token == 'true'
+    - name: 上传到 Gitee
       env:
         GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
       run: |
         GITEE_OWNER="${{ github.repository_owner }}"
         GITEE_REPO="${{ github.event.repository.name }}"
+        ASSET_NAME="${{ matrix.output_name }}"
+        ASSET_PATH="/tmp/${{ matrix.output_name }}"
 
-        echo "📁 检查 artifacts 目录结构:"
-        ls -la artifacts/ || echo "artifacts 目录不存在"
-        find artifacts -type f -exec ls -lh {} \; || echo "没有找到文件"
+        if [ ! -f "$ASSET_PATH" ]; then
+          echo "❌ 文件不存在: $ASSET_PATH"
+          exit 1
+        fi
 
-        GITEE_RELEASE_ID=$(curl -s --connect-timeout 30 --max-time 60 \
+        echo "📤 上传到 Gitee: $ASSET_NAME (大小: $(ls -lh "$ASSET_PATH" | awk '{print $5}'))"
+        UPLOAD_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+          "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases/latest/assets?name=$ASSET_NAME" \
           -H "Authorization: Bearer $GITEE_TOKEN" \
-          "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases/latest" | jq -r '.id')
+          -F "file=@$ASSET_PATH")
 
-        if [ -z "$GITEE_RELEASE_ID" ] || [ "$GITEE_RELEASE_ID" = "null" ]; then
-          echo "❌ 无法获取 Gitee Release ID"
-          exit 1
-        fi
-
-        echo "Gitee Release ID: $GITEE_RELEASE_ID"
-        echo "开始上传资产..."
-
-        FILES=$(find artifacts -type f \( -name "niuma-linux-x64" -o -name "niuma-linux-arm64" -o -name "niuma-windows-x64.exe" \))
+        UPLOAD_HTTP_CODE=$(echo "$UPLOAD_RESPONSE" | tail -n1)
+        UPLOAD_BODY=$(echo "$UPLOAD_RESPONSE" | sed '$d')
         
-        if [ -z "$FILES" ]; then
-          echo "❌ 没有找到要上传的文件"
+        if [ "$UPLOAD_HTTP_CODE" -ge 200 ] && [ "$UPLOAD_HTTP_CODE" -lt 300 ]; then
+          echo "✅ 上传成功: $ASSET_NAME"
+        else
+          echo "❌ 上传失败: $ASSET_NAME (HTTP $UPLOAD_HTTP_CODE)"
+          echo "响应内容: $UPLOAD_BODY"
           exit 1
         fi
-
-        echo "$FILES" | while IFS= read -r FILE; do
-          if [ -n "$FILE" ]; then
-            FILENAME=$(basename "$FILE")
-            echo "📤 上传: $FILENAME (大小: $(ls -lh "$FILE" | awk '{print $5}'))"
-
-            UPLOAD_RESPONSE=$(curl -s --connect-timeout 60 --max-time 600 -w "\n%{http_code}" -X POST \
-              -H "Authorization: Bearer $GITEE_TOKEN" \
-              -F "file=@$FILE" \
-              "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases/$GITEE_RELEASE_ID/attach_files?name=$FILENAME")
-
-            UPLOAD_HTTP_CODE=$(echo "$UPLOAD_RESPONSE" | tail -n1)
-            UPLOAD_BODY=$(echo "$UPLOAD_RESPONSE" | sed '$d')
-            
-            if [ "$UPLOAD_HTTP_CODE" -ge 200 ] && [ "$UPLOAD_HTTP_CODE" -lt 300 ]; then
-              echo "✅ 上传成功: $FILENAME"
-            else
-              echo "❌ 上传失败: $FILENAME (HTTP $UPLOAD_HTTP_CODE)"
-              echo "响应内容: $UPLOAD_BODY"
-            fi
-          fi
-        done
-
-    - name: 同步完成
-      if: steps.check-token.outputs.has_token == 'true'
-      run: |
-        echo "🎉 Release ${{ steps.release-info.outputs.tag_name }} 已成功同步到 Gitee！"
