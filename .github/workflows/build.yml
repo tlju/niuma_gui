@@ -69,16 +69,14 @@ jobs:
         sudo apt-get install -y ccache build-essential \
           libegl1 libgl1-mesa-glx libxkbcommon-x11-0 \
           libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
-          libxcb-randr0 libxcb-render-util0 libxcb-shape0
+          libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
+          libxcb-cursor0
 
     - name: 验证 Python 环境
       run: |
         python --version
         pip --version
         pip list | grep -i nuitka
-
-    - name: 生成应用图标
-      run: python generate_icon.py
 
     - name: 缓存 Nuitka 编译
       uses: actions/cache@v4
