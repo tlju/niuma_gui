@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     MINIO_BUCKET: str = "rapfile"
     MINIO_SECURE: bool = False
 
-    model_config = ConfigDict(env_file=".env")
+    model_config = ConfigDict(env_file=".env", extra="ignore")
 
     @property
     def db_path(self) -> str:

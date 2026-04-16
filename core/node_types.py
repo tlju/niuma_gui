@@ -7,6 +7,7 @@ import time
 import tempfile
 import os
 import re
+import sys
 from core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -403,7 +404,7 @@ class ScriptNode(BaseNode):
             with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
                 f.write(script_content)
                 temp_file = f.name
-            return f"python3 {temp_file}"
+            return f'"{sys.executable}" {temp_file}'
         elif language == "sql":
             with tempfile.NamedTemporaryFile(mode='w', suffix='.sql', delete=False) as f:
                 f.write(script_content)
