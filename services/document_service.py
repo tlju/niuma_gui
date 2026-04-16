@@ -3,6 +3,7 @@ from models.document import Document
 from models.audit_log import AuditLog
 from typing import List, Optional
 from core.logger import get_logger
+from core.utils import get_local_now
 
 logger = get_logger(__name__)
 
@@ -18,7 +19,8 @@ class DocumentService:
             content=content,
             category=category,
             tags=tags,
-            created_by=created_by
+            created_by=created_by,
+            created_at=get_local_now()
         )
         self.db.add(document)
         self.db.commit()
@@ -31,7 +33,8 @@ class DocumentService:
                 action_type="create",
                 resource_type="document",
                 resource_id=document.id,
-                details=f"创建文档: {title}"
+                details=f"创建文档: {title}",
+                created_at=get_local_now()
             )
             self.db.add(audit)
             self.db.commit()
@@ -62,6 +65,7 @@ class DocumentService:
             if value is not None and hasattr(document, key):
                 setattr(document, key, value)
 
+        document.updated_at = get_local_now()
         self.db.commit()
         self.db.refresh(document)
         logger.info(f"更新文档: {document.title}")
@@ -72,7 +76,8 @@ class DocumentService:
                 action_type="update",
                 resource_type="document",
                 resource_id=document_id,
-                details=f"更新文档: {document.title}"
+                details=f"更新文档: {document.title}",
+                created_at=get_local_now()
             )
             self.db.add(audit)
             self.db.commit()
@@ -88,7 +93,8 @@ class DocumentService:
                     action_type="delete",
                     resource_type="document",
                     resource_id=document_id,
-                    details=f"删除文档: {document.title}"
+                    details=f"删除文档: {document.title}",
+                    created_at=get_local_now()
                 )
                 self.db.add(audit)
             self.db.delete(document)

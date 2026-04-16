@@ -3,6 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from core.config import settings
 from core.logger import get_logger
+from core.utils import get_local_now
 from models.base import Base
 
 logger = get_logger(__name__)
@@ -55,7 +56,8 @@ def _create_admin_user(db: Session) -> bool:
         hashed_password=hashed_password,
         full_name=DEFAULT_ADMIN_FULL_NAME,
         status=UserStatus.ACTIVE,
-        is_superuser=True
+        is_superuser=True,
+        created_at=get_local_now()
     )
     db.add(admin)
     db.commit()

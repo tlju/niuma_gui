@@ -8,13 +8,17 @@ from models.audit_log import AuditLog
 from core.logger import get_logger
 from core.workflow_engine import WorkflowExecutor
 from core.node_types import NodeStatus
+from core.utils import get_local_now
 
 logger = get_logger(__name__)
 
 
 class WorkflowService:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, script_service=None, dict_service=None, param_service=None):
         self.db = db
+        self.script_service = script_service
+        self.dict_service = dict_service
+        self.param_service = param_service
 
     def get_all(self) -> List[Workflow]:
         return self.db.query(Workflow).filter(
@@ -29,7 +33,8 @@ class WorkflowService:
             name=name,
             description=description,
             created_by=user_id,
-            graph_data=graph_data or {"nodes": [], "connections": []}
+            graph_data=graph_data or {"nodes": [], "connections": []},
+            created_at=get_local_now()
         )
         self.db.add(workflow)
         self.db.commit()
@@ -42,7 +47,8 @@ class WorkflowService:
                 action_type="create",
                 resource_type="workflow",
                 resource_id=workflow.id,
-                details=f"创建工作流: {name}"
+                details=f"创建工作流: {name}",
+                created_at=get_local_now()
             )
             self.db.add(audit)
             self.db.commit()
@@ -58,6 +64,7 @@ class WorkflowService:
             if hasattr(workflow, key):
                 setattr(workflow, key, value)
 
+        workflow.updated_at = get_local_now()
         self.db.commit()
         self.db.refresh(workflow)
         logger.info(f"更新工作流: {workflow.name}, ID: {workflow_id}")
@@ -68,7 +75,8 @@ class WorkflowService:
                 action_type="update",
                 resource_type="workflow",
                 resource_id=workflow_id,
-                details=f"更新工作流: {workflow.name}"
+                details=f"更新工作流: {workflow.name}",
+                created_at=get_local_now()
             )
             self.db.add(audit)
             self.db.commit()
@@ -86,7 +94,8 @@ class WorkflowService:
                 action_type="delete",
                 resource_type="workflow",
                 resource_id=workflow_id,
-                details=f"删除工作流: {workflow.name}"
+                details=f"删除工作流: {workflow.name}",
+                created_at=get_local_now()
             )
             self.db.add(audit)
 
@@ -102,6 +111,7 @@ class WorkflowService:
 
         graph_data = {"nodes": nodes, "connections": connections}
         workflow.graph_data = graph_data
+        workflow.updated_at = get_local_now()
 
         self.db.query(WorkflowNode).filter(WorkflowNode.workflow_id == workflow_id).delete()
 
@@ -112,7 +122,8 @@ class WorkflowService:
                 name=node_data.get("name", f"Node_{node_data['id']}"),
                 config=node_data.get("config", {}),
                 position_x=node_data.get("x", 0),
-                position_y=node_data.get("y", 0)
+                position_y=node_data.get("y", 0),
+                created_at=get_local_now()
             )
             self.db.add(node)
 
@@ -126,7 +137,8 @@ class WorkflowService:
                 action_type="update",
                 resource_type="workflow",
                 resource_id=workflow_id,
-                details=f"保存工作流图形: {workflow.name}"
+                details=f"保存工作流图形: {workflow.name}",
+                created_at=get_local_now()
             )
             self.db.add(audit)
             self.db.commit()
@@ -145,7 +157,8 @@ class WorkflowService:
     def create_execution(self, workflow_id: int) -> WorkflowExecution:
         execution = WorkflowExecution(
             workflow_id=workflow_id,
-            status="pending"
+            status="pending",
+            started_at=get_local_now()
         )
         self.db.add(execution)
         self.db.commit()
@@ -170,7 +183,8 @@ class WorkflowService:
             execution_id=execution_id,
             node_id=node_id,
             node_name=node_name,
-            status="pending"
+            status="pending",
+            started_at=get_local_now()
         )
         self.db.add(node_exec)
         self.db.commit()
@@ -213,13 +227,14 @@ class WorkflowService:
                 action_type="execute",
                 resource_type="workflow",
                 resource_id=workflow_id,
-                details=f"执行工作流: {workflow.name}"
+                details=f"执行工作流: {workflow.name}",
+                created_at=get_local_now()
             )
             self.db.add(audit)
             self.db.commit()
 
-        executor = WorkflowExecutor(workflow_id, nodes, connections)
-        executor.set_callbacks(execution_callback, log_callback)
+        executor = WorkflowExecutor(workflow_id, nodes, connections, self.script_service, 
+                                    self.dict_service, self.param_service)
 
         node_exec_map = {}
         for node_data in nodes:
@@ -243,11 +258,17 @@ class WorkflowService:
                     status=status,
                     output=output,
                     error_message=error,
-                    finished_at=datetime.now() if status in ["success", "failed", "skipped"] else None
+                    finished_at=get_local_now() if status in ["success", "failed", "skipped"] else None
                 )
+
+            if execution_callback:
+                execution_callback(update)
 
         def db_log_callback(log_entry):
             logger.info(f"[Workflow {workflow_id}] {log_entry['message']}")
+
+            if log_callback:
+                log_callback(log_entry)
 
         executor.set_callbacks(db_execution_callback, db_log_callback)
 
@@ -256,7 +277,7 @@ class WorkflowService:
         self.update_execution(
             execution.id,
             status=result["status"],
-            finished_at=datetime.now(),
+            finished_at=get_local_now(),
             result=result.get("node_results"),
             error_message=result.get("error")
         )

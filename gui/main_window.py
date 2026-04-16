@@ -36,7 +36,7 @@ class MainWindow(QMainWindow):
         self.dict_service = DictService(self.db)
         self.todo_service = TodoService(self.db)
         self.document_service = DocumentService(self.db)
-        self.workflow_service = WorkflowService(self.db)
+        self.workflow_service = WorkflowService(self.db, self.script_service, self.dict_service, self.param_service)
 
         self.init_ui()
         self.status_bar.showMessage(f"当前用户: {username}  |  状态: 在线")
@@ -166,7 +166,7 @@ class MainWindow(QMainWindow):
         self.dicts_page = DataDictsPage(self.dict_service)
         self.todos_page = TodosPage(self.todo_service, self.current_user_id)
         self.documents_page = DocumentsPage(self.document_service, self.current_user_id)
-        self.workflow_page = WorkflowPage(self.workflow_service, self.current_user_id)
+        self.workflow_page = WorkflowPage(self.workflow_service, self.current_user_id, self.script_service)
 
         self.stacked_widget.addWidget(self.assets_page)
         self.stacked_widget.addWidget(self.scripts_page)

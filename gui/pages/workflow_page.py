@@ -62,12 +62,13 @@ class WorkflowEditDialog(QDialog):
     MODE_EDIT = "edit"
     MODE_EXECUTE = "execute"
 
-    def __init__(self, workflow_service, workflow=None, mode="edit", current_user_id=None, parent=None):
+    def __init__(self, workflow_service, workflow=None, mode="edit", current_user_id=None, script_service=None, parent=None):
         super().__init__(parent)
         self.workflow_service = workflow_service
         self.workflow = workflow
         self.mode = mode
         self.current_user_id = current_user_id
+        self.script_service = script_service
 
         if mode == self.MODE_EXECUTE:
             self.setWindowTitle(f"执行工作流 - {workflow.name}" if workflow else "执行工作流")
@@ -113,7 +114,7 @@ class WorkflowEditDialog(QDialog):
         self.node_palette.node_selected.connect(self._on_node_type_selected)
         splitter.addWidget(self.node_palette)
 
-        self.canvas = WorkflowCanvas()
+        self.canvas = WorkflowCanvas(self.script_service, self.mode)
         splitter.addWidget(self.canvas)
 
         self.log_panel = QWidget()
@@ -174,6 +175,7 @@ class WorkflowEditDialog(QDialog):
             "SUCCESS": "#81C784"
         }
         color = color_map.get(level, "#FFFFFF")
+        message = message.replace("\n", "<br>")
         self.log_text.appendHtml(
             f'<span style="color: #888;">[{timestamp}]</span> '
             f'<span style="color: {color};">[{level}]</span> '
@@ -207,10 +209,11 @@ class WorkflowEditDialog(QDialog):
 
 
 class WorkflowPage(QWidget):
-    def __init__(self, workflow_service, current_user_id, parent=None):
+    def __init__(self, workflow_service, current_user_id, script_service=None, parent=None):
         super().__init__(parent)
         self.workflow_service = workflow_service
         self.current_user_id = current_user_id
+        self.script_service = script_service
         self.loading_worker = None
         self.execution_worker = None
         self.workflows_data = []
@@ -358,7 +361,7 @@ class WorkflowPage(QWidget):
         QMessageBox.critical(self, "错误", f"加载工作流失败: {error_msg}")
 
     def show_create_dialog(self):
-        dialog = WorkflowEditDialog(self.workflow_service, current_user_id=self.current_user_id, parent=self)
+        dialog = WorkflowEditDialog(self.workflow_service, current_user_id=self.current_user_id, script_service=self.script_service, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.load_workflows()
 
@@ -370,7 +373,7 @@ class WorkflowPage(QWidget):
             else:
                 return
 
-        dialog = WorkflowEditDialog(self.workflow_service, workflow, current_user_id=self.current_user_id, parent=self)
+        dialog = WorkflowEditDialog(self.workflow_service, workflow, current_user_id=self.current_user_id, script_service=self.script_service, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.load_workflows()
 
@@ -387,6 +390,7 @@ class WorkflowPage(QWidget):
             self.workflow_service, workflow,
             mode=WorkflowEditDialog.MODE_EXECUTE,
             current_user_id=self.current_user_id,
+            script_service=self.script_service,
             parent=self
         )
 

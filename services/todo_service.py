@@ -4,6 +4,7 @@ from models.audit_log import AuditLog
 from typing import List, Optional
 from datetime import datetime, timedelta
 from core.logger import get_logger
+from core.utils import get_local_now
 
 logger = get_logger(__name__)
 
@@ -24,7 +25,8 @@ class TodoService:
             due_date=due_date,
             status=status if status else TodoStatus.PENDING,
             recurrence_type=recurrence_type if recurrence_type else RecurrenceType.NONE,
-            recurrence_interval=recurrence_interval
+            recurrence_interval=recurrence_interval,
+            created_at=get_local_now()
         )
         self.db.add(todo)
         self.db.commit()
@@ -37,7 +39,8 @@ class TodoService:
                 action_type="create",
                 resource_type="todo",
                 resource_id=todo.id,
-                details=f"创建待办: {title}"
+                details=f"创建待办: {title}",
+                created_at=get_local_now()
             )
             self.db.add(audit)
             self.db.commit()
@@ -66,7 +69,7 @@ class TodoService:
 
         if 'status' in kwargs and kwargs['status'] == TodoStatus.COMPLETED:
             if todo.status != TodoStatus.COMPLETED:
-                kwargs['completed_at'] = datetime.now()
+                kwargs['completed_at'] = get_local_now()
 
         for key, value in kwargs.items():
             if value is not None and hasattr(todo, key):
@@ -82,7 +85,8 @@ class TodoService:
                 action_type="update",
                 resource_type="todo",
                 resource_id=todo_id,
-                details=f"更新待办: {todo.title}"
+                details=f"更新待办: {todo.title}",
+                created_at=get_local_now()
             )
             self.db.add(audit)
             self.db.commit()
@@ -98,7 +102,8 @@ class TodoService:
                     action_type="delete",
                     resource_type="todo",
                     resource_id=todo_id,
-                    details=f"删除待办: {todo.title}"
+                    details=f"删除待办: {todo.title}",
+                    created_at=get_local_now()
                 )
                 self.db.add(audit)
             self.db.delete(todo)
@@ -113,7 +118,7 @@ class TodoService:
             return None
         
         todo.status = TodoStatus.COMPLETED
-        todo.completed_at = datetime.now()
+        todo.completed_at = get_local_now()
         self.db.commit()
         self.db.refresh(todo)
         logger.info(f"完成待办事项: {todo.title}")
@@ -124,7 +129,8 @@ class TodoService:
                 action_type="update",
                 resource_type="todo",
                 resource_id=todo_id,
-                details=f"完成待办: {todo.title}"
+                details=f"完成待办: {todo.title}",
+                created_at=get_local_now()
             )
             self.db.add(audit)
             self.db.commit()
@@ -149,7 +155,8 @@ class TodoService:
             due_date=next_due_date,
             status=TodoStatus.PENDING,
             recurrence_type=todo.recurrence_type,
-            recurrence_interval=todo.recurrence_interval
+            recurrence_interval=todo.recurrence_interval,
+            created_at=get_local_now()
         )
         self.db.add(new_todo)
         self.db.commit()
@@ -160,7 +167,7 @@ class TodoService:
     def _calculate_next_due_date(self, current_due_date: datetime, 
                                   recurrence_type: str, interval: int) -> datetime:
         if not current_due_date:
-            current_due_date = datetime.now()
+            current_due_date = get_local_now()
         
         if recurrence_type == RecurrenceType.DAILY:
             return current_due_date + timedelta(days=interval)

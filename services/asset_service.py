@@ -8,6 +8,7 @@ from services.dict_service import DictService
 from typing import List, Optional, Dict, Any, Tuple
 from core.config import settings
 from core.logger import get_logger
+from core.utils import get_local_now
 import xlsxwriter
 from io import BytesIO
 from datetime import datetime
@@ -52,7 +53,8 @@ class AssetService:
             business_service=business_service,
             location=location,
             server_type=server_type,
-            vip=vip
+            vip=vip,
+            created_at=get_local_now()
         )
         self.db.add(asset)
         self.db.commit()
@@ -64,7 +66,8 @@ class AssetService:
                 action_type="create",
                 resource_type="asset",
                 resource_id=asset.id,
-                details=f"创建资产: {unit_name} - {system_name} ({ip or ipv6})"
+                details=f"创建资产: {unit_name} - {system_name} ({ip or ipv6})",
+                created_at=get_local_now()
             )
             self.db.add(audit)
             self.db.commit()
@@ -132,7 +135,8 @@ class AssetService:
                 action_type="update",
                 resource_type="asset",
                 resource_id=asset_id,
-                details=f"更新资产: {asset.unit_name} - {asset.system_name} ({asset.ip or asset.ipv6})"
+                details=f"更新资产: {asset.unit_name} - {asset.system_name} ({asset.ip or asset.ipv6})",
+                created_at=get_local_now()
             )
             self.db.add(audit)
             self.db.commit()
@@ -149,7 +153,8 @@ class AssetService:
             action_type="delete",
             resource_type="asset",
             resource_id=asset_id,
-            details=f"删除资产: {asset.unit_name} - {asset.system_name} ({asset.ip or asset.ipv6})"
+            details=f"删除资产: {asset.unit_name} - {asset.system_name} ({asset.ip or asset.ipv6})",
+            created_at=get_local_now()
         )
         self.db.add(audit)
 

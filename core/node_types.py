@@ -4,6 +4,12 @@ from dataclasses import dataclass, field
 from enum import Enum
 import subprocess
 import time
+import tempfile
+import os
+import re
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class NodeStatus(Enum):
@@ -80,13 +86,22 @@ class EndNode(BaseNode):
         return self.result
 
 
-class ScriptNode(BaseNode):
-    node_type = "script"
+class CommandNode(BaseNode):
+    node_type = "command"
     category = "action"
-    display_name = "脚本执行"
-    description = "执行Shell脚本或命令"
+    display_name = "命令执行"
+    description = "执行Shell命令"
     input_ports = 1
     output_ports = 1
+
+    def __init__(self, node_id: int, name: str, config: Dict[str, Any] = None):
+        super().__init__(node_id, name, config)
+        self.dict_service = None
+        self.param_service = None
+
+    def set_services(self, dict_service=None, param_service=None):
+        self.dict_service = dict_service
+        self.param_service = param_service
 
     def get_config_schema(self) -> Dict[str, Any]:
         return {
@@ -111,14 +126,71 @@ class ScriptNode(BaseNode):
             "required": ["command"]
         }
 
+    def _replace_variables(self, content: str) -> str:
+        if not content:
+            return content
+        
+        def replace_var(match):
+            var_path = match.group(1)
+            parts = var_path.split('.')
+            
+            if len(parts) < 2:
+                return match.group(0)
+            
+            source_type = parts[0]
+            
+            try:
+                if source_type == "dict" and self.dict_service:
+                    if len(parts) >= 3:
+                        dict_code = parts[1]
+                        item_name = parts[2]
+                        items = self.dict_service.get_dict_items(dict_code)
+                        logger.info(f"字典变量替换: 查找字典 '{dict_code}' 中的项 '{item_name}'，共 {len(items)} 个字典项")
+                        for item in items:
+                            logger.info(f"  - 字典项: code='{item.item_code}', name='{item.item_name}'")
+                            if item.item_name == item_name:
+                                logger.info(f"字典变量替换成功: @{var_path} -> {item.item_code}")
+                                return item.item_code
+                        logger.warning(f"字典变量替换失败: 未找到匹配的字典项 @{var_path}")
+                elif source_type == "dict" and not self.dict_service:
+                    logger.warning(f"字典变量替换失败: dict_service 未设置 @{var_path}")
+                elif source_type == "param" and self.param_service:
+                    param_code = parts[1]
+                    logger.debug(f"尝试替换参数变量: param_code={param_code}")
+                    param = self.param_service.get_param_by_code(param_code)
+                    if param:
+                        logger.info(f"参数变量替换成功: @{var_path} -> {param.param_value}")
+                        return param.param_value
+                    else:
+                        logger.warning(f"参数变量替换失败: 未找到参数 @{var_path}")
+                elif source_type == "param" and not self.param_service:
+                    logger.warning(f"参数变量替换失败: param_service 未设置 @{var_path}")
+            except Exception as e:
+                logger.error(f"变量替换异常: @{var_path}, 错误: {str(e)}")
+            
+            return match.group(0)
+        
+        pattern = r'@([a-zA-Z_][a-zA-Z0-9_\.]*)'
+        return re.sub(pattern, replace_var, content)
+
     def execute(self, inputs: Dict[str, Any] = None) -> NodeResult:
         inputs = inputs or {}
         command = self.config.get("command", "")
         timeout = self.config.get("timeout", 300)
         working_dir = self.config.get("working_dir") or None
 
+        command = self._replace_variables(command)
+
         if inputs.get("output"):
             command = command.replace("${input}", str(inputs.get("output", "")))
+
+        if not command:
+            self.status = NodeStatus.FAILED
+            self.result = NodeResult(
+                status=NodeStatus.FAILED,
+                error="未配置执行命令"
+            )
+            return self.result
 
         try:
             self.status = NodeStatus.RUNNING
@@ -158,6 +230,187 @@ class ScriptNode(BaseNode):
             )
 
         return self.result
+
+
+class ScriptNode(BaseNode):
+    node_type = "script"
+    category = "action"
+    display_name = "脚本执行"
+    description = "执行脚本管理中的脚本，支持Bash/Python/SQL"
+    input_ports = 1
+    output_ports = 1
+
+    def __init__(self, node_id: int, name: str, config: Dict[str, Any] = None):
+        super().__init__(node_id, name, config)
+        self.dict_service = None
+        self.param_service = None
+
+    def set_services(self, dict_service=None, param_service=None):
+        self.dict_service = dict_service
+        self.param_service = param_service
+
+    def get_config_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "script_id": {
+                    "type": "integer",
+                    "title": "脚本",
+                    "description": "从脚本管理中选择的脚本"
+                },
+                "script_content": {
+                    "type": "string",
+                    "title": "脚本内容",
+                    "description": "脚本内容（由系统自动填充）",
+                    "hidden": True
+                },
+                "script_language": {
+                    "type": "string",
+                    "title": "脚本语言",
+                    "description": "脚本语言类型（bash/python/sql，由系统自动填充）",
+                    "hidden": True
+                },
+                "script_name": {
+                    "type": "string",
+                    "title": "脚本名称",
+                    "description": "脚本名称（由系统自动填充）",
+                    "hidden": True
+                },
+                "timeout": {
+                    "type": "integer",
+                    "title": "超时时间(秒)",
+                    "default": 300
+                },
+                "working_dir": {
+                    "type": "string",
+                    "title": "工作目录",
+                    "default": ""
+                }
+            },
+            "required": ["script_id"]
+        }
+
+    def _replace_variables(self, content: str) -> str:
+        if not content:
+            return content
+        
+        def replace_var(match):
+            var_path = match.group(1)
+            parts = var_path.split('.')
+            
+            if len(parts) < 2:
+                return match.group(0)
+            
+            source_type = parts[0]
+            
+            try:
+                if source_type == "dict" and self.dict_service:
+                    if len(parts) >= 3:
+                        dict_code = parts[1]
+                        item_name = parts[2]
+                        items = self.dict_service.get_dict_items(dict_code)
+                        logger.info(f"字典变量替换: 查找字典 '{dict_code}' 中的项 '{item_name}'，共 {len(items)} 个字典项")
+                        for item in items:
+                            logger.info(f"  - 字典项: code='{item.item_code}', name='{item.item_name}'")
+                            if item.item_name == item_name:
+                                logger.info(f"字典变量替换成功: @{var_path} -> {item.item_code}")
+                                return item.item_code
+                        logger.warning(f"字典变量替换失败: 未找到匹配的字典项 @{var_path}")
+                elif source_type == "dict" and not self.dict_service:
+                    logger.warning(f"字典变量替换失败: dict_service 未设置 @{var_path}")
+                elif source_type == "param" and self.param_service:
+                    param_code = parts[1]
+                    logger.debug(f"尝试替换参数变量: param_code={param_code}")
+                    param = self.param_service.get_param_by_code(param_code)
+                    if param:
+                        logger.info(f"参数变量替换成功: @{var_path} -> {param.param_value}")
+                        return param.param_value
+                    else:
+                        logger.warning(f"参数变量替换失败: 未找到参数 @{var_path}")
+                elif source_type == "param" and not self.param_service:
+                    logger.warning(f"参数变量替换失败: param_service 未设置 @{var_path}")
+            except Exception as e:
+                logger.error(f"变量替换异常: @{var_path}, 错误: {str(e)}")
+            
+            return match.group(0)
+        
+        pattern = r'@([a-zA-Z_][a-zA-Z0-9_\.]*)'
+        return re.sub(pattern, replace_var, content)
+
+    def execute(self, inputs: Dict[str, Any] = None) -> NodeResult:
+        inputs = inputs or {}
+        script_content = self.config.get("script_content", "")
+        script_language = self.config.get("script_language", "bash")
+        script_name = self.config.get("script_name", "")
+        timeout = self.config.get("timeout", 300)
+        working_dir = self.config.get("working_dir") or None
+
+        if not script_content:
+            self.status = NodeStatus.FAILED
+            self.result = NodeResult(
+                status=NodeStatus.FAILED,
+                error="未找到脚本内容，请确保已正确选择脚本"
+            )
+            return self.result
+
+        script_content = self._replace_variables(script_content)
+        command = self._build_command_for_language(script_content, script_language)
+
+        if inputs.get("output"):
+            command = command.replace("${input}", str(inputs.get("output", "")))
+
+        try:
+            self.status = NodeStatus.RUNNING
+            result = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                cwd=working_dir
+            )
+            if result.returncode == 0:
+                self.status = NodeStatus.SUCCESS
+                self.result = NodeResult(
+                    status=NodeStatus.SUCCESS,
+                    output=result.stdout,
+                    data={"return_code": result.returncode, "script_name": script_name, "script_language": script_language}
+                )
+            else:
+                self.status = NodeStatus.FAILED
+                self.result = NodeResult(
+                    status=NodeStatus.FAILED,
+                    output=result.stdout,
+                    error=result.stderr
+                )
+        except subprocess.TimeoutExpired:
+            self.status = NodeStatus.FAILED
+            self.result = NodeResult(
+                status=NodeStatus.FAILED,
+                error=f"脚本执行超时，超过{timeout}秒"
+            )
+        except Exception as e:
+            self.status = NodeStatus.FAILED
+            self.result = NodeResult(
+                status=NodeStatus.FAILED,
+                error=str(e)
+            )
+
+        return self.result
+    
+    def _build_command_for_language(self, script_content: str, language: str) -> str:
+        if language == "python":
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+                f.write(script_content)
+                temp_file = f.name
+            return f"python3 {temp_file}"
+        elif language == "sql":
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.sql', delete=False) as f:
+                f.write(script_content)
+                temp_file = f.name
+            return f"sqlite3 :memory: < {temp_file}"
+        else:
+            return script_content
 
 
 class DelayNode(BaseNode):
@@ -275,6 +528,7 @@ class MergeNode(BaseNode):
 NODE_TYPES: Dict[str, type] = {
     "start": StartNode,
     "end": EndNode,
+    "command": CommandNode,
     "script": ScriptNode,
     "delay": DelayNode,
     "condition": ConditionNode,

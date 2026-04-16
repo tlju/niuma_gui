@@ -1,11 +1,11 @@
 from PyQt6.QtWidgets import (
     QGraphicsItem, QGraphicsEllipseItem, QGraphicsPathItem,
-    QGraphicsTextItem, QGraphicsRectItem, QStyleOptionGraphicsItem
+    QGraphicsTextItem, QGraphicsRectItem, QStyleOptionGraphicsItem, QStyle
 )
 from PyQt6.QtCore import Qt, QPointF, QRectF, pyqtSignal, QObject
 from PyQt6.QtGui import (
     QPainter, QPen, QBrush, QColor, QPainterPath, QFont,
-    QLinearGradient, QRadialGradient
+    QLinearGradient, QRadialGradient, QPainterPathStroker
 )
 from typing import Optional, List, Dict, Any
 import math
@@ -197,6 +197,9 @@ class ConnectionItem(QGraphicsPathItem):
         self.setPen(QPen(QColor("#666666"), 2))
         self.setBrush(QBrush(Qt.BrushStyle.NoBrush))
 
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
+        self.setAcceptHoverEvents(True)
+
         self._update_path()
 
     def _update_path(self):
@@ -230,16 +233,27 @@ class ConnectionItem(QGraphicsPathItem):
 
         self.setPath(path)
 
+    def shape(self):
+        path = self.path()
+        stroker = QPainterPathStroker()
+        stroker.setWidth(10)
+        return stroker.createStroke(path)
+
     def paint(self, painter: QPainter, option, widget=None):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        pen = QPen(QColor("#666666"), 2)
+        if self.isSelected():
+            pen = QPen(QColor("#1976D2"), 3)
+        else:
+            pen = QPen(QColor("#666666"), 2)
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         self.setPen(pen)
 
+        option.state = option.state & ~QStyle.StateFlag.State_Selected
+
         super().paint(painter, option, widget)
 
-        arrow_color = QColor("#666666")
+        arrow_color = QColor("#1976D2") if self.isSelected() else QColor("#666666")
         painter.setBrush(QBrush(arrow_color))
         painter.setPen(QPen(arrow_color, 1))
 

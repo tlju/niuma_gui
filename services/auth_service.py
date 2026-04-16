@@ -4,6 +4,7 @@ from models.audit_log import AuditLog
 from services.crypto import verify_password
 from typing import Optional
 from core.logger import get_logger
+from core.utils import get_local_now
 
 logger = get_logger(__name__)
 
@@ -48,7 +49,8 @@ class AuthService:
             action_type=action,
             resource_type=resource_type,
             resource_id=resource_id,
-            details=details
+            details=details,
+            created_at=get_local_now()
         )
         self.db.add(audit)
         self.db.commit()

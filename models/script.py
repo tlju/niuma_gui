@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
-from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from models.base import Base
 
@@ -15,7 +14,7 @@ class Script(Base):
     server_id = Column(Integer, ForeignKey("server_assets.id"), nullable=True)
 
     created_by = Column(Integer, ForeignKey("users.id"))
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True))
+    updated_at = Column(DateTime(timezone=True))
 
     server = relationship("ServerAsset", back_populates="scripts")

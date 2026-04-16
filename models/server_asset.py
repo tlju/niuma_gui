@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
-from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from models.base import Base
 
@@ -20,6 +19,6 @@ class ServerAsset(Base):
     location = Column(String(100), nullable=True)
     server_type = Column(String(100), nullable=True)
     vip = Column(String(200), nullable=True)
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime)
 
     scripts = relationship("Script", back_populates="server")

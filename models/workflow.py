@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean
-from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from models.base import Base
 
@@ -12,8 +11,8 @@ class Workflow(Base):
     description = Column(Text)
     graph_data = Column(JSON, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"))
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True))
+    updated_at = Column(DateTime(timezone=True))
     is_active = Column(Boolean, default=True)
 
     nodes = relationship("WorkflowNode", back_populates="workflow", cascade="all, delete-orphan")
@@ -30,7 +29,7 @@ class WorkflowNode(Base):
     config = Column(JSON, nullable=True)
     position_x = Column(Integer, default=0)
     position_y = Column(Integer, default=0)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True))
 
     workflow = relationship("Workflow", back_populates="nodes")
 
@@ -41,7 +40,7 @@ class WorkflowExecution(Base):
     id = Column(Integer, primary_key=True, index=True)
     workflow_id = Column(Integer, ForeignKey("workflows.id"), nullable=False)
     status = Column(String(20), default="pending")
-    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    started_at = Column(DateTime(timezone=True))
     finished_at = Column(DateTime(timezone=True))
     result = Column(JSON, nullable=True)
     error_message = Column(Text, nullable=True)
@@ -58,7 +57,7 @@ class WorkflowNodeExecution(Base):
     node_id = Column(Integer, ForeignKey("workflow_nodes.id"))
     node_name = Column(String(100), nullable=False)
     status = Column(String(20), default="pending")
-    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    started_at = Column(DateTime(timezone=True))
     finished_at = Column(DateTime(timezone=True))
     output = Column(Text, nullable=True)
     error_message = Column(Text, nullable=True)

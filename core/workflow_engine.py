@@ -6,14 +6,15 @@ from collections import defaultdict
 from core.logger import get_logger
 from core.node_types import (
     BaseNode, NodeStatus, NodeResult,
-    get_node_class, StartNode, EndNode, ConditionNode, ParallelNode, MergeNode
+    get_node_class, StartNode, EndNode, ConditionNode, ParallelNode, MergeNode, ScriptNode, CommandNode
 )
 
 logger = get_logger(__name__)
 
 
 class WorkflowExecutor:
-    def __init__(self, workflow_id: int, nodes: List[Dict], connections: List[Dict]):
+    def __init__(self, workflow_id: int, nodes: List[Dict], connections: List[Dict], 
+                 script_service=None, dict_service=None, param_service=None):
         self.workflow_id = workflow_id
         self.nodes: Dict[int, BaseNode] = {}
         self.connections = connections
@@ -25,6 +26,9 @@ class WorkflowExecutor:
         self.is_running = False
         self.is_cancelled = False
         self._lock = threading.Lock()
+        self.script_service = script_service
+        self.dict_service = dict_service
+        self.param_service = param_service
 
         self._build_graph(nodes, connections)
 
@@ -35,8 +39,23 @@ class WorkflowExecutor:
             name = node_data.get("name", f"Node_{node_id}")
             config = node_data.get("config", {})
 
+            if node_type == "script" and self.script_service:
+                script_id = config.get("script_id")
+                if script_id:
+                    from models.script import Script
+                    script = self.script_service.get_by_id(script_id)
+                    if script:
+                        config["script_content"] = script.content
+                        config["script_language"] = script.language or "bash"
+                        config["script_name"] = script.name
+
             node_class = get_node_class(node_type)
-            self.nodes[node_id] = node_class(node_id, name, config)
+            node = node_class(node_id, name, config)
+            
+            if isinstance(node, (ScriptNode, CommandNode)):
+                node.set_services(self.dict_service, self.param_service)
+            
+            self.nodes[node_id] = node
 
         for conn in connections:
             source_id = conn.get("source_id") or conn.get("source")
@@ -104,7 +123,18 @@ class WorkflowExecutor:
         node = self.nodes[node_id]
         node.status = NodeStatus.RUNNING
         self._update_node_status(node_id, NodeStatus.RUNNING)
-        self._emit_log("INFO", f"开始执行节点: {node.name}", node_id)
+        
+        log_message = f"开始执行节点: {node.name}"
+        if isinstance(node, CommandNode):
+            command = node.config.get("command", "")
+            if command:
+                log_message += f"，执行命令: {command}"
+        elif isinstance(node, ScriptNode):
+            script_name = node.config.get("script_name", "")
+            script_language = node.config.get("script_language", "bash")
+            if script_name:
+                log_message += f"，执行脚本: {script_name} ({script_language})"
+        self._emit_log("INFO", log_message, node_id)
 
         inputs = {}
         predecessors = self.reverse_adjacency.get(node_id, [])
@@ -126,7 +156,10 @@ class WorkflowExecutor:
             self._update_node_status(node_id, result.status, result)
 
             if result.status == NodeStatus.SUCCESS:
-                self._emit_log("INFO", f"节点执行成功: {node.name}", node_id)
+                output_msg = f"节点执行成功: {node.name}"
+                if result.output:
+                    output_msg += f"\n{result.output}"
+                self._emit_log("INFO", output_msg, node_id)
             else:
                 self._emit_log("ERROR", f"节点执行失败: {node.name} - {result.error}", node_id)
 

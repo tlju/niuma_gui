@@ -3,6 +3,7 @@ from models.data_dict import DataDict
 from models.data_dict_item import DataDictItem
 from typing import List, Optional
 from core.logger import get_logger
+from core.utils import get_local_now
 
 logger = get_logger(__name__)
 
@@ -19,7 +20,8 @@ class DictService:
         dict_obj = DataDict(
             code=code,
             name=name,
-            description=description
+            description=description,
+            created_at=get_local_now()
         )
         self.db.add(dict_obj)
         self.db.commit()

@@ -4,12 +4,13 @@ from PyQt6.QtWidgets import (
     QScrollArea, QFrame, QDialog, QLineEdit, QTextEdit,
     QFormLayout, QDialogButtonBox, QMessageBox, QSplitter,
     QListWidget, QListWidgetItem, QGroupBox, QCheckBox,
-    QTableWidget, QTableWidgetItem, QHeaderView, QApplication
+    QTableWidget, QTableWidgetItem, QHeaderView, QApplication,
+    QGraphicsItem
 )
 from PyQt6.QtCore import Qt, QPointF, pyqtSignal, QRectF, QTimer
 from PyQt6.QtGui import (
     QPainter, QPen, QBrush, QColor, QFont, QIcon,
-    QKeySequence, QShortcut
+    QKeySequence, QShortcut, QStandardItemModel, QStandardItem
 )
 import pyqtgraph as pg
 from pyqtgraph import GraphicsLayoutWidget, PlotItem
@@ -25,9 +26,11 @@ logger = get_logger(__name__)
 
 
 class NodeConfigDialog(QDialog):
-    def __init__(self, node_item: WorkflowNodeItem, parent=None):
+    def __init__(self, node_item: WorkflowNodeItem, script_service=None, parent=None):
         super().__init__(parent)
         self.node_item = node_item
+        self.script_service = script_service
+        self.scripts = []
         self.setWindowTitle(f"节点配置 - {node_item.name}")
         self.setMinimumSize(400, 300)
         self.init_ui()
@@ -50,12 +53,67 @@ class NodeConfigDialog(QDialog):
             config_layout = QFormLayout(config_group)
 
             self.config_widgets = {}
+            
+            if self.node_item.node_type == "script" and self.script_service:
+                self.scripts = self.script_service.get_all()
+            
             for key, prop in config_schema.items():
+                if prop.get("hidden"):
+                    continue
+                    
                 label = prop.get("title", key)
                 default = prop.get("default")
                 current_value = self.node_item.config.get(key, default)
 
-                if prop.get("type") == "integer":
+                if key == "script_id" and self.node_item.node_type == "script":
+                    widget = QComboBox()
+                    
+                    model = QStandardItemModel()
+                    root_item = model.invisibleRootItem()
+                    
+                    scripts_by_lang = {}
+                    for script in self.scripts:
+                        lang = script.language or "bash"
+                        if lang not in scripts_by_lang:
+                            scripts_by_lang[lang] = []
+                        scripts_by_lang[lang].append(script)
+                    
+                    lang_names = {
+                        "bash": "Bash脚本",
+                        "python": "Python脚本",
+                        "sql": "SQL脚本"
+                    }
+                    
+                    please_select_item = QStandardItem("请选择脚本...")
+                    please_select_item.setData(None, Qt.ItemDataRole.UserRole)
+                    please_select_item.setData(None, Qt.ItemDataRole.UserRole + 1)
+                    please_select_item.setData(None, Qt.ItemDataRole.UserRole + 2)
+                    please_select_item.setFlags(please_select_item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+                    root_item.appendRow(please_select_item)
+                    
+                    for lang in ["bash", "python", "sql"]:
+                        if lang in scripts_by_lang:
+                            lang_item = QStandardItem(f"── {lang_names.get(lang, lang)} ──")
+                            lang_item.setFlags(lang_item.flags() & ~Qt.ItemFlag.ItemIsSelectable & ~Qt.ItemFlag.ItemIsEnabled)
+                            lang_item.setData(None, Qt.ItemDataRole.UserRole)
+                            lang_item.setData(None, Qt.ItemDataRole.UserRole + 1)
+                            lang_item.setData(None, Qt.ItemDataRole.UserRole + 2)
+                            root_item.appendRow(lang_item)
+                            
+                            for script in scripts_by_lang[lang]:
+                                script_item = QStandardItem(f"  {script.id} - {script.name}")
+                                script_item.setData(script.id, Qt.ItemDataRole.UserRole)
+                                script_item.setData(lang, Qt.ItemDataRole.UserRole + 1)
+                                script_item.setData(script.name, Qt.ItemDataRole.UserRole + 2)
+                                root_item.appendRow(script_item)
+                    
+                    widget.setModel(model)
+                    
+                    if current_value:
+                        self._select_script_in_combobox(widget, current_value)
+                    
+                    widget.currentIndexChanged.connect(self._on_script_selected)
+                elif prop.get("type") == "integer":
                     widget = QSpinBox()
                     widget.setMaximum(999999)
                     widget.setValue(int(current_value or 0))
@@ -76,11 +134,55 @@ class NodeConfigDialog(QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+            
+    def _on_script_selected(self):
+        if "script_id" not in self.config_widgets:
+            return
+            
+        widget = self.config_widgets["script_id"]
+        current_index = widget.currentIndex()
+        if current_index < 0:
+            return
+            
+        model = widget.model()
+        item = model.itemFromIndex(model.index(current_index, 0))
+        
+        script_id = item.data(Qt.ItemDataRole.UserRole)
+        script_lang = item.data(Qt.ItemDataRole.UserRole + 1)
+        script_name = item.data(Qt.ItemDataRole.UserRole + 2)
+        
+        if script_id and self.scripts:
+            for script in self.scripts:
+                if script.id == script_id:
+                    self.config_widgets["script_content"] = QLineEdit(script.content)
+                    self.config_widgets["script_language"] = QLineEdit(script_lang or "bash")
+                    self.config_widgets["script_name"] = QLineEdit(script_name or "")
+                    break
+    
+    def _select_script_in_combobox(self, combobox: QComboBox, script_id: int):
+        model = combobox.model()
+        for i in range(model.rowCount()):
+            index = model.index(i, 0)
+            item = model.itemFromIndex(index)
+            if item and item.data(Qt.ItemDataRole.UserRole) == script_id:
+                combobox.setCurrentIndex(i)
+                return
 
     def get_config(self) -> Dict[str, Any]:
         config = {}
         for key, widget in self.config_widgets.items():
-            if isinstance(widget, QSpinBox):
+            if isinstance(widget, QComboBox):
+                model = widget.model()
+                if isinstance(model, QStandardItemModel):
+                    current_index = widget.currentIndex()
+                    if current_index >= 0:
+                        item = model.itemFromIndex(model.index(current_index, 0))
+                        config[key] = item.data(Qt.ItemDataRole.UserRole)
+                    else:
+                        config[key] = None
+                else:
+                    config[key] = widget.currentData()
+            elif isinstance(widget, QSpinBox):
                 config[key] = widget.value()
             elif isinstance(widget, QCheckBox):
                 config[key] = widget.isChecked()
@@ -155,8 +257,12 @@ class WorkflowCanvas(QGraphicsView):
     connection_removed = pyqtSignal(tuple)
     selection_changed = pyqtSignal(list)
 
-    def __init__(self, parent=None):
+    def __init__(self, script_service=None, mode="edit", parent=None):
         super().__init__(parent)
+        self.script_service = script_service
+        self.mode = mode
+        self._read_only = (mode == "execute")
+        
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
         self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
@@ -186,6 +292,9 @@ class WorkflowCanvas(QGraphicsView):
 
         self._init_shortcuts()
         self._draw_grid()
+        
+        if self._read_only:
+            self._set_read_only_mode()
 
     def _init_shortcuts(self):
         delete_shortcut = QShortcut(QKeySequence.StandardKey.Delete, self)
@@ -196,6 +305,13 @@ class WorkflowCanvas(QGraphicsView):
 
         paste_shortcut = QShortcut(QKeySequence.StandardKey.Paste, self)
         paste_shortcut.activated.connect(self.paste)
+
+    def _set_read_only_mode(self):
+        for node in self.nodes.values():
+            node.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
+        
+        for conn in self.connections:
+            conn.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
 
     def _draw_grid(self):
         grid_pen = QPen(QColor(220, 220, 220), 1)
@@ -224,11 +340,17 @@ class WorkflowCanvas(QGraphicsView):
 
         self.scene.addItem(node)
         self.nodes[node_id] = node
+        
+        if self._read_only:
+            node.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
 
         self.node_added.emit(node)
         return node
 
     def remove_node(self, node_id: int):
+        if self._read_only:
+            return
+            
         if node_id not in self.nodes:
             return
 
@@ -259,11 +381,17 @@ class WorkflowCanvas(QGraphicsView):
         connection = ConnectionItem(source_node, target_node, source_port, target_port)
         self.scene.addItem(connection)
         self.connections.append(connection)
+        
+        if self._read_only:
+            connection.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
 
         self.connection_added.emit(connection)
         return connection
 
     def remove_connection(self, connection: ConnectionItem):
+        if self._read_only:
+            return
+            
         if connection in self.connections:
             self.connections.remove(connection)
             self.scene.removeItem(connection)
@@ -309,8 +437,19 @@ class WorkflowCanvas(QGraphicsView):
                 source_port=conn_data.get("source_port", 0),
                 target_port=conn_data.get("target_port", 0)
             )
+        
+        if self._read_only:
+            self._set_read_only_mode()
 
     def delete_selected(self):
+        if self._read_only:
+            return
+            
+        selected_connections = [item for item in self.scene.selectedItems()
+                              if isinstance(item, ConnectionItem)]
+        for conn in selected_connections:
+            self.remove_connection(conn)
+
         selected_nodes = [item for item in self.scene.selectedItems()
                         if isinstance(item, WorkflowNodeItem)]
 
@@ -318,12 +457,18 @@ class WorkflowCanvas(QGraphicsView):
             self.remove_node(node.node_id)
 
     def copy_selected(self):
+        if self._read_only:
+            return
+            
         selected_nodes = [item for item in self.scene.selectedItems()
                         if isinstance(item, WorkflowNodeItem)]
         if selected_nodes:
             self._clipboard = [node.to_dict() for node in selected_nodes]
 
     def paste(self):
+        if self._read_only:
+            return
+            
         if hasattr(self, '_clipboard') and self._clipboard:
             for node_data in self._clipboard:
                 self.add_node(
@@ -340,9 +485,12 @@ class WorkflowCanvas(QGraphicsView):
                 conn._update_path()
 
     def _on_node_double_clicked(self, node_id: int):
+        if self._read_only:
+            return
+            
         if node_id in self.nodes:
             node = self.nodes[node_id]
-            dialog = NodeConfigDialog(node, self)
+            dialog = NodeConfigDialog(node, self.script_service, self)
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 new_name = dialog.get_name()
                 new_config = dialog.get_config()
@@ -359,7 +507,7 @@ class WorkflowCanvas(QGraphicsView):
             event.accept()
             return
 
-        if event.button() == Qt.MouseButton.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton and not self._read_only:
             item = self.itemAt(event.pos())
             if isinstance(item, WorkflowNodeItem):
                 port_pos = self._get_port_at_position(item, event.pos())

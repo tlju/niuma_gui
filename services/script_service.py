@@ -3,6 +3,7 @@ from models.script import Script
 from models.audit_log import AuditLog
 from typing import List, Optional
 from core.logger import get_logger
+from core.utils import get_local_now
 
 logger = get_logger(__name__)
 
@@ -25,7 +26,8 @@ class ScriptService:
             description=description,
             language=language,
             server_id=server_id,
-            created_by=created_by
+            created_by=created_by,
+            created_at=get_local_now()
         )
         self.db.add(script)
         self.db.commit()
@@ -37,7 +39,8 @@ class ScriptService:
                 action_type="create",
                 resource_type="script",
                 resource_id=script.id,
-                details=f"创建脚本: {name}"
+                details=f"创建脚本: {name}",
+                created_at=get_local_now()
             )
             self.db.add(audit)
             self.db.commit()
@@ -72,6 +75,7 @@ class ScriptService:
         if language is not None:
             script.language = language
 
+        script.updated_at = get_local_now()
         self.db.commit()
 
         if updated_by:
@@ -80,7 +84,8 @@ class ScriptService:
                 action_type="update",
                 resource_type="script",
                 resource_id=script_id,
-                details=f"更新脚本: {script.name}"
+                details=f"更新脚本: {script.name}",
+                created_at=get_local_now()
             )
             self.db.add(audit)
             self.db.commit()
@@ -97,7 +102,8 @@ class ScriptService:
             action_type="delete",
             resource_type="script",
             resource_id=script_id,
-            details=f"删除脚本: {script.name}"
+            details=f"删除脚本: {script.name}",
+            created_at=get_local_now()
         )
         self.db.add(audit)
 
