@@ -11,6 +11,7 @@ from PyQt6.QtGui import QColor, QFont, QIcon
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 import json
+import html
 
 from gui.workflow_canvas import WorkflowCanvas, NodePaletteWidget
 from gui.icons import icons
@@ -58,6 +59,192 @@ class WorkflowExecutionWorker(BaseWorker):
         )
 
 
+class ExecutionDetailDialog(QDialog):
+    def __init__(self, execution, parent=None):
+        super().__init__(parent)
+        self.execution = execution
+        self.setWindowTitle(f"执行详情 - #{execution.id}")
+        self.setMinimumSize(900, 600)
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+
+        info_layout = QHBoxLayout()
+        
+        workflow_name = self.execution.workflow.name if self.execution.workflow else f"#{self.execution.workflow_id}"
+        info_layout.addWidget(QLabel(f"<b>工作流:</b> {workflow_name}"))
+        
+        status_colors = {
+            "pending": "#FFC107",
+            "running": "#2196F3",
+            "success": "#4CAF50",
+            "failed": "#F44336"
+        }
+        status_color = status_colors.get(self.execution.status, "#9E9E9E")
+        status_label = QLabel(f"<b>状态:</b> <span style='color:{status_color}'>{self.execution.status}</span>")
+        info_layout.addWidget(status_label)
+        
+        started_at = self.execution.started_at.strftime("%Y-%m-%d %H:%M:%S") if self.execution.started_at else "-"
+        info_layout.addWidget(QLabel(f"<b>开始时间:</b> {started_at}"))
+        
+        finished_at = self.execution.finished_at.strftime("%Y-%m-%d %H:%M:%S") if self.execution.finished_at else "-"
+        info_layout.addWidget(QLabel(f"<b>结束时间:</b> {finished_at}"))
+        
+        info_layout.addStretch()
+        layout.addLayout(info_layout)
+
+        tabs = QTabWidget()
+        
+        logs_tab = QWidget()
+        logs_layout = QVBoxLayout(logs_tab)
+        
+        self.log_text = QPlainTextEdit()
+        self.log_text.setReadOnly(True)
+        self.log_text.setStyleSheet("""
+            QPlainTextEdit {
+                background-color: #1e1e1e;
+                color: #d4d4d4;
+                font-family: Consolas, 'Courier New', monospace;
+                font-size: 12px;
+            }
+        """)
+        logs_layout.addWidget(self.log_text)
+        
+        if self.execution.logs:
+            for log in self.execution.logs:
+                timestamp = log.get("timestamp", "")
+                level = log.get("level", "INFO")
+                message = log.get("message", "")
+                node_id = log.get("node_id")
+                
+                if timestamp:
+                    try:
+                        dt = datetime.fromisoformat(timestamp)
+                        timestamp = dt.strftime("%H:%M:%S")
+                    except:
+                        pass
+                
+                color_map = {
+                    "INFO": "#4FC3F7",
+                    "WARN": "#FFB74D",
+                    "ERROR": "#EF5350",
+                    "SUCCESS": "#81C784"
+                }
+                color = color_map.get(level, "#FFFFFF")
+                
+                node_info = f" [Node:{node_id}]" if node_id else ""
+                escaped_message = html.escape(message).replace("\n", "<br>")
+                self.log_text.appendHtml(
+                    f'<span style="color: #888;">[{timestamp}]</span> '
+                    f'<span style="color: {color};">[{level}]</span>{node_info} '
+                    f'<span>{escaped_message}</span>'
+                )
+        else:
+            self.log_text.appendPlainText("暂无执行日志")
+        
+        tabs.addTab(logs_tab, "执行日志")
+        
+        nodes_tab = QWidget()
+        nodes_layout = QVBoxLayout(nodes_tab)
+        
+        nodes_table = QTableWidget()
+        nodes_table.setColumnCount(6)
+        nodes_table.setHorizontalHeaderLabels(["节点名称", "状态", "开始时间", "结束时间", "输出", "错误"])
+        nodes_table.setAlternatingRowColors(True)
+        nodes_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        nodes_table.verticalHeader().setVisible(False)
+        nodes_table.setShowGrid(False)
+        
+        node_executions = self.execution.node_executions if self.execution.node_executions else []
+        nodes_table.setRowCount(len(node_executions))
+        
+        for row, node_exec in enumerate(node_executions):
+            nodes_table.setItem(row, 0, QTableWidgetItem(node_exec.node_name or "-"))
+            
+            status_item = QTableWidgetItem(node_exec.status or "-")
+            status_item.setBackground(QColor(status_colors.get(node_exec.status, "#9E9E9E")))
+            nodes_table.setItem(row, 1, status_item)
+            
+            started = node_exec.started_at.strftime("%H:%M:%S") if node_exec.started_at else "-"
+            nodes_table.setItem(row, 2, QTableWidgetItem(started))
+            
+            finished = node_exec.finished_at.strftime("%H:%M:%S") if node_exec.finished_at else "-"
+            nodes_table.setItem(row, 3, QTableWidgetItem(finished))
+            
+            output = node_exec.output or "-"
+            if len(output) > 50:
+                output = output[:50] + "..."
+            nodes_table.setItem(row, 4, QTableWidgetItem(output))
+            
+            error = node_exec.error_message or "-"
+            if len(error) > 50:
+                error = error[:50] + "..."
+            nodes_table.setItem(row, 5, QTableWidgetItem(error))
+        
+        nodes_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        nodes_layout.addWidget(nodes_table)
+        
+        tabs.addTab(nodes_tab, "节点执行")
+        
+        output_tab = QWidget()
+        output_layout = QVBoxLayout(output_tab)
+        
+        output_text = QPlainTextEdit()
+        output_text.setReadOnly(True)
+        output_text.setStyleSheet("""
+            QPlainTextEdit {
+                background-color: #1e1e1e;
+                color: #d4d4d4;
+                font-family: Consolas, 'Courier New', monospace;
+                font-size: 12px;
+            }
+        """)
+        
+        if node_executions:
+            for node_exec in node_executions:
+                if node_exec.output:
+                    output_text.appendPlainText(f"=== {node_exec.node_name} ===")
+                    output_text.appendPlainText(node_exec.output)
+                    output_text.appendPlainText("")
+        else:
+            output_text.appendPlainText("暂无输出")
+        
+        output_layout.addWidget(output_text)
+        tabs.addTab(output_tab, "完整输出")
+        
+        if self.execution.error_message:
+            error_tab = QWidget()
+            error_layout = QVBoxLayout(error_tab)
+            
+            error_text = QPlainTextEdit()
+            error_text.setReadOnly(True)
+            error_text.setStyleSheet("""
+                QPlainTextEdit {
+                    background-color: #1e1e1e;
+                    color: #EF5350;
+                    font-family: Consolas, 'Courier New', monospace;
+                    font-size: 12px;
+                }
+            """)
+            error_text.setPlainText(self.execution.error_message)
+            error_layout.addWidget(error_text)
+            
+            tabs.addTab(error_tab, "错误信息")
+        
+        layout.addWidget(tabs)
+        
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        
+        close_btn = QPushButton("关闭")
+        close_btn.setFixedWidth(100)
+        close_btn.clicked.connect(self.accept)
+        btn_layout.addWidget(close_btn)
+        
+        layout.addLayout(btn_layout)
+
+
 class WorkflowEditDialog(QDialog):
     MODE_EDIT = "edit"
     MODE_EXECUTE = "execute"
@@ -94,8 +281,19 @@ class WorkflowEditDialog(QDialog):
         toolbar.addWidget(QLabel("名称:"))
         toolbar.addWidget(self.name_edit)
 
+        toolbar.addSpacing(20)
+
+        self.desc_edit = QLineEdit()
+        self.desc_edit.setPlaceholderText("工作流描述（可选）")
+        self.desc_edit.setMinimumWidth(300)
+        if self.workflow and self.workflow.description:
+            self.desc_edit.setText(self.workflow.description)
+        toolbar.addWidget(QLabel("描述:"))
+        toolbar.addWidget(self.desc_edit)
+
         if self.mode == self.MODE_EXECUTE:
             self.name_edit.setReadOnly(True)
+            self.desc_edit.setReadOnly(True)
 
         toolbar.addStretch()
 
@@ -188,6 +386,7 @@ class WorkflowEditDialog(QDialog):
             QMessageBox.warning(self, "警告", "请输入工作流名称")
             return
 
+        description = self.desc_edit.text().strip()
         graph_data = self.canvas.get_graph_data()
 
         if not graph_data["nodes"]:
@@ -199,10 +398,16 @@ class WorkflowEditDialog(QDialog):
                 self.workflow.id,
                 user_id=self.current_user_id,
                 name=name,
+                description=description,
                 graph_data=graph_data
             )
         else:
-            self.workflow = self.workflow_service.create(name=name, user_id=self.current_user_id, graph_data=graph_data)
+            self.workflow = self.workflow_service.create(
+                name=name,
+                description=description,
+                user_id=self.current_user_id,
+                graph_data=graph_data
+            )
 
         QMessageBox.information(self, "成功", "工作流保存成功")
         self.accept()
@@ -280,34 +485,31 @@ class WorkflowPage(QWidget):
         self.execution_tab = QWidget()
         exec_layout = QVBoxLayout(self.execution_tab)
 
-        exec_toolbar = QHBoxLayout()
-        exec_toolbar.addWidget(QLabel("执行历史"))
-
-        self.exec_refresh_btn = QPushButton("刷新")
-        self.exec_refresh_btn.clicked.connect(self.load_executions)
-        exec_toolbar.addWidget(self.exec_refresh_btn)
-        exec_toolbar.addStretch()
-        exec_layout.addLayout(exec_toolbar)
-
         self.exec_table = QTableWidget()
-        self.exec_table.setColumnCount(5)
+        self.exec_table.setColumnCount(6)
         self.exec_table.setHorizontalHeaderLabels([
-            "ID", "工作流", "状态", "开始时间", "结束时间"
+            "ID", "工作流", "状态", "开始时间", "结束时间", "操作"
         ])
         self.exec_table.setAlternatingRowColors(True)
         self.exec_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.exec_table.verticalHeader().setVisible(False)
         self.exec_table.setShowGrid(False)
         self.exec_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.exec_table.verticalHeader().setDefaultSectionSize(42)
 
         exec_header = self.exec_table.horizontalHeader()
         exec_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         exec_layout.addWidget(self.exec_table)
         self.tabs.addTab(self.execution_tab, "执行历史")
+        self.tabs.currentChanged.connect(self._on_tab_changed)
 
         layout.addWidget(self.tabs)
         self.setLayout(layout)
+
+    def _on_tab_changed(self, index):
+        if index == 1:
+            self.load_executions()
 
     def load_workflows(self):
         if self.loading_worker and self.loading_worker.isRunning():
@@ -366,10 +568,17 @@ class WorkflowPage(QWidget):
             self.load_workflows()
 
     def show_edit_dialog(self, workflow=None):
-        if isinstance(workflow, int):
+        from PyQt6.QtCore import QModelIndex
+
+        if workflow is None or isinstance(workflow, QModelIndex):
             row = self.table.currentRow()
             if row >= 0 and row < len(self.workflows_data):
                 workflow = self.workflows_data[row]
+            else:
+                return
+        elif isinstance(workflow, int):
+            if workflow >= 0 and workflow < len(self.workflows_data):
+                workflow = self.workflows_data[workflow]
             else:
                 return
 
@@ -468,6 +677,10 @@ class WorkflowPage(QWidget):
             "failed": "#F44336"
         }
 
+        status_text_colors = {
+            "failed": "#F44336"
+        }
+
         for row, execution in enumerate(executions):
             self.exec_table.setItem(row, 0, QTableWidgetItem(str(execution.id)))
 
@@ -476,6 +689,8 @@ class WorkflowPage(QWidget):
 
             status_item = QTableWidgetItem(execution.status)
             status_item.setBackground(QColor(status_colors.get(execution.status, "#9E9E9E")))
+            if execution.status in status_text_colors:
+                status_item.setForeground(QColor(status_text_colors[execution.status]))
             self.exec_table.setItem(row, 2, status_item)
 
             started_at = execution.started_at.strftime("%Y-%m-%d %H:%M:%S") if execution.started_at else ""
@@ -483,3 +698,20 @@ class WorkflowPage(QWidget):
 
             finished_at = execution.finished_at.strftime("%Y-%m-%d %H:%M:%S") if execution.finished_at else ""
             self.exec_table.setItem(row, 4, QTableWidgetItem(finished_at))
+
+            btn_widget = QWidget()
+            btn_layout = QHBoxLayout(btn_widget)
+            btn_layout.setContentsMargins(4, 2, 4, 2)
+            btn_layout.setSpacing(4)
+            btn_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            view_btn = QPushButton("查看")
+            view_btn.setProperty("class", "table-view")
+            view_btn.clicked.connect(lambda checked, e=execution: self.show_execution_detail(e))
+            btn_layout.addWidget(view_btn)
+
+            self.exec_table.setCellWidget(row, 5, btn_widget)
+
+    def show_execution_detail(self, execution):
+        dialog = ExecutionDetailDialog(execution, parent=self)
+        dialog.exec()

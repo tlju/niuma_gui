@@ -180,7 +180,7 @@ class AssetsPage(QWidget):
             return
 
         self.refresh_btn.setEnabled(False)
-        self.refresh_btn.setText("  加载中...")
+        self.refresh_btn.setText("加载中...")
         self.loading_worker = AssetLoadWorker(self.asset_service)
         self.loading_worker.finished.connect(self._on_assets_loaded)
         self.loading_worker.error.connect(self._on_load_error)
@@ -189,7 +189,7 @@ class AssetsPage(QWidget):
 
     def _on_assets_loaded(self, assets):
         self.refresh_btn.setEnabled(True)
-        self.refresh_btn.setText("  刷新")
+        self.refresh_btn.setText("刷新")
         self.all_assets = assets
         self.filtered_assets = assets
         self._populate_table(assets)
@@ -198,7 +198,7 @@ class AssetsPage(QWidget):
 
     def _on_load_error(self, error_msg):
         self.refresh_btn.setEnabled(True)
-        self.refresh_btn.setText("  刷新")
+        self.refresh_btn.setText("刷新")
         logger.error(f"加载资产失败: {error_msg}")
         QMessageBox.critical(self, "错误", f"加载资产失败:\n{error_msg}")
 

@@ -44,6 +44,7 @@ class WorkflowExecution(Base):
     finished_at = Column(DateTime(timezone=True))
     result = Column(JSON, nullable=True)
     error_message = Column(Text, nullable=True)
+    logs = Column(JSON, nullable=True)
 
     workflow = relationship("Workflow", back_populates="executions")
     node_executions = relationship("WorkflowNodeExecution", back_populates="execution", cascade="all, delete-orphan")

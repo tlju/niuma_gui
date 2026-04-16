@@ -245,6 +245,8 @@ class WorkflowService:
             )
             node_exec_map[node_data["id"]] = node_exec
 
+        execution_logs = []
+
         def db_execution_callback(update):
             node_id = update.get("node_id")
             status = update.get("status")
@@ -266,6 +268,8 @@ class WorkflowService:
 
         def db_log_callback(log_entry):
             logger.info(f"[Workflow {workflow_id}] {log_entry['message']}")
+            
+            execution_logs.append(log_entry)
 
             if log_callback:
                 log_callback(log_entry)
@@ -279,7 +283,8 @@ class WorkflowService:
             status=result["status"],
             finished_at=get_local_now(),
             result=result.get("node_results"),
-            error_message=result.get("error")
+            error_message=result.get("error"),
+            logs=execution_logs
         )
 
         return result
