@@ -3,6 +3,7 @@ from models.audit_log import AuditLog
 from typing import List, Optional
 from datetime import datetime
 from core.logger import get_logger
+from core.utils import get_local_now
 
 logger = get_logger(__name__)
 
@@ -49,7 +50,8 @@ class AuditService:
             resource_type=resource_type,
             resource_id=resource_id,
             details=details,
-            ip_address=ip_address
+            ip_address=ip_address,
+            created_at=get_local_now()
         )
         self.db.add(audit)
         self.db.commit()
