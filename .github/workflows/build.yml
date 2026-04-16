@@ -208,30 +208,29 @@ jobs:
       if: steps.check-token.outputs.has_token == 'true'
       uses: actions/download-artifact@v4
       with:
-        path: artifacts
+        path: dist
         pattern: niuma-*
-        merge-multiple: false
+        merge-multiple: true
 
     - name: 列出下载的文件
       if: steps.check-token.outputs.has_token == 'true'
       run: |
         echo "=== 下载的构建产物 ==="
-        find artifacts -type f \( -name "niuma-linux-x64" -o -name "niuma-linux-arm64" -o -name "niuma-windows-x64.exe" \) -exec ls -lh {} \;
+        ls -lh dist/
 
-    - name: 上传到 Gitee Release
+    - name: 同步到 Gitee Release
       if: steps.check-token.outputs.has_token == 'true'
-      uses: nicennnnnnnlee/action-gitee-release@master
+      uses: YuZhiYuanOrg/release-sync@v1
       with:
-        gitee_action: upload_asset
-        gitee_owner: ${{ github.repository_owner }}
-        gitee_repo: ${{ github.event.repository.name }}
-        gitee_token: ${{ secrets.GITEE_TOKEN }}
-        gitee_tag_name: ${{ steps.release-info.outputs.tag_name }}
-        gitee_upload_retry_times: 5
-        gitee_files: |
-          artifacts/niuma-linux-x64/niuma-linux-x64
-          artifacts/niuma-linux-arm64/niuma-linux-arm64
-          artifacts/niuma-windows-x64.exe/niuma-windows-x64.exe
+        platforms: 'gitee'
+        tag: ${{ steps.release-info.outputs.tag_name }}
+        release-name: ${{ steps.release-info.outputs.release_name }}
+        release-body: ${{ steps.release-info.outputs.release_body }}
+        gitee-token: ${{ secrets.GITEE_TOKEN }}
+        gitee-owner: ${{ github.repository_owner }}
+        gitee-repo: ${{ github.event.repository.name }}
+        gitee-target-commitish: ${{ steps.release-info.outputs.target_commitish }}
+        asset-files: 'dist/*'
 
     - name: 同步完成
       if: steps.check-token.outputs.has_token == 'true'
