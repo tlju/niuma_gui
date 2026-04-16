@@ -204,38 +204,6 @@ jobs:
 
         echo "Release 标签: $TAG_NAME"
 
-    - name: 创建 Gitee Release
-      if: steps.check-token.outputs.has_token == 'true'
-      env:
-        GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-      run: |
-        GITEE_OWNER="${{ github.repository_owner }}"
-        GITEE_REPO="${{ github.event.repository.name }}"
-
-        RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-          -H "Content-Type: application/json" \
-          -H "Authorization: Bearer $GITEE_TOKEN" \
-          -d '{
-            "tag_name": "${{ steps.release-info.outputs.tag_name }}",
-            "name": "${{ steps.release-info.outputs.release_name }}",
-            "body": ${{ steps.release-info.outputs.release_body }},
-            "target_commitish": "${{ steps.release-info.outputs.target_commitish }}",
-            "prerelease": ${{ steps.release-info.outputs.prerelease }}
-          }' \
-          "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases")
-
-        HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-        BODY=$(echo "$RESPONSE" | sed '$d')
-
-        if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-          echo "Gitee Release 创建成功"
-          GITEE_RELEASE_ID=$(echo "$BODY" | jq -r '.id')
-          echo "gitee_release_id=$GITEE_RELEASE_ID" >> $GITHUB_OUTPUT
-        else
-          echo "Gitee Release 创建可能已存在或失败 (HTTP $HTTP_CODE)"
-          echo "响应: $BODY"
-        fi
-
     - name: 下载构建产物
       if: steps.check-token.outputs.has_token == 'true'
       uses: actions/download-artifact@v4
@@ -244,134 +212,26 @@ jobs:
         pattern: niuma-*
         merge-multiple: false
 
-    - name: 上传资产到 Gitee
+    - name: 列出下载的文件
       if: steps.check-token.outputs.has_token == 'true'
-      env:
-        GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
       run: |
-        GITEE_OWNER="${{ github.repository_owner }}"
-        GITEE_REPO="${{ github.event.repository.name }}"
+        echo "=== 下载的构建产物 ==="
+        find artifacts -type f \( -name "niuma-linux-x64" -o -name "niuma-linux-arm64" -o -name "niuma-windows-x64.exe" \) -exec ls -lh {} \;
 
-        echo "=== 获取 Gitee Release 信息 ==="
-        for i in {1..3}; do
-          GITEE_RELEASE_INFO=$(curl -s --max-time 30 --connect-timeout 10 \
-            "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases/latest?access_token=$GITEE_TOKEN")
-          
-          GITEE_RELEASE_ID=$(echo "$GITEE_RELEASE_INFO" | jq -r '.id // empty')
-          
-          if [ -n "$GITEE_RELEASE_ID" ] && [ "$GITEE_RELEASE_ID" != "null" ]; then
-            echo "✓ 成功获取 Release ID: $GITEE_RELEASE_ID"
-            break
-          fi
-          
-          echo "⚠ 尝试 $i/3: 获取 Release ID 失败"
-          if [ $i -lt 3 ]; then
-            sleep 5
-          fi
-        done
-
-        if [ -z "$GITEE_RELEASE_ID" ] || [ "$GITEE_RELEASE_ID" = "null" ]; then
-          echo "❌ 无法获取 Gitee Release ID"
-          echo "API 响应: $GITEE_RELEASE_INFO"
-          exit 1
-        fi
-
-        echo ""
-        echo "=== 开始上传资产到 Gitee ==="
-        echo "Release ID: $GITEE_RELEASE_ID"
-        echo ""
-
-        upload_file() {
-          local FILE="$1"
-          local FILENAME=$(basename "$FILE")
-          local FILE_SIZE=$(stat -c%s "$FILE" 2>/dev/null || stat -f%z "$FILE" 2>/dev/null)
-          local MAX_RETRIES=3
-          local RETRY_COUNT=0
-          local SUCCESS=false
-
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "📁 文件: $FILENAME"
-          echo "📊 大小: $(numfmt --to=iec-i --suffix=B $FILE_SIZE 2>/dev/null || echo "$FILE_SIZE bytes")"
-          echo "📍 路径: $FILE"
-          echo ""
-
-          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            RETRY_COUNT=$((RETRY_COUNT + 1))
-            echo "� 上传尝试 $RETRY_COUNT/$MAX_RETRIES"
-            
-            UPLOAD_START=$(date +%s)
-            
-            UPLOAD_RESPONSE=$(curl -w "\n%{http_code}\n%{time_total}" \
-              --max-time 600 \
-              --connect-timeout 30 \
-              -X POST \
-              -F "access_token=$GITEE_TOKEN" \
-              -F "release_id=$GITEE_RELEASE_ID" \
-              -F "file=@$FILE" \
-              "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases/$GITEE_RELEASE_ID/attach_files" \
-              2>&1)
-            
-            UPLOAD_EXIT_CODE=$?
-            UPLOAD_END=$(date +%s)
-            UPLOAD_DURATION=$((UPLOAD_END - UPLOAD_START))
-            
-            if [ $UPLOAD_EXIT_CODE -ne 0 ]; then
-              echo "❌ curl 命令失败 (退出码: $UPLOAD_EXIT_CODE)"
-              echo "错误信息: $UPLOAD_RESPONSE"
-            else
-              HTTP_CODE=$(echo "$UPLOAD_RESPONSE" | tail -n2 | head -n1)
-              TIME_TOTAL=$(echo "$UPLOAD_RESPONSE" | tail -n1)
-              RESPONSE_BODY=$(echo "$UPLOAD_RESPONSE" | head -n -2)
-              
-              if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-                echo "✅ 上传成功！"
-                echo "   HTTP 状态码: $HTTP_CODE"
-                echo "   耗时: ${UPLOAD_DURATION}s (curl: ${TIME_TOTAL}s)"
-                SUCCESS=true
-                break
-              else
-                echo "❌ 上传失败 (HTTP $HTTP_CODE)"
-                echo "   响应内容: $RESPONSE_BODY"
-              fi
-            fi
-            
-            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-              WAIT_TIME=$((RETRY_COUNT * 10))
-              echo "⏳ 等待 ${WAIT_TIME}s 后重试..."
-              sleep $WAIT_TIME
-            fi
-          done
-
-          if [ "$SUCCESS" = false ]; then
-            echo "❌ 上传失败: $FILENAME (已重试 $MAX_RETRIES 次)"
-            return 1
-          fi
-          
-          return 0
-        }
-
-        UPLOADED_COUNT=0
-        FAILED_COUNT=0
-
-        while IFS= read -r -d '' FILE; do
-          if upload_file "$FILE"; then
-            UPLOADED_COUNT=$((UPLOADED_COUNT + 1))
-          else
-            FAILED_COUNT=$((FAILED_COUNT + 1))
-          fi
-          echo ""
-        done < <(find artifacts -type f \( -name "niuma-linux-x64" -o -name "niuma-linux-arm64" -o -name "niuma-windows-x64.exe" \) -print0)
-
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "📊 上传统计:"
-        echo "   ✅ 成功: $UPLOADED_COUNT"
-        echo "   ❌ 失败: $FAILED_COUNT"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-        if [ $FAILED_COUNT -gt 0 ]; then
-          echo "⚠️  部分文件上传失败"
-          exit 1
-        fi
+    - name: 上传到 Gitee Release
+      if: steps.check-token.outputs.has_token == 'true'
+      uses: nicennnnnnnlee/action-gitee-release@master
+      with:
+        gitee_action: upload_asset
+        gitee_owner: ${{ github.repository_owner }}
+        gitee_repo: ${{ github.event.repository.name }}
+        gitee_token: ${{ secrets.GITEE_TOKEN }}
+        gitee_tag_name: ${{ steps.release-info.outputs.tag_name }}
+        gitee_upload_retry_times: 5
+        gitee_files: |
+          artifacts/niuma-linux-x64/niuma-linux-x64
+          artifacts/niuma-linux-arm64/niuma-linux-arm64
+          artifacts/niuma-windows-x64.exe/niuma-windows-x64.exe
 
     - name: 同步完成
       if: steps.check-token.outputs.has_token == 'true'
