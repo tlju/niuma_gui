@@ -223,7 +223,6 @@ jobs:
 
     - name: 同步到 Gitee Release
       if: steps.check-token.outputs.has_token == 'true'
-<<<<<<< HEAD
       env:
         GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
         GITEE_OWNER: ${{ github.repository_owner }}
@@ -298,19 +297,6 @@ jobs:
         done
         
         echo "同步完成！"
-=======
-      uses: YuZhiYuanOrg/release-sync@v1
-      with:
-        platforms: 'gitee'
-        tag: ${{ steps.release-info.outputs.tag_name }}
-        release-name: ${{ steps.release-info.outputs.release_name }}
-        release-body: ${{ env.RELEASE_BODY }}
-        gitee-token: ${{ secrets.GITEE_TOKEN }}
-        gitee-owner: ${{ github.repository_owner }}
-        gitee-repo: ${{ github.event.repository.name }}
-        gitee-target-commitish: ${{ steps.release-info.outputs.target_commitish }}
-        asset-files: 'dist/*'
->>>>>>> e75bca5 (fix(构建): 修复多平台构建路径检测问题并改进CI发布流程)
 
     - name: 同步完成
       if: steps.check-token.outputs.has_token == 'true'
