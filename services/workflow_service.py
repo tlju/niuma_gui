@@ -14,11 +14,12 @@ logger = get_logger(__name__)
 
 
 class WorkflowService:
-    def __init__(self, db: Session, script_service=None, dict_service=None, param_service=None):
+    def __init__(self, db: Session, script_service=None, dict_service=None, param_service=None, bastion_manager=None):
         self.db = db
         self.script_service = script_service
         self.dict_service = dict_service
         self.param_service = param_service
+        self.bastion_manager = bastion_manager
 
     def get_all(self) -> List[Workflow]:
         return self.db.query(Workflow).filter(
@@ -234,7 +235,7 @@ class WorkflowService:
             self.db.commit()
 
         executor = WorkflowExecutor(workflow_id, nodes, connections, self.script_service, 
-                                    self.dict_service, self.param_service, self.db)
+                                    self.dict_service, self.param_service, self.db, self.bastion_manager)
 
         node_exec_map = {}
         for node_data in nodes:

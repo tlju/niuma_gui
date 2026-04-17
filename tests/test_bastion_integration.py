@@ -86,12 +86,13 @@ class TestBastionNode(unittest.TestCase):
         schema = self.node.get_config_schema()
         
         self.assertIn("operation", schema["properties"])
-        self.assertIn("connect", schema["properties"]["operation"]["enum"])
         self.assertIn("connect_host", schema["properties"]["operation"]["enum"])
+        self.assertIn("disconnect", schema["properties"]["operation"]["enum"])
         self.assertIn("get_ips", schema["properties"]["operation"]["enum"])
         self.assertIn("target_host", schema["properties"])
-        self.assertIn("target_username", schema["properties"])
-        self.assertIn("target_password", schema["properties"])
+        self.assertNotIn("target_username", schema["properties"])
+        self.assertNotIn("target_password", schema["properties"])
+        self.assertNotIn("connection_id", schema["properties"])
     
     def test_execute_missing_operation(self):
         self.node.config = {}
@@ -102,7 +103,7 @@ class TestBastionNode(unittest.TestCase):
     
     def test_execute_missing_db(self):
         node = BastionNode(node_id=2, name="无数据库节点")
-        node.config = {"operation": "connect"}
+        node.config = {"operation": "connect_host"}
         result = node.execute()
         
         self.assertEqual(result.status, NodeStatus.FAILED)
@@ -118,7 +119,14 @@ class TestBastionNode(unittest.TestCase):
         result = self.node._replace_variables("@unknown.variable")
         self.assertEqual(result, "@unknown.variable")
     
-    def test_execute_connect_host_missing_target(self):
+    @patch('services.bastion_service.BastionService')
+    def test_execute_connect_host_missing_target(self, mock_bastion_service_class):
+        mock_service = Mock()
+        mock_bastion_service_class.return_value = mock_service
+        mock_service.get_connection_status.return_value = {
+            "authenticated": True
+        }
+        
         self.node.config = {"operation": "connect_host"}
         result = self.node.execute()
         

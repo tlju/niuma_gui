@@ -34,11 +34,10 @@ class TestBastionNode:
         
         assert schema["type"] == "object"
         assert "operation" in schema["properties"]
-        assert "connection_id" in schema["properties"]
-        assert "auth_type" in schema["properties"]
-        assert "keepalive_enabled" in schema["properties"]
-        assert "min_channels" in schema["properties"]
-        assert "max_channels" in schema["properties"]
+        assert "target_host" in schema["properties"]
+        assert "connection_id" not in schema["properties"]
+        assert "auth_type" not in schema["properties"]
+        assert "keepalive_enabled" not in schema["properties"]
 
     def test_execute_without_db(self, bastion_node):
         result = bastion_node.execute()
@@ -55,48 +54,64 @@ class TestBastionNode:
         assert "未指定操作类型" in result.error
 
     @patch('services.bastion_service.BastionService')
-    def test_execute_connect_operation(self, mock_bastion_service_class, bastion_node, db_session):
+    def test_execute_connect_host_operation(self, mock_bastion_service_class, bastion_node, db_session):
         mock_service = Mock()
         mock_bastion_service_class.return_value = mock_service
-        mock_service.connect.return_value = Mock(is_connected=True)
-        mock_service.authenticate.return_value = True
         mock_service.get_connection_status.return_value = {
-            "host": "192.168.1.100",
-            "username": "admin",
-            "channels": 1
+            "authenticated": True
         }
+        mock_channel = Mock()
+        mock_channel.channel_id = 1
+        mock_service.connect_to_host.return_value = mock_channel
         
         bastion_node.set_services(db=db_session)
         bastion_node.config = {
-            "operation": "connect",
-            "connection_id": "test",
-            "auth_type": "password",
-            "keepalive_enabled": False
+            "operation": "connect_host",
+            "target_host": "192.168.1.200"
         }
         
         result = bastion_node.execute()
         
         assert result.status == NodeStatus.SUCCESS
-        assert "堡垒机连接成功" in result.output
-        mock_service.connect.assert_called_once()
-        mock_service.authenticate.assert_called_once()
+        assert "成功连接到目标主机" in result.output
+        mock_service.connect_to_host.assert_called_once()
+
+    @patch('services.bastion_service.BastionService')
+    def test_execute_connect_host_without_target(self, mock_bastion_service_class, bastion_node, db_session):
+        mock_service = Mock()
+        mock_bastion_service_class.return_value = mock_service
+        mock_service.get_connection_status.return_value = {
+            "authenticated": True
+        }
+        
+        bastion_node.set_services(db=db_session)
+        bastion_node.config = {
+            "operation": "connect_host"
+        }
+        
+        result = bastion_node.execute()
+        
+        assert result.status == NodeStatus.FAILED
+        assert "需要指定目标主机地址" in result.error
 
     @patch('services.bastion_service.BastionService')
     def test_execute_disconnect_operation(self, mock_bastion_service_class, bastion_node, db_session):
         mock_service = Mock()
         mock_bastion_service_class.return_value = mock_service
+        mock_service.get_connection_status.return_value = {
+            "authenticated": True
+        }
         
         bastion_node.set_services(db=db_session)
         bastion_node.config = {
-            "operation": "disconnect",
-            "connection_id": "test"
+            "operation": "disconnect"
         }
         
         result = bastion_node.execute()
         
         assert result.status == NodeStatus.SUCCESS
         assert "已断开" in result.output
-        mock_service.disconnect.assert_called_once_with("test")
+        mock_service.disconnect.assert_called_once_with("default")
 
     @patch('services.bastion_service.BastionService')
     def test_execute_status_operation(self, mock_bastion_service_class, bastion_node, db_session):
@@ -104,25 +119,31 @@ class TestBastionNode:
         mock_bastion_service_class.return_value = mock_service
         mock_service.get_connection_status.return_value = {
             "exists": True,
+            "authenticated": True,
             "connected": True,
             "channels": 2
         }
         
         bastion_node.set_services(db=db_session)
         bastion_node.config = {
-            "operation": "status",
-            "connection_id": "test"
+            "operation": "status"
         }
         
         result = bastion_node.execute()
         
         assert result.status == NodeStatus.SUCCESS
-        mock_service.get_connection_status.assert_called_once_with("test")
+        assert mock_service.get_connection_status.call_count == 2
 
     @patch('services.bastion_service.BastionService')
     def test_execute_command_operation(self, mock_bastion_service_class, bastion_node, db_session):
         mock_service = Mock()
         mock_bastion_service_class.return_value = mock_service
+        mock_service.get_connection_status.return_value = {
+            "authenticated": True
+        }
+        mock_channel = Mock()
+        mock_channel.target_host = "192.168.1.200"
+        mock_service.get_channel.return_value = mock_channel
         mock_service.execute_command.return_value = {
             "success": True,
             "output": "total 0\ndrwxr-xr-x",
@@ -132,7 +153,6 @@ class TestBastionNode:
         bastion_node.set_services(db=db_session)
         bastion_node.config = {
             "operation": "execute",
-            "connection_id": "test",
             "command": "ls -la"
         }
         
@@ -141,6 +161,25 @@ class TestBastionNode:
         assert result.status == NodeStatus.SUCCESS
         assert "命令执行成功" in result.output
         mock_service.execute_command.assert_called_once()
+
+    @patch('services.bastion_service.BastionService')
+    def test_execute_without_bastion_connection(self, mock_bastion_service_class, bastion_node, db_session):
+        mock_service = Mock()
+        mock_bastion_service_class.return_value = mock_service
+        mock_service.get_connection_status.return_value = {
+            "authenticated": False
+        }
+        
+        bastion_node.set_services(db=db_session)
+        bastion_node.config = {
+            "operation": "connect_host",
+            "target_host": "192.168.1.200"
+        }
+        
+        result = bastion_node.execute()
+        
+        assert result.status == NodeStatus.FAILED
+        assert "堡垒机未连接" in result.error
 
     def test_variable_replacement(self, bastion_node, db_session):
         host_param = SystemParam(

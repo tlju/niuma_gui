@@ -249,13 +249,14 @@ class WorkflowEditDialog(QDialog):
     MODE_EDIT = "edit"
     MODE_EXECUTE = "execute"
 
-    def __init__(self, workflow_service, workflow=None, mode="edit", current_user_id=None, script_service=None, parent=None):
+    def __init__(self, workflow_service, workflow=None, mode="edit", current_user_id=None, script_service=None, bastion_manager=None, parent=None):
         super().__init__(parent)
         self.workflow_service = workflow_service
         self.workflow = workflow
         self.mode = mode
         self.current_user_id = current_user_id
         self.script_service = script_service
+        self.bastion_manager = bastion_manager
 
         if mode == self.MODE_EXECUTE:
             self.setWindowTitle(f"执行工作流 - {workflow.name}" if workflow else "执行工作流")
@@ -312,7 +313,7 @@ class WorkflowEditDialog(QDialog):
         self.node_palette.node_selected.connect(self._on_node_type_selected)
         splitter.addWidget(self.node_palette)
 
-        self.canvas = WorkflowCanvas(self.script_service, self.mode)
+        self.canvas = WorkflowCanvas(self.script_service, self.bastion_manager, self.mode)
         splitter.addWidget(self.canvas)
 
         self.log_panel = QWidget()
@@ -414,11 +415,12 @@ class WorkflowEditDialog(QDialog):
 
 
 class WorkflowPage(QWidget):
-    def __init__(self, workflow_service, current_user_id, script_service=None, parent=None):
+    def __init__(self, workflow_service, current_user_id, script_service=None, bastion_manager=None, parent=None):
         super().__init__(parent)
         self.workflow_service = workflow_service
         self.current_user_id = current_user_id
         self.script_service = script_service
+        self.bastion_manager = bastion_manager
         self.loading_worker = None
         self.execution_worker = None
         self.workflows_data = []
@@ -582,7 +584,7 @@ class WorkflowPage(QWidget):
             else:
                 return
 
-        dialog = WorkflowEditDialog(self.workflow_service, workflow, current_user_id=self.current_user_id, script_service=self.script_service, parent=self)
+        dialog = WorkflowEditDialog(self.workflow_service, workflow, current_user_id=self.current_user_id, script_service=self.script_service, bastion_manager=self.bastion_manager, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.load_workflows()
 
@@ -600,6 +602,7 @@ class WorkflowPage(QWidget):
             mode=WorkflowEditDialog.MODE_EXECUTE,
             current_user_id=self.current_user_id,
             script_service=self.script_service,
+            bastion_manager=self.bastion_manager,
             parent=self
         )
 

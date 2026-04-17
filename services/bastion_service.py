@@ -748,3 +748,30 @@ class BastionService:
 
     def get_connection(self, connection_id: str = "default") -> Optional[BastionConnection]:
         return self._connections.get(connection_id)
+
+    def get_connected_hosts(self, connection_id: str = "default") -> List[str]:
+        connection = self._connections.get(connection_id)
+        if not connection:
+            return []
+        
+        hosts = []
+        with connection._lock:
+            for channel in connection.channels:
+                if channel.is_active and channel.target_host:
+                    if channel.target_host not in hosts:
+                        hosts.append(channel.target_host)
+        
+        if connection._current_target_host and connection._current_target_host not in hosts:
+            hosts.append(connection._current_target_host)
+        
+        return hosts
+
+    def get_all_connected_hosts(self) -> List[str]:
+        all_hosts = []
+        with self._lock:
+            for connection_id, connection in self._connections.items():
+                hosts = self.get_connected_hosts(connection_id)
+                for host in hosts:
+                    if host not in all_hosts:
+                        all_hosts.append(host)
+        return all_hosts

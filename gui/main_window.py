@@ -98,15 +98,13 @@ class MainWindow(QMainWindow):
         self.dict_service = DictService(self.db)
         self.todo_service = TodoService(self.db)
         self.document_service = DocumentService(self.db)
-        self.workflow_service = WorkflowService(self.db, self.script_service, self.dict_service, self.param_service)
         
         self.bastion_manager = BastionManager(self.db)
+        self.workflow_service = WorkflowService(self.db, self.script_service, self.dict_service, self.param_service, self.bastion_manager)
 
         self.init_ui()
         self.status_bar.showMessage(f"当前用户: {username}  |  状态: 在线")
         self.create_main_tabs()
-        
-        self._init_bastion_auto_login()
 
     def init_ui(self):
         self.setWindowTitle("运维辅助工具")
@@ -269,13 +267,6 @@ class MainWindow(QMainWindow):
 
         system_menu.addSeparator()
 
-        bastion_action = QAction("堡垒机连接", self)
-        bastion_action.setIcon(icons.settings_icon())
-        bastion_action.triggered.connect(self._show_bastion_menu)
-        system_menu.addAction(bastion_action)
-
-        system_menu.addSeparator()
-
         exit_action = QAction("退出", self)
         exit_action.setIcon(icons.cancel_icon())
         exit_action.setShortcut("Ctrl+Q")
@@ -345,7 +336,7 @@ class MainWindow(QMainWindow):
         self.dicts_page = DataDictsPage(self.dict_service)
         self.todos_page = TodosPage(self.todo_service, self.current_user_id)
         self.documents_page = DocumentsPage(self.document_service, self.current_user_id)
-        self.workflow_page = WorkflowPage(self.workflow_service, self.current_user_id, self.script_service)
+        self.workflow_page = WorkflowPage(self.workflow_service, self.current_user_id, self.script_service, self.bastion_manager)
 
         self.stacked_widget.addWidget(self.assets_page)
         self.stacked_widget.addWidget(self.scripts_page)

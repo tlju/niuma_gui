@@ -83,9 +83,10 @@ class TestBastionConnection:
         assert "认证失败" in str(exc_info.value)
 
     def test_disconnect(self):
+        from services.bastion_service import ConnectionStatus
         conn = BastionConnection("192.168.1.100", 22, "admin", "password")
         conn.client = Mock()
-        conn.is_connected = True
+        conn.status = ConnectionStatus.AUTHENTICATED
         
         conn.disconnect()
         

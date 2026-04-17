@@ -26,10 +26,11 @@ logger = get_logger(__name__)
 
 
 class NodeConfigDialog(QDialog):
-    def __init__(self, node_item: WorkflowNodeItem, script_service=None, parent=None):
+    def __init__(self, node_item: WorkflowNodeItem, script_service=None, bastion_manager=None, parent=None):
         super().__init__(parent)
         self.node_item = node_item
         self.script_service = script_service
+        self.bastion_manager = bastion_manager
         self.scripts = []
         self.setWindowTitle(f"节点配置 - {node_item.name}")
         self.setMinimumSize(400, 300)
@@ -122,6 +123,26 @@ class NodeConfigDialog(QDialog):
                     for i, value in enumerate(enum_values):
                         display_name = enum_names[i] if i < len(enum_names) else value
                         widget.addItem(display_name, value)
+                    
+                    if current_value is not None:
+                        index = widget.findData(current_value)
+                        if index >= 0:
+                            widget.setCurrentIndex(index)
+                    
+                    if prop.get("description"):
+                        widget.setToolTip(prop.get("description"))
+                elif prop.get("dynamicEnum") == "connected_hosts":
+                    widget = QComboBox()
+                    
+                    widget.addItem("请选择主机...", None)
+                    
+                    if self.bastion_manager:
+                        try:
+                            hosts = self.bastion_manager.get_service().get_all_connected_hosts()
+                            for host in hosts:
+                                widget.addItem(host, host)
+                        except Exception as e:
+                            logger.warning(f"获取已连接主机列表失败: {e}")
                     
                     if current_value is not None:
                         index = widget.findData(current_value)
@@ -246,7 +267,8 @@ class NodePaletteWidget(QWidget):
         category_names = {
             "control": "控制节点",
             "action": "动作节点",
-            "general": "通用节点"
+            "general": "通用节点",
+            "environment": "环境切换节点"
         }
 
         for category, nodes in categories.items():
@@ -278,9 +300,10 @@ class WorkflowCanvas(QGraphicsView):
     connection_removed = pyqtSignal(tuple)
     selection_changed = pyqtSignal(list)
 
-    def __init__(self, script_service=None, mode="edit", parent=None):
+    def __init__(self, script_service=None, bastion_manager=None, mode="edit", parent=None):
         super().__init__(parent)
         self.script_service = script_service
+        self.bastion_manager = bastion_manager
         self.mode = mode
         self._read_only = (mode == "execute")
         
@@ -511,7 +534,7 @@ class WorkflowCanvas(QGraphicsView):
             
         if node_id in self.nodes:
             node = self.nodes[node_id]
-            dialog = NodeConfigDialog(node, self.script_service, self)
+            dialog = NodeConfigDialog(node, self.script_service, self.bastion_manager, self)
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 new_name = dialog.get_name()
                 new_config = dialog.get_config()

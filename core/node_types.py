@@ -856,104 +856,15 @@ class BastionNode(BaseNode):
                     "type": "string",
                     "title": "操作类型",
                     "description": "选择要执行的堡垒机操作",
-                    "enum": ["connect", "connect_host", "disconnect", "execute", "get_ips", "status"],
-                    "enumNames": ["连接堡垒机", "连接目标主机", "断开连接", "执行命令", "获取主机IP", "查询状态"],
-                    "default": "connect"
-                },
-                "connection_id": {
-                    "type": "string",
-                    "title": "连接标识",
-                    "description": "堡垒机连接的唯一标识符，用于管理多个连接",
-                    "default": "default",
-                    "placeholder": "例如: default, prod, test"
+                    "enum": ["connect_host", "disconnect", "execute", "get_ips", "status"],
+                    "enumNames": ["连接目标主机", "断开连接", "执行命令", "获取主机IP", "查询状态"],
+                    "default": "connect_host"
                 },
                 "target_host": {
                     "type": "string",
                     "title": "目标主机地址",
-                    "description": "要通过堡垒机连接的目标主机IP或主机名，支持使用变量 @input.output 引用上游节点输出"
-                },
-                "target_username": {
-                    "type": "string",
-                    "title": "目标主机用户名",
-                    "description": "目标主机的SSH用户名，支持使用变量引用"
-                },
-                "target_password": {
-                    "type": "string",
-                    "title": "目标主机密码",
-                    "description": "目标主机的SSH密码，支持使用变量 @param.参数代码 引用系统参数"
-                },
-                "auth_type": {
-                    "type": "string",
-                    "title": "二次认证类型",
-                    "description": "齐治堡垒机的二次认证方式",
-                    "enum": ["password", "otp", "menu"],
-                    "enumNames": ["密码认证", "动态口令(OTP)", "菜单选择"],
-                    "default": "password"
-                },
-                "secondary_password": {
-                    "type": "string",
-                    "title": "二次认证密码",
-                    "description": "二次认证所需的密码，支持使用变量 @param.参数代码 引用系统参数"
-                },
-                "otp_code": {
-                    "type": "string",
-                    "title": "动态口令",
-                    "description": "OTP动态口令，支持使用变量引用"
-                },
-                "menu_selection": {
-                    "type": "string",
-                    "title": "菜单选择",
-                    "description": "菜单选择项，例如选择目标服务器编号"
-                },
-                "command": {
-                    "type": "string",
-                    "title": "执行命令",
-                    "description": "在堡垒机通道中执行的命令，连接目标主机后将在目标主机上执行",
-                    "placeholder": "例如: ls -la, df -h"
-                },
-                "use_existing_connection": {
-                    "type": "boolean",
-                    "title": "使用已有连接",
-                    "description": "是否使用系统已建立的堡垒机连接（自动登录的连接）",
-                    "default": True
-                },
-                "keepalive_enabled": {
-                    "type": "boolean",
-                    "title": "启用保活",
-                    "description": "是否启用通道保活功能",
-                    "default": True
-                },
-                "keepalive_interval": {
-                    "type": "integer",
-                    "title": "保活间隔(秒)",
-                    "description": "保活心跳间隔时间",
-                    "default": 30,
-                    "minimum": 10,
-                    "maximum": 300
-                },
-                "min_channels": {
-                    "type": "integer",
-                    "title": "最小通道数",
-                    "description": "保持活跃的最小通道数量",
-                    "default": 1,
-                    "minimum": 1,
-                    "maximum": 5
-                },
-                "max_channels": {
-                    "type": "integer",
-                    "title": "最大通道数",
-                    "description": "允许创建的最大通道数量",
-                    "default": 5,
-                    "minimum": 1,
-                    "maximum": 10
-                },
-                "timeout": {
-                    "type": "integer",
-                    "title": "超时时间(秒)",
-                    "description": "连接和操作的超时时间",
-                    "default": 30,
-                    "minimum": 5,
-                    "maximum": 300
+                    "description": "从堡垒机已建立的连接中选择目标主机",
+                    "dynamicEnum": "connected_hosts"
                 }
             },
             "required": ["operation"]
@@ -1024,65 +935,24 @@ class BastionNode(BaseNode):
             result_data = {}
             output_msg = ""
             
-            use_existing = self.config.get("use_existing_connection", True)
-            connection_id = self.config.get("connection_id", "default")
+            connection_id = "default"
             
-            if operation == "connect":
-                auth_type = self.config.get("auth_type", "password")
-                secondary_password = self._replace_variables(self.config.get("secondary_password", ""), inputs)
-                otp_code = self._replace_variables(self.config.get("otp_code", ""), inputs)
-                menu_selection = self.config.get("menu_selection", "")
-                timeout = self.config.get("timeout", 30)
-                keepalive_enabled = self.config.get("keepalive_enabled", True)
-                keepalive_interval = self.config.get("keepalive_interval", 30)
-                min_channels = self.config.get("min_channels", 1)
-                max_channels = self.config.get("max_channels", 5)
-                
-                connection = bastion_service.connect(connection_id=connection_id, timeout=timeout)
-                
-                bastion_service.authenticate(
-                    connection_id=connection_id,
-                    auth_type=auth_type,
-                    secondary_password=secondary_password if secondary_password else None,
-                    otp_code=otp_code if otp_code else None,
-                    menu_selection=menu_selection if menu_selection else None
-                )
-                
-                if keepalive_enabled:
-                    bastion_service.start_keepalive(
-                        connection_id=connection_id,
-                        interval=keepalive_interval,
-                        min_channels=min_channels,
-                        max_channels=max_channels
-                    )
-                
-                status = bastion_service.get_connection_status(connection_id)
-                output_msg = f"堡垒机连接成功: {status['host']} (用户: {status['username']}, 通道数: {status['channels']})"
-                result_data = {
-                    "connection_id": connection_id,
-                    "status": status,
-                    "keepalive_enabled": keepalive_enabled
-                }
-                
-            elif operation == "connect_host":
-                target_host = self._replace_variables(self.config.get("target_host", ""), inputs)
-                target_username = self._replace_variables(self.config.get("target_username", ""), inputs)
-                target_password = self._replace_variables(self.config.get("target_password", ""), inputs)
-                timeout = self.config.get("timeout", 30)
+            status = bastion_service.get_connection_status(connection_id)
+            if not status.get("authenticated"):
+                raise Exception("堡垒机未连接或未完成认证，请先在主界面连接堡垒机")
+            
+            if operation == "connect_host":
+                target_host = self.config.get("target_host", "")
                 
                 if not target_host:
                     raise ValueError("连接目标主机需要指定目标主机地址")
                 
-                status = bastion_service.get_connection_status(connection_id)
-                if not status.get("authenticated"):
-                    raise Exception("堡垒机未连接或未完成认证，请先连接堡垒机")
-                
                 channel = bastion_service.connect_to_host(
                     connection_id=connection_id,
                     host=target_host,
-                    username=target_username if target_username else None,
-                    password=target_password if target_password else None,
-                    timeout=timeout
+                    username=None,
+                    password=None,
+                    timeout=30
                 )
                 
                 if channel:
@@ -1097,17 +967,11 @@ class BastionNode(BaseNode):
                     raise Exception(f"连接目标主机 {target_host} 失败")
                     
             elif operation == "get_ips":
-                timeout = self.config.get("timeout", 30)
-                
-                status = bastion_service.get_connection_status(connection_id)
-                if not status.get("authenticated"):
-                    raise Exception("堡垒机未连接或未完成认证")
-                
                 channel = self._host_channel or bastion_service.get_channel(connection_id)
                 if not channel:
                     raise Exception("无法获取可用通道，请先连接目标主机")
                 
-                ips = bastion_service.get_host_ips(connection_id, channel, timeout)
+                ips = bastion_service.get_host_ips(connection_id, channel, 30)
                 
                 if ips:
                     output_msg = f"获取到 {len(ips)} 个IP地址: {', '.join(ips)}"
@@ -1126,21 +990,16 @@ class BastionNode(BaseNode):
                 result_data = {"connection_id": connection_id}
                 
             elif operation == "execute":
-                command = self._replace_variables(self.config.get("command", ""), inputs)
-                timeout = self.config.get("timeout", 30)
+                command = self.config.get("command", "")
                 
                 if not command:
                     raise ValueError("执行命令操作需要指定命令内容")
-                
-                status = bastion_service.get_connection_status(connection_id)
-                if not status.get("authenticated"):
-                    raise Exception("堡垒机未连接或未完成认证")
                 
                 channel = self._host_channel or bastion_service.get_channel(connection_id)
                 if not channel:
                     raise Exception("无法获取可用通道")
                 
-                exec_result = bastion_service.execute_command(connection_id, command, timeout)
+                exec_result = bastion_service.execute_command(connection_id, command, 30)
                 if exec_result["success"]:
                     output_msg = f"命令执行成功:\n{exec_result['output']}"
                     result_data = exec_result
@@ -1180,6 +1039,24 @@ class BastionNode(BaseNode):
         return self.result
 
 
+class LocalExecutionNode(BaseNode):
+    node_type = "local_execution"
+    category = "environment"
+    display_name = "本机执行"
+    description = "切换到本地执行环境，此节点之后的所有节点将在本地环境执行"
+    input_ports = 1
+    output_ports = 1
+
+    def execute(self, inputs: Dict[str, Any] = None) -> NodeResult:
+        self.status = NodeStatus.SUCCESS
+        self.result = NodeResult(
+            status=NodeStatus.SUCCESS, 
+            output="已切换到本地执行环境",
+            data={"execution_environment": "local"}
+        )
+        return self.result
+
+
 NODE_TYPES: Dict[str, type] = {
     "start": StartNode,
     "end": EndNode,
@@ -1191,6 +1068,7 @@ NODE_TYPES: Dict[str, type] = {
     "merge": MergeNode,
     "minio": MinioNode,
     "bastion": BastionNode,
+    "local_execution": LocalExecutionNode,
 }
 
 

@@ -6,15 +6,20 @@ from collections import defaultdict
 from core.logger import get_logger
 from core.node_types import (
     BaseNode, NodeStatus, NodeResult,
-    get_node_class, StartNode, EndNode, ConditionNode, ParallelNode, MergeNode, ScriptNode, CommandNode, MinioNode, BastionNode
+    get_node_class, StartNode, EndNode, ConditionNode, ParallelNode, MergeNode, ScriptNode, CommandNode, MinioNode, BastionNode, LocalExecutionNode
 )
 
 logger = get_logger(__name__)
 
 
+class ExecutionEnvironment:
+    LOCAL = "local"
+    REMOTE_BASTION = "remote_bastion"
+
+
 class WorkflowExecutor:
     def __init__(self, workflow_id: int, nodes: List[Dict], connections: List[Dict], 
-                 script_service=None, dict_service=None, param_service=None, db=None):
+                 script_service=None, dict_service=None, param_service=None, db=None, bastion_manager=None):
         self.workflow_id = workflow_id
         self.nodes: Dict[int, BaseNode] = {}
         self.connections = connections
@@ -30,6 +35,9 @@ class WorkflowExecutor:
         self.dict_service = dict_service
         self.param_service = param_service
         self.db = db
+        self.bastion_manager = bastion_manager
+        self.execution_environment = ExecutionEnvironment.LOCAL
+        self.bastion_connected = False
 
         self._build_graph(nodes, connections)
 
@@ -119,15 +127,56 @@ class WorkflowExecutor:
 
         return ready
 
+    def _check_bastion_connection(self) -> bool:
+        if not self.bastion_manager:
+            return False
+        try:
+            status = self.bastion_manager.get_status()
+            return status.get("authenticated", False)
+        except Exception as e:
+            logger.error(f"检查堡垒机连接状态失败: {e}")
+            return False
+
     def _execute_node(self, node_id: int) -> NodeResult:
         if self.is_cancelled:
             return NodeResult(status=NodeStatus.SKIPPED, output="执行已取消")
 
         node = self.nodes[node_id]
+        
+        if isinstance(node, BastionNode):
+            if not self._check_bastion_connection():
+                error_msg = "堡垒机连接未建立，工作流执行失败"
+                node.status = NodeStatus.FAILED
+                result = NodeResult(status=NodeStatus.FAILED, error=error_msg)
+                node.result = result
+                self._update_node_status(node_id, NodeStatus.FAILED, result)
+                self._emit_log("ERROR", error_msg, node_id)
+                self.is_cancelled = True
+                return result
+            self.execution_environment = ExecutionEnvironment.REMOTE_BASTION
+            self.bastion_connected = True
+            self._emit_log("INFO", f"切换到远程堡垒机执行环境", node_id)
+        
+        if isinstance(node, LocalExecutionNode):
+            self.execution_environment = ExecutionEnvironment.LOCAL
+            self._emit_log("INFO", f"切换到本地执行环境", node_id)
+        
+        if self.execution_environment == ExecutionEnvironment.REMOTE_BASTION:
+            if not self._check_bastion_connection():
+                error_msg = "堡垒机连接已断开，工作流执行失败"
+                node.status = NodeStatus.FAILED
+                result = NodeResult(status=NodeStatus.FAILED, error=error_msg)
+                node.result = result
+                self._update_node_status(node_id, NodeStatus.FAILED, result)
+                self._emit_log("ERROR", error_msg, node_id)
+                self.is_cancelled = True
+                return result
+
         node.status = NodeStatus.RUNNING
         self._update_node_status(node_id, NodeStatus.RUNNING)
         
-        log_message = f"开始执行节点: {node.name}"
+        env_prefix = "[本地]" if self.execution_environment == ExecutionEnvironment.LOCAL else "[远程堡垒机]"
+        log_message = f"{env_prefix} 开始执行节点: {node.name}"
         if isinstance(node, CommandNode):
             command = node.config.get("command", "")
             if command:
