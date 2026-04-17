@@ -234,7 +234,7 @@ class WorkflowService:
             self.db.commit()
 
         executor = WorkflowExecutor(workflow_id, nodes, connections, self.script_service, 
-                                    self.dict_service, self.param_service)
+                                    self.dict_service, self.param_service, self.db)
 
         node_exec_map = {}
         for node_data in nodes:

@@ -1,11 +1,13 @@
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QMessageBox, QStatusBar, QFrame, QStackedWidget, QApplication
+    QLabel, QMessageBox, QStatusBar, QFrame, QStackedWidget, QApplication,
+    QPushButton, QMenu
 )
-from PyQt6.QtCore import pyqtSignal, Qt
-from PyQt6.QtGui import QAction
+from PyQt6.QtCore import pyqtSignal, Qt, QTimer
+from PyQt6.QtGui import QAction, QColor
 from gui.icons import icons
 from gui.style_manager import load_combined_stylesheet
+from gui.bastion_dialog import SecondaryAuthDialog, BastionConnectingDialog
 from services.asset_service import AssetService
 from services.script_service import ScriptService
 from services.audit_service import AuditService
@@ -15,9 +17,69 @@ from services.todo_service import TodoService
 from services.document_service import DocumentService
 from services.workflow_service import WorkflowService
 from services.auth_service import AuthService
+from core.bastion_manager import BastionManager
+from services.bastion_service import ConnectionStatus
 from core.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+class BastionStatusWidget(QFrame):
+    clicked = pyqtSignal()
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setStyleSheet("""
+            QFrame {
+                background-color: transparent;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 2px 8px;
+            }
+            QFrame:hover {
+                background-color: #f8f9fa;
+            }
+        """)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(6)
+        
+        self.status_indicator = QLabel()
+        self.status_indicator.setFixedSize(10, 10)
+        layout.addWidget(self.status_indicator)
+        
+        self.status_label = QLabel("堡垒机: 未配置")
+        self.status_label.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        layout.addWidget(self.status_label)
+        
+        self.set_status(ConnectionStatus.DISCONNECTED.value, "未配置")
+    
+    def set_status(self, status: str, message: str = ""):
+        colors = {
+            ConnectionStatus.DISCONNECTED.value: ("#95a5a6", "断开"),
+            ConnectionStatus.CONNECTING.value: ("#f39c12", "连接中"),
+            ConnectionStatus.CONNECTED.value: ("#3498db", "已连接"),
+            ConnectionStatus.AUTHENTICATING.value: ("#f39c12", "认证中"),
+            ConnectionStatus.AUTHENTICATED.value: ("#27ae60", "已连接"),
+            ConnectionStatus.FAILED.value: ("#e74c3c", "失败"),
+        }
+        
+        color, default_text = colors.get(status, ("#95a5a6", status))
+        
+        self.status_indicator.setStyleSheet(f"""
+            background-color: {color};
+            border-radius: 5px;
+        """)
+        
+        display_text = f"堡垒机: {message}" if message else f"堡垒机: {default_text}"
+        self.status_label.setText(display_text)
+        self.status_label.setStyleSheet(f"color: {color}; font-size: 12px;")
+    
+    def mousePressEvent(self, event):
+        self.clicked.emit()
+        super().mousePressEvent(event)
 
 
 class MainWindow(QMainWindow):
@@ -37,10 +99,14 @@ class MainWindow(QMainWindow):
         self.todo_service = TodoService(self.db)
         self.document_service = DocumentService(self.db)
         self.workflow_service = WorkflowService(self.db, self.script_service, self.dict_service, self.param_service)
+        
+        self.bastion_manager = BastionManager(self.db)
 
         self.init_ui()
         self.status_bar.showMessage(f"当前用户: {username}  |  状态: 在线")
         self.create_main_tabs()
+        
+        self._init_bastion_auto_login()
 
     def init_ui(self):
         self.setWindowTitle("运维辅助工具")
@@ -61,6 +127,8 @@ class MainWindow(QMainWindow):
 
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
+        
+        self._create_bastion_status_widget()
 
         self.stacked_widget = None
         self.assets_page = None
@@ -71,6 +139,110 @@ class MainWindow(QMainWindow):
         self.todos_page = None
         self.documents_page = None
         self.workflow_page = None
+
+    def _create_bastion_status_widget(self):
+        self.bastion_status_widget = BastionStatusWidget()
+        self.bastion_status_widget.clicked.connect(self._show_bastion_menu)
+        self.status_bar.addPermanentWidget(self.bastion_status_widget)
+        
+        self.bastion_manager.status_changed.connect(self._on_bastion_status_changed)
+        self.bastion_manager.connection_success.connect(self._on_bastion_connected)
+        self.bastion_manager.connection_failed.connect(self._on_bastion_failed)
+        self.bastion_manager.auth_required.connect(self._on_bastion_auth_required)
+
+    def _show_bastion_menu(self):
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: #ffffff;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 4px;
+            }
+            QMenu::item {
+                padding: 8px 24px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #d6eaf8;
+            }
+        """)
+        
+        status = self.bastion_manager.get_status()
+        
+        if status.get("authenticated"):
+            disconnect_action = menu.addAction("断开连接")
+            disconnect_action.triggered.connect(self._disconnect_bastion)
+            
+            info_action = menu.addAction(f"已连接: {status.get('host', '')}")
+            info_action.setEnabled(False)
+        else:
+            connect_action = menu.addAction("连接堡垒机")
+            connect_action.triggered.connect(self._manual_connect_bastion)
+        
+        config_action = menu.addAction("配置堡垒机参数")
+        config_action.triggered.connect(lambda: self.switch_page("params"))
+        
+        menu.exec(self.bastion_status_widget.mapToGlobal(
+            self.bastion_status_widget.rect().bottomLeft()
+        ))
+
+    def _init_bastion_auto_login(self):
+        if self.bastion_manager.has_bastion_config():
+            self.bastion_status_widget.set_status(ConnectionStatus.CONNECTING.value, "连接中...")
+            QTimer.singleShot(1000, self._start_bastion_auto_login)
+
+    def _start_bastion_auto_login(self):
+        self.bastion_manager.start_auto_login(max_retries=3, retry_interval=5)
+
+    def _manual_connect_bastion(self):
+        if not self.bastion_manager.has_bastion_config():
+            QMessageBox.warning(self, "提示", "请先在系统参数中配置堡垒机参数\n\n"
+                               "需要配置:\n"
+                               "- BASTION_HOST: 堡垒机地址\n"
+                               "- BASTION_USER: 堡垒机用户名\n"
+                               "- BASTION_PASSWORD: 堡垒机密码")
+            self.switch_page("params")
+            return
+        
+        self.bastion_manager.start_auto_login(max_retries=3, retry_interval=5)
+
+    def _disconnect_bastion(self):
+        reply = QMessageBox.question(
+            self, "确认", "确定要断开堡垒机连接吗？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            self.bastion_manager.disconnect()
+            self.bastion_status_widget.set_status(ConnectionStatus.DISCONNECTED.value, "已断开")
+
+    def _on_bastion_status_changed(self, status: str, message: str):
+        self.bastion_status_widget.set_status(status, message)
+
+    def _on_bastion_connected(self):
+        status = self.bastion_manager.get_status()
+        self.bastion_status_widget.set_status(
+            ConnectionStatus.AUTHENTICATED.value, 
+            f"{status.get('host', '')}"
+        )
+        self.status_bar.showMessage(f"堡垒机连接成功: {status.get('host', '')}", 3000)
+        logger.info("堡垒机自动登录成功")
+
+    def _on_bastion_failed(self, error: str):
+        self.bastion_status_widget.set_status(ConnectionStatus.FAILED.value, "连接失败")
+        logger.error(f"堡垒机连接失败: {error}")
+
+    def _on_bastion_auth_required(self, auth_info: dict, retry_count: int):
+        dialog = SecondaryAuthDialog(auth_info, retry_count, BastionManager.MAX_AUTH_RETRIES, self)
+        
+        if dialog.exec() == SecondaryAuthDialog.DialogCode.Accepted:
+            otp_code = dialog.get_otp_code()
+            self.bastion_manager.submit_auth(otp_code=otp_code)
+        else:
+            self.bastion_manager.disconnect()
+            self.bastion_status_widget.set_status(ConnectionStatus.DISCONNECTED.value, "已取消")
 
     def create_menu_bar(self):
         menubar = self.menuBar()
@@ -94,6 +266,13 @@ class MainWindow(QMainWindow):
         dicts_action.setShortcut("Ctrl+D")
         dicts_action.triggered.connect(lambda: self.switch_page("dicts"))
         system_menu.addAction(dicts_action)
+
+        system_menu.addSeparator()
+
+        bastion_action = QAction("堡垒机连接", self)
+        bastion_action.setIcon(icons.settings_icon())
+        bastion_action.triggered.connect(self._show_bastion_menu)
+        system_menu.addAction(bastion_action)
 
         system_menu.addSeparator()
 
@@ -210,10 +389,15 @@ class MainWindow(QMainWindow):
             "<p style='color: #7f8c8d;'>© 2026 Niuma Team</p>"
         )
 
+    def get_bastion_manager(self) -> BastionManager:
+        return self.bastion_manager
+
     def closeEvent(self, event):
         if self.current_user_id:
             auth_service = AuthService(self.db)
             auth_service.logout(self.current_user_id, self.current_username)
+
+        self.bastion_manager.disconnect()
 
         self.current_user_id = None
         self.current_username = None

@@ -34,13 +34,6 @@ class Settings(BaseSettings):
     # 日志配置
     LOG_LEVEL: str = "INFO"
 
-    # MinIO配置
-    MINIO_ENDPOINT: str = "127.0.0.1/gzdwt-minio"
-    MINIO_ACCESS_KEY: str = "minioadmin"
-    MINIO_SECRET_KEY: str = "minioadmin"
-    MINIO_BUCKET: str = "rapfile"
-    MINIO_SECURE: bool = False
-
     model_config = ConfigDict(env_file=".env", extra="ignore")
 
     @property

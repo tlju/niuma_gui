@@ -113,6 +113,23 @@ class NodeConfigDialog(QDialog):
                         self._select_script_in_combobox(widget, current_value)
                     
                     widget.currentIndexChanged.connect(self._on_script_selected)
+                elif prop.get("enum"):
+                    widget = QComboBox()
+                    
+                    enum_values = prop.get("enum", [])
+                    enum_names = prop.get("enumNames", enum_values)
+                    
+                    for i, value in enumerate(enum_values):
+                        display_name = enum_names[i] if i < len(enum_names) else value
+                        widget.addItem(display_name, value)
+                    
+                    if current_value is not None:
+                        index = widget.findData(current_value)
+                        if index >= 0:
+                            widget.setCurrentIndex(index)
+                    
+                    if prop.get("description"):
+                        widget.setToolTip(prop.get("description"))
                 elif prop.get("type") == "integer":
                     widget = QSpinBox()
                     widget.setMaximum(999999)
@@ -122,6 +139,10 @@ class NodeConfigDialog(QDialog):
                     widget.setChecked(bool(current_value))
                 else:
                     widget = QLineEdit(str(current_value or ""))
+                    if prop.get("placeholder"):
+                        widget.setPlaceholderText(prop.get("placeholder"))
+                    if prop.get("description"):
+                        widget.setToolTip(prop.get("description"))
 
                 self.config_widgets[key] = widget
                 config_layout.addRow(f"{label}:", widget)

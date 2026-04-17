@@ -2,7 +2,7 @@ from minio import Minio
 from minio.error import S3Error
 from io import BytesIO
 from typing import List, Optional, BinaryIO
-from core.config import settings
+from sqlalchemy.orm import Session
 from core.logger import get_logger
 from datetime import datetime
 
@@ -31,18 +31,43 @@ class MinioFileInfo:
 class MinioService:
     def __init__(
         self,
+        db: Session = None,
         endpoint: str = None,
         access_key: str = None,
         secret_key: str = None,
         bucket: str = None,
         secure: bool = None,
     ):
-        self._endpoint = endpoint or settings.MINIO_ENDPOINT
-        self._access_key = access_key or settings.MINIO_ACCESS_KEY
-        self._secret_key = secret_key or settings.MINIO_SECRET_KEY
-        self._bucket = bucket or settings.MINIO_BUCKET
-        self._secure = secure if secure is not None else settings.MINIO_SECURE
+        if db is not None:
+            from services.param_service import ParamService
+            param_service = ParamService(db)
+            
+            self._endpoint = endpoint or self._get_param_value(param_service, "minio_endpoint")
+            self._access_key = access_key or self._get_param_value(param_service, "minio_access_key")
+            self._secret_key = secret_key or self._get_param_value(param_service, "minio_secret_key")
+            self._bucket = bucket or self._get_param_value(param_service, "minio_bucket")
+            
+            secure_value = self._get_param_value(param_service, "minio_secure")
+            if secure is not None:
+                self._secure = secure
+            elif secure_value is not None:
+                self._secure = secure_value.lower() in ("true", "1", "yes")
+            else:
+                self._secure = False
+        else:
+            self._endpoint = endpoint
+            self._access_key = access_key
+            self._secret_key = secret_key
+            self._bucket = bucket
+            self._secure = secure if secure is not None else False
+        
         self._client: Optional[Minio] = None
+    
+    def _get_param_value(self, param_service, param_code: str) -> Optional[str]:
+        param = param_service.get_param_by_code(param_code)
+        if param and param.status == 1:
+            return param.param_value
+        return None
 
     @property
     def client(self) -> Minio:

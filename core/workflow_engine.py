@@ -6,7 +6,7 @@ from collections import defaultdict
 from core.logger import get_logger
 from core.node_types import (
     BaseNode, NodeStatus, NodeResult,
-    get_node_class, StartNode, EndNode, ConditionNode, ParallelNode, MergeNode, ScriptNode, CommandNode
+    get_node_class, StartNode, EndNode, ConditionNode, ParallelNode, MergeNode, ScriptNode, CommandNode, MinioNode, BastionNode
 )
 
 logger = get_logger(__name__)
@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 
 class WorkflowExecutor:
     def __init__(self, workflow_id: int, nodes: List[Dict], connections: List[Dict], 
-                 script_service=None, dict_service=None, param_service=None):
+                 script_service=None, dict_service=None, param_service=None, db=None):
         self.workflow_id = workflow_id
         self.nodes: Dict[int, BaseNode] = {}
         self.connections = connections
@@ -29,6 +29,7 @@ class WorkflowExecutor:
         self.script_service = script_service
         self.dict_service = dict_service
         self.param_service = param_service
+        self.db = db
 
         self._build_graph(nodes, connections)
 
@@ -54,6 +55,8 @@ class WorkflowExecutor:
             
             if isinstance(node, (ScriptNode, CommandNode)):
                 node.set_services(self.dict_service, self.param_service)
+            elif isinstance(node, (MinioNode, BastionNode)):
+                node.set_services(db=self.db)
             
             self.nodes[node_id] = node
 
