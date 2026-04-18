@@ -55,12 +55,12 @@ def build():
     ]
 
     if system == 'windows':
-        cmd.append('--windows-console-mode=disable')
+        cmd.append('--windows-console-mode=enable')
         cmd.append('--include-data-file=icons/app.ico=icons/app.ico')
         if os.path.exists('icons/app.ico'):
             cmd.append('--windows-icon-from-ico=icons/app.ico')
     else:
-        cmd.append('--windows-console-mode=disable')
+        cmd.append('--windows-console-mode=enable')
         cmd.append('--file-reference-choice=runtime')
         if os.path.exists('icons/app.png'):
             cmd.append('--linux-icon=icons/app.png')
