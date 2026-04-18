@@ -1,54 +1,116 @@
 name: Sync Release & Assets to Gitee
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["构建和发布"]
+    types: [completed]
 
 jobs:
   sync-release:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'release' }}
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get Release Info
+      - name: Get Release Info from workflow_run
         id: get-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "tag_name=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
-          echo "name=${{ github.event.release.name }}" >> $GITHUB_ENV
-          echo "body=${{ github.event.release.body }}" >> $GITHUB_ENV
-          echo "target_commitish=${{ github.event.release.target_commitish }}" >> $GITHUB_ENV
-          echo "prerelease=${{ github.event.release.prerelease }}" >> $GITHUB_ENV
-          echo "upload_url=${{ github.event.release.upload_url }}" >> $GITHUB_ENV
+          WORKFLOW_RUN_ID=${{ github.event.workflow_run.id }}
+          echo "Workflow Run ID: $WORKFLOW_RUN_ID"
+          
+          RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/releases" | \
+            jq -r '.[0]')
+          
+          TAG_NAME=$(echo "$RELEASE_INFO" | jq -r '.tag_name')
+          RELEASE_NAME=$(echo "$RELEASE_INFO" | jq -r '.name')
+          RELEASE_BODY=$(echo "$RELEASE_INFO" | jq -r '.body')
+          TARGET_COMMITISH=$(echo "$RELEASE_INFO" | jq -r '.target_commitish')
+          PRERELEASE=$(echo "$RELEASE_INFO" | jq -r '.prerelease')
+          UPLOAD_URL=$(echo "$RELEASE_INFO" | jq -r '.upload_url')
+          RELEASE_ID=$(echo "$RELEASE_INFO" | jq -r '.id')
+          
+          echo "tag_name=$TAG_NAME" >> $GITHUB_ENV
+          echo "release_name=$RELEASE_NAME" >> $GITHUB_ENV
+          echo "release_body<<EOF" >> $GITHUB_ENV
+          echo "$RELEASE_BODY" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          echo "target_commitish=$TARGET_COMMITISH" >> $GITHUB_ENV
+          echo "prerelease=$PRERELEASE" >> $GITHUB_ENV
+          echo "upload_url=$UPLOAD_URL" >> $GITHUB_ENV
+          echo "release_id=$RELEASE_ID" >> $GITHUB_ENV
+          
+          echo "Release Info:"
+          echo "  Tag: $TAG_NAME"
+          echo "  Name: $RELEASE_NAME"
+          echo "  Target: $TARGET_COMMITISH"
 
       - name: Set up Gitee variables
         run: |
-          echo "GITEE_OWNER=小马" >> $GITHUB_ENV     # 替换为你的 Gitee 用户名或组织名
+          echo "GITEE_OWNER=小马" >> $GITHUB_ENV
           echo "GITEE_REPO=${{ github.event.repository.name }}" >> $GITHUB_ENV
-          echo "GITEE_TOKEN=${{ secrets.GITEE_TOKEN }}" >> $GITHUB_ENV
+
+      - name: Check GITEE_TOKEN
+        id: check-token
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          if [ -z "$GITEE_TOKEN" ]; then
+            echo "GITEE_TOKEN 未配置，跳过同步到 Gitee"
+            echo "has_token=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_token=true" >> $GITHUB_OUTPUT
+          fi
 
       - name: Create Release on Gitee
+        if: steps.check-token.outputs.has_token == 'true'
+        id: create-gitee-release
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
         run: |
-          curl -X POST \
+          echo "Creating release on Gitee..."
+          
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $GITEE_TOKEN" \
+            "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases?access_token=$GITEE_TOKEN" \
             -d '{
               "tag_name": "'"$tag_name"'",
-              "name": "'"$name"'",
-              "body": "'"$body"'",
+              "name": "'"$release_name"'",
+              "body": "'"$release_body"'",
               "target_commitish": "'"$target_commitish"'",
               "prerelease": '"$prerelease"'
-            }' \
-            "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases"
+            }')
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          
+          if [ "$HTTP_CODE" -eq 201 ] || [ "$HTTP_CODE" -eq 200 ]; then
+            GITEE_RELEASE_ID=$(echo "$BODY" | jq -r '.id')
+            echo "gitee_release_id=$GITEE_RELEASE_ID" >> $GITHUB_OUTPUT
+            echo "✅ Gitee Release created with ID: $GITEE_RELEASE_ID"
+          else
+            echo "❌ Failed to create Gitee release"
+            exit 1
+          fi
 
       - name: Download and Upload Assets
+        if: steps.check-token.outputs.has_token == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
         run: |
-          # Parse upload_url to extract base URL (remove {?name,label})
-          UPLOAD_URL="${upload_url%%\{*}"
-          echo "Downloading assets from: $UPLOAD_URL"
-
-          # Get list of assets from GitHub
-          ASSETS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$UPLOAD_URL" | jq -r '.[] | .browser_download_url')
+          GITEE_RELEASE_ID=${{ steps.create-gitee-release.outputs.gitee_release_id }}
+          
+          ASSETS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/$release_id/assets" | \
+            jq -r '.[] | .browser_download_url')
           
           if [ -z "$ASSETS" ]; then
             echo "⚠️ No assets found in GitHub release."
@@ -58,7 +120,7 @@ jobs:
             for asset_url in $ASSETS; do
               echo "⬇️ Downloading: $asset_url"
               asset_name=$(basename "$asset_url")
-              curl -s -L "$asset_url" -o "/tmp/$asset_name"
+              curl -s -L -H "Authorization: token $GITHUB_TOKEN" "$asset_url" -o "/tmp/$asset_name"
 
               if [ ! -f "/tmp/$asset_name" ]; then
                 echo "❌ Failed to download: $asset_url"
@@ -66,15 +128,24 @@ jobs:
               fi
 
               echo "⬆️ Uploading asset to Gitee: $asset_name"
-              curl -X POST \
-                -H "Authorization: Bearer $GITEE_TOKEN" \
-                -F "file=@/tmp/$asset_name" \
-                "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases/latest/assets?name=$asset_name"
+              UPLOAD_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+                "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases/$GITEE_RELEASE_ID/attach_files?access_token=$GITEE_TOKEN" \
+                -F "file=@/tmp/$asset_name")
+              
+              UPLOAD_HTTP_CODE=$(echo "$UPLOAD_RESPONSE" | tail -n 1)
+              echo "Upload HTTP Status: $UPLOAD_HTTP_CODE"
+              
+              if [ "$UPLOAD_HTTP_CODE" -eq 201 ] || [ "$UPLOAD_HTTP_CODE" -eq 200 ]; then
+                echo "✅ Uploaded: $asset_name"
+              else
+                echo "❌ Failed to upload: $asset_name"
+              fi
 
               rm -f "/tmp/$asset_name"
             done
           fi
 
       - name: Success Message
+        if: steps.check-token.outputs.has_token == 'true'
         run: |
           echo "🎉 Successfully synced release '$tag_name' and all assets to Gitee!"
