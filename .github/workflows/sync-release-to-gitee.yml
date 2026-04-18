@@ -51,7 +51,7 @@ jobs:
 
       - name: Set up Gitee variables
         run: |
-          echo "GITEE_OWNER=小马" >> $GITHUB_ENV
+          echo "GITEE_OWNER=tlju" >> $GITHUB_ENV
           echo "GITEE_REPO=${{ github.event.repository.name }}" >> $GITHUB_ENV
 
       - name: Check GITEE_TOKEN

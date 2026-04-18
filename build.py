@@ -29,10 +29,11 @@ def build():
     cmd = [
         sys.executable, '-m', 'nuitka',
         '--standalone',
+        '--show-progress',
         '--onefile',
         '--enable-plugin=pyqt6',
         '--follow-imports',
-        '--nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,unittest,doctest',
+        '--nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,unittest,doctest,tests',
         '--include-package=paramiko',
         '--include-package=bcrypt',
         '--include-package=cryptography',

@@ -76,7 +76,7 @@ jobs:
           python -m nuitka --standalone --show-progress --onefile \
             --enable-plugin=pyqt6 \
             --follow-imports \
-            --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,unittest,doctest \
+            --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,unittest,doctest,tests \
             --include-data-dir=gui/styles=gui/styles \
             --include-data-file=icons/app.ico=icons/app.ico \
             --windows-console-mode=disable \
@@ -94,7 +94,7 @@ jobs:
           python -m nuitka --standalone --show-progress --onefile \
             --enable-plugin=pyqt6 \
             --follow-imports \
-            --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,unittest,doctest \
+            --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,unittest,doctest,tests \
             --include-data-dir=gui/styles=gui/styles \
             --output-dir=dist \
             --output-filename=${{ matrix.output_name }} \
