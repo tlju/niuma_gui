@@ -1,0 +1,80 @@
+name: Sync Release & Assets to Gitee
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  sync-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get Release Info
+        id: get-release
+        run: |
+          echo "tag_name=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
+          echo "name=${{ github.event.release.name }}" >> $GITHUB_ENV
+          echo "body=${{ github.event.release.body }}" >> $GITHUB_ENV
+          echo "target_commitish=${{ github.event.release.target_commitish }}" >> $GITHUB_ENV
+          echo "prerelease=${{ github.event.release.prerelease }}" >> $GITHUB_ENV
+          echo "upload_url=${{ github.event.release.upload_url }}" >> $GITHUB_ENV
+
+      - name: Set up Gitee variables
+        run: |
+          echo "GITEE_OWNER=小马" >> $GITHUB_ENV     # 替换为你的 Gitee 用户名或组织名
+          echo "GITEE_REPO=${{ github.event.repository.name }}" >> $GITHUB_ENV
+          echo "GITEE_TOKEN=${{ secrets.GITEE_TOKEN }}" >> $GITHUB_ENV
+
+      - name: Create Release on Gitee
+        run: |
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $GITEE_TOKEN" \
+            -d '{
+              "tag_name": "'"$tag_name"'",
+              "name": "'"$name"'",
+              "body": "'"$body"'",
+              "target_commitish": "'"$target_commitish"'",
+              "prerelease": '"$prerelease"'
+            }' \
+            "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases"
+
+      - name: Download and Upload Assets
+        run: |
+          # Parse upload_url to extract base URL (remove {?name,label})
+          UPLOAD_URL="${upload_url%%\{*}"
+          echo "Downloading assets from: $UPLOAD_URL"
+
+          # Get list of assets from GitHub
+          ASSETS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$UPLOAD_URL" | jq -r '.[] | .browser_download_url')
+          
+          if [ -z "$ASSETS" ]; then
+            echo "⚠️ No assets found in GitHub release."
+          else
+            echo "Found $(echo "$ASSETS" | wc -l) assets to sync..."
+
+            for asset_url in $ASSETS; do
+              echo "⬇️ Downloading: $asset_url"
+              asset_name=$(basename "$asset_url")
+              curl -s -L "$asset_url" -o "/tmp/$asset_name"
+
+              if [ ! -f "/tmp/$asset_name" ]; then
+                echo "❌ Failed to download: $asset_url"
+                continue
+              fi
+
+              echo "⬆️ Uploading asset to Gitee: $asset_name"
+              curl -X POST \
+                -H "Authorization: Bearer $GITEE_TOKEN" \
+                -F "file=@/tmp/$asset_name" \
+                "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases/latest/assets?name=$asset_name"
+
+              rm -f "/tmp/$asset_name"
+            done
+          fi
+
+      - name: Success Message
+        run: |
+          echo "🎉 Successfully synced release '$tag_name' and all assets to Gitee!"
