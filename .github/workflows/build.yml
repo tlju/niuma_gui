@@ -73,7 +73,7 @@ jobs:
     - name: 使用 Nuitka 构建
       run: |
         if [ "${{ matrix.platform }}" = "windows" ]; then
-          python -m nuitka --standalone --onefile \
+          python -m nuitka --standalone --show-progress --onefile \
             --enable-plugin=pyqt6 \
             --follow-imports \
             --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,unittest,doctest \
@@ -91,7 +91,7 @@ jobs:
             --no-progress-bar \
             main.py
         else
-          python -m nuitka --standalone --onefile \
+          python -m nuitka --standalone --show-progress --onefile \
             --enable-plugin=pyqt6 \
             --follow-imports \
             --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,unittest,doctest \
