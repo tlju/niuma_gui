@@ -161,23 +161,39 @@ jobs:
   gitee_release:
     needs: build
     runs-on: ubuntu-22.04
-    if: github.event_name == 'release' && secrets.GITEE_TOKEN != ''
+    if: github.event_name == 'release'
     
     steps:
+    - name: 检查 GITEE_TOKEN 是否存在
+      id: check-token
+      env:
+        GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+      run: |
+        if [ -z "$GITEE_TOKEN" ]; then
+          echo "GITEE_TOKEN 未配置，跳过同步到 Gitee"
+          echo "has_token=false" >> $GITHUB_OUTPUT
+        else
+          echo "has_token=true" >> $GITHUB_OUTPUT
+        fi
+
     - name: 检出代码
+      if: steps.check-token.outputs.has_token == 'true'
       uses: actions/checkout@v4
 
     - name: 下载所有构建产物
+      if: steps.check-token.outputs.has_token == 'true'
       uses: actions/download-artifact@v4
       with:
         path: dist/
 
     - name: 列出下载的文件
+      if: steps.check-token.outputs.has_token == 'true'
       run: |
         echo "下载的文件："
         find dist -type f -ls
 
     - name: 创建 Gitee Release
+      if: steps.check-token.outputs.has_token == 'true'
       id: create_release
       uses: nicennnnnnnlee/action-gitee-release@master
       with:
@@ -192,6 +208,7 @@ jobs:
         gitee_upload_retry_times: 3
 
     - name: 上传构建产物到 Gitee
+      if: steps.check-token.outputs.has_token == 'true'
       uses: nicennnnnnnlee/action-gitee-release@master
       with:
         gitee_action: upload_asset
@@ -201,6 +218,6 @@ jobs:
         gitee_release_id: ${{ steps.create_release.outputs.release-id }}
         gitee_upload_retry_times: 3
         gitee_files: |
-          dist/niuma-linux-x64/niuma-linux-x64
-          dist/niuma-linux-arm64/niuma-linux-arm64
-          dist/niuma-windows-x64.exe/niuma-windows-x64.exe
+          dist/niuma-linux-x64
+          dist/niuma-linux-arm64
+          dist/niuma-windows-x64.exe
