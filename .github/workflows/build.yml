@@ -42,14 +42,7 @@ jobs:
 
     - name: 设置 QEMU (arm64)
       if: matrix.arch == 'arm64'
-      uses: docker/setup-qemu-action@v3
-
-    - name: 获取依赖哈希值
-      id: dep-hash
-      run: |
-        hash="${{ hashFiles('requirements.txt', '.github/workflows/build.yml') }}"
-        echo "hash=$hash" >> $GITHUB_OUTPUT
-      shell: bash
+      uses: docker/setup-qemu-action@v4
 
     - name: 恢复 Python 环境缓存 (Linux)
       if: matrix.platform == 'linux'
@@ -57,9 +50,7 @@ jobs:
       id: cache-python-linux
       with:
         path: python-env-${{ matrix.arch }}.tar.gz
-        key: ${{ matrix.python_cache_name }}-${{ steps.dep-hash.outputs.hash }}
-        restore-keys: |
-          ${{ matrix.python_cache_name }}-
+        key: ${{ matrix.python_cache_name }}
 
     - name: 恢复 Python 环境缓存 (Windows)
       if: matrix.platform == 'windows'
@@ -67,9 +58,7 @@ jobs:
       id: cache-python-windows
       with:
         path: python-env-${{ matrix.arch }}.7z
-        key: ${{ matrix.python_cache_name }}-${{ steps.dep-hash.outputs.hash }}
-        restore-keys: |
-          ${{ matrix.python_cache_name }}-
+        key: ${{ matrix.python_cache_name }}
 
     - name: 设置 Python (Windows)
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
