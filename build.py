@@ -59,7 +59,7 @@ def build():
 
     if result.returncode == 0:
         main_dist = os.path.join('dist', 'main.dist')
-        output_dist = os.path.join('dist', f'{output_name}.dist')
+        output_dist = os.path.join('dist', output_name)
         
         if os.path.exists(main_dist):
             if os.path.exists(output_dist):

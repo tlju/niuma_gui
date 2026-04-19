@@ -129,8 +129,8 @@ jobs:
         if [ -d "dist/main.dist" ]; then
           echo "构建成功: main.dist"
           ls -la dist/main.dist
-          mv dist/main.dist dist/${{ matrix.output_name }}.dist
-          echo "重命名为: ${{ matrix.output_name }}.dist"
+          mv dist/main.dist dist/${{ matrix.output_name }}
+          echo "重命名为: ${{ matrix.output_name }}"
         else
           echo "构建失败: 输出目录未找到"
           exit 1
@@ -141,9 +141,9 @@ jobs:
       run: |
         cd dist
         if [ "${{ matrix.platform }}" = "windows" ]; then
-          7z a -tzip ${{ matrix.output_name }}.zip ${{ matrix.output_name }}.dist
+          zip -r8 ${{ matrix.output_name }}.zip ${{ matrix.output_name }}
         else
-          zip -r ${{ matrix.output_name }}.zip ${{ matrix.output_name }}.dist
+          zip -r8 ${{ matrix.output_name }}.zip ${{ matrix.output_name }}
         fi
         ls -lh ${{ matrix.output_name }}.zip
       shell: bash
