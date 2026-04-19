@@ -156,9 +156,10 @@ jobs:
         retention-days: 30
 
     - name: 上传到发布
-      if: github.event_name == 'release'
+      if: github.event_name == 'release' && github.event.release.tag_name != ''
       uses: softprops/action-gh-release@v2
       with:
+        tag_name: ${{ github.event.release.tag_name }}
         files: dist/${{ matrix.output_name }}.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
