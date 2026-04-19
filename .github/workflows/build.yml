@@ -61,16 +61,6 @@ jobs:
         restore-keys: |
           ${{ matrix.python_cache_name }}-
 
-    - name: 恢复 Qt6 缓存 (Linux arm64)
-      if: matrix.platform == 'linux' && matrix.arch == 'arm64'
-      uses: actions/cache@v4
-      id: cache-qt6-linux
-      with:
-        path: qt6-env-arm64.tar.gz
-        key: qt6-env-arm64-6.7.0
-        restore-keys: |
-          qt6-env-arm64-
-
     - name: 恢复 Python 环境缓存 (Windows)
       if: matrix.platform == 'windows'
       uses: actions/cache@v4
@@ -173,18 +163,12 @@ jobs:
             /usr/local/python3.10/bin/python3.10 -m pip install --upgrade pip setuptools wheel
             
             if [ "${{ matrix.arch }}" = "arm64" ]; then
-              if [ -f "/workspace/qt6-env-arm64.tar.gz" ]; then
-                echo "=== 解压 Qt6 环境 (从缓存) ==="
-                cd /opt
-                tar -xzf /workspace/qt6-env-arm64.tar.gz
-              else
-                echo "=== 安装 Qt6 开发工具 (arm64) ==="
-                /usr/local/python3.10/bin/pip3.10 install aqtinstall
-                /usr/local/python3.10/bin/aqt install-qt linux_arm64 desktop 6.7.0 gcc_arm64 -O /opt/qt6
-              fi
-              export PATH="/opt/qt6/6.7.0/gcc_arm64/bin:$PATH"
-              export QT_PLUGIN_PATH="/opt/qt6/6.7.0/gcc_arm64/plugins"
-              export LD_LIBRARY_PATH="/opt/qt6/6.7.0/gcc_arm64/lib:$LD_LIBRARY_PATH"
+              echo "=== 安装 Qt6 开发工具 (arm64) ==="
+              /usr/local/python3.10/bin/pip3.10 install aqtinstall
+              /usr/local/python3.10/bin/aqt install-qt linux_arm64 desktop 6.7.0 linux_gcc_arm64 -O /opt/qt6
+              export PATH="/opt/qt6/6.7.0/linux_gcc_arm64/bin:$PATH"
+              export QT_PLUGIN_PATH="/opt/qt6/6.7.0/linux_gcc_arm64/plugins"
+              export LD_LIBRARY_PATH="/opt/qt6/6.7.0/linux_gcc_arm64/lib:$LD_LIBRARY_PATH"
               
               echo "=== 安装 PyQt6 (arm64 - 从源码编译) ==="
               /usr/local/python3.10/bin/pip3.10 install PyQt6-sip sip
@@ -204,13 +188,6 @@ jobs:
             cd /usr/local
             tar -czf /workspace/python-env-${{ matrix.arch }}.tar.gz python3.10
             ls -lh /workspace/python-env-${{ matrix.arch }}.tar.gz
-            
-            if [ "${{ matrix.arch }}" = "arm64" ] && [ ! -f "/workspace/qt6-env-arm64.tar.gz" ]; then
-              echo "=== 打包 Qt6 环境 ==="
-              cd /opt
-              tar -czf /workspace/qt6-env-arm64.tar.gz qt6
-              ls -lh /workspace/qt6-env-arm64.tar.gz
-            fi
           '
       shell: bash
 
@@ -255,13 +232,13 @@ jobs:
             ln -sf /usr/local/python3.10/bin/pip3.10 /usr/local/bin/pip3
             python3 --version
             
-            if [ "${{ matrix.arch }}" = "arm64" ] && [ -f "/workspace/qt6-env-arm64.tar.gz" ]; then
-              echo "=== 解压 Qt6 环境 (arm64) ==="
-              cd /opt
-              tar -xzf /workspace/qt6-env-arm64.tar.gz
-              export PATH="/opt/qt6/6.7.0/gcc_arm64/bin:$PATH"
-              export QT_PLUGIN_PATH="/opt/qt6/6.7.0/gcc_arm64/plugins"
-              export LD_LIBRARY_PATH="/opt/qt6/6.7.0/gcc_arm64/lib:$LD_LIBRARY_PATH"
+            if [ "${{ matrix.arch }}" = "arm64" ]; then
+              echo "=== 安装 Qt6 开发工具 (arm64) ==="
+              /usr/local/python3.10/bin/pip3.10 install aqtinstall
+              /usr/local/python3.10/bin/aqt install-qt linux_arm64 desktop 6.7.0 linux_gcc_arm64 -O /opt/qt6
+              export PATH="/opt/qt6/6.7.0/linux_gcc_arm64/bin:$PATH"
+              export QT_PLUGIN_PATH="/opt/qt6/6.7.0/linux_gcc_arm64/plugins"
+              export LD_LIBRARY_PATH="/opt/qt6/6.7.0/linux_gcc_arm64/lib:$LD_LIBRARY_PATH"
               echo "Qt6 环境已配置"
             fi
             
