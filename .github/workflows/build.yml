@@ -55,6 +55,17 @@ jobs:
           ${{ matrix.python_cache_name }}-main
           ${{ matrix.python_cache_name }}-
 
+    - name: 恢复 Qt6 环境缓存 (arm64)
+      if: matrix.platform == 'linux' && matrix.arch == 'arm64'
+      uses: actions/cache@v5
+      id: cache-qt6-arm64
+      with:
+        path: qt6-env-arm64.tar.gz
+        key: qt6-env-arm64-${{ github.ref_name }}
+        restore-keys: |
+          qt6-env-arm64-main
+          qt6-env-arm64-
+
     - name: 恢复 Python 环境缓存 (Windows)
       if: matrix.platform == 'windows'
       uses: actions/cache@v5
@@ -111,7 +122,7 @@ jobs:
       shell: bash
 
     - name: 准备 Python 环境 (Linux)
-      if: matrix.platform == 'linux' && steps.cache-python-linux.outputs.cache-hit != 'true'
+      if: matrix.platform == 'linux' && (steps.cache-python-linux.outputs.cache-hit != 'true' || (matrix.arch == 'arm64' && steps.cache-qt6-arm64.outputs.cache-hit != 'true'))
       run: |
         docker run --rm \
           --platform ${{ matrix.platform_name }} \
@@ -120,6 +131,22 @@ jobs:
           debian:10.10 \
           bash -c '
             set -e
+            
+            echo "=== 检查缓存状态 ==="
+            PYTHON_CACHED="${{ steps.cache-python-linux.outputs.cache-hit }}"
+            QT6_CACHED="${{ steps.cache-qt6-arm64.outputs.cache-hit }}"
+            echo "Python 缓存命中: $PYTHON_CACHED"
+            echo "Qt6 缓存命中: $QT6_CACHED"
+            
+            if [ "$PYTHON_CACHED" = "true" ] && [ "${{ matrix.arch }}" != "arm64" ]; then
+              echo "Python 环境已缓存，跳过编译"
+              exit 0
+            fi
+            
+            if [ "$PYTHON_CACHED" = "true" ] && [ "${{ matrix.arch }}" = "arm64" ] && [ "$QT6_CACHED" = "true" ]; then
+              echo "Python 和 Qt6 环境已缓存，跳过编译"
+              exit 0
+            fi
             
             echo "=== 配置 apt 源 (Debian 10 已归档) ==="
             echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
@@ -145,45 +172,92 @@ jobs:
               tk-dev \
               libgdbm-dev
             
-            echo "=== 安装 Python 3.12 ==="
-            cd /tmp
-            wget -q https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz
-            tar xzf Python-3.12.13.tgz
-            cd Python-3.12.13
-            ./configure --enable-optimizations --prefix=/usr/local/python3.12
-            make -j$(nproc)
-            make install
+            if [ "$PYTHON_CACHED" != "true" ]; then
+              echo "=== 安装 Python 3.12 ==="
+              cd /tmp
+              wget -q https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz
+              tar xzf Python-3.12.13.tgz
+              cd Python-3.12.13
+              ./configure --enable-optimizations --prefix=/usr/local/python3.12
+              make -j$(nproc)
+              make install
+              
+              echo "=== 安装 Python 依赖 ==="
+              cd /workspace
+              /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
+            else
+              echo "=== Python 环境已缓存，跳过 Python 编译 ==="
+            fi
             
-            echo "=== 安装 Python 依赖 ==="
-            cd /workspace
-            /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
-            
-            if [ "${{ matrix.arch }}" = "arm64" ]; then
-              echo "=== 安装 Qt6 开发工具 (arm64) ==="
-              /usr/local/python3.12/bin/pip3.12 install aqtinstall
-              /usr/local/python3.12/bin/aqt install-qt linux_arm64 desktop 6.7.0 linux_gcc_arm64 -O /opt/qt6
-              export PATH="/opt/qt6/6.7.0/linux_gcc_arm64/bin:$PATH"
-              export QT_PLUGIN_PATH="/opt/qt6/6.7.0/linux_gcc_arm64/plugins"
-              export LD_LIBRARY_PATH="/opt/qt6/6.7.0/linux_gcc_arm64/lib:$LD_LIBRARY_PATH"
+            if [ "${{ matrix.arch }}" = "arm64" ] && [ "$QT6_CACHED" != "true" ]; then
+              echo "=== 安装 Qt6 编译依赖 (arm64) ==="
+              apt-get install -y \
+                cmake ninja-build perl python3 \
+                libgles2-mesa-dev libwayland-dev wayland-protocols \
+                libinput-dev libxkbcommon-dev libdrm-dev \
+                libgbm-dev libasound2-dev libpulse-dev \
+                libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+                libfreetype6-dev libfontconfig1-dev \
+                libharfbuzz-dev libjpeg-dev libpng-dev
+              
+              echo "=== 下载 Qt6 源码 (arm64) ==="
+              cd /tmp
+              wget -q https://download.qt.io/official_releases/qt/6.8/6.8.0/single/qt-everywhere-src-6.8.0.tar.xz
+              tar -xf qt-everywhere-src-6.8.0.tar.xz
+              cd qt-everywhere-src-6.8.0
+              
+              echo "=== 配置 Qt6 (arm64) ==="
+              mkdir build && cd build
+              cmake .. \
+                -GNinja \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_INSTALL_PREFIX=/opt/qt6 \
+                -DQT_BUILD_EXAMPLES=OFF \
+                -DQT_BUILD_TESTS=OFF \
+                -DQT_FEATURE_vulkan=OFF \
+                -DQT_FEATURE_opengl=ON \
+                -DQT_FEATURE_opengles2=ON \
+                -DQT_FEATURE_egl=ON
+              
+              echo "=== 编译 Qt6 (arm64 - 这可能需要较长时间) ==="
+              cmake --build . --parallel
+              
+              echo "=== 安装 Qt6 (arm64) ==="
+              cmake --install .
+              
+              export PATH="/opt/qt6/bin:$PATH"
+              export QT_PLUGIN_PATH="/opt/qt6/plugins"
+              export LD_LIBRARY_PATH="/opt/qt6/lib:$LD_LIBRARY_PATH"
+              qmake --version
               
               echo "=== 安装 PyQt6 (arm64 - 从源码编译) ==="
+              cd /workspace
               /usr/local/python3.12/bin/pip3.12 install PyQt6-sip sip
-              /usr/local/python3.12/bin/pip3.12 install --no-binary :all: PyQt6 PyQt6-Qt6
+              /usr/local/python3.12/bin/pip3.12 install --no-binary :all: PyQt6
               
               echo "=== 编译 PyQt6-QScintilla (arm64) ==="
               /usr/local/python3.12/bin/pip3.12 install --no-binary :all: PyQt6-QScintilla
-            else
+            elif [ "$PYTHON_CACHED" != "true" ]; then
               echo "=== 安装 PyQt6 (x64 - 使用预编译包) ==="
               /usr/local/python3.12/bin/pip3.12 install --only-binary=:all: PyQt6 PyQt6-Qt6 PyQt6-sip
             fi
             
-            /usr/local/python3.12/bin/pip3.12 install -r requirements.txt
-            /usr/local/python3.12/bin/pip3.12 install nuitka ordered-set zstandard
+            if [ "$PYTHON_CACHED" != "true" ]; then
+              /usr/local/python3.12/bin/pip3.12 install -r requirements.txt
+              /usr/local/python3.12/bin/pip3.12 install nuitka ordered-set zstandard
+              
+              echo "=== 打包 Python 环境 ==="
+              cd /usr/local
+              tar -czf /workspace/python-env-${{ matrix.arch }}.tar.gz python3.12
+              ls -lh /workspace/python-env-${{ matrix.arch }}.tar.gz
+            fi
             
-            echo "=== 打包 Python 环境 ==="
-            cd /usr/local
-            tar -czf /workspace/python-env-${{ matrix.arch }}.tar.gz python3.12
-            ls -lh /workspace/python-env-${{ matrix.arch }}.tar.gz
+            if [ "${{ matrix.arch }}" = "arm64" ] && [ "$QT6_CACHED" != "true" ]; then
+              echo "=== 打包 Qt6 环境 (arm64) ==="
+              cd /opt
+              tar -czf /workspace/qt6-env-arm64.tar.gz qt6
+              ls -lh /workspace/qt6-env-arm64.tar.gz
+            fi
           '
       shell: bash
 
@@ -230,12 +304,13 @@ jobs:
             python3 --version
             
             if [ "${{ matrix.arch }}" = "arm64" ]; then
-              echo "=== 安装 Qt6 开发工具 (arm64) ==="
-              /usr/local/python3.12/bin/pip3.12 install aqtinstall
-              /usr/local/python3.12/bin/aqt install-qt linux_arm64 desktop 6.7.0 linux_gcc_arm64 -O /opt/qt6
-              export PATH="/opt/qt6/6.7.0/linux_gcc_arm64/bin:$PATH"
-              export QT_PLUGIN_PATH="/opt/qt6/6.7.0/linux_gcc_arm64/plugins"
-              export LD_LIBRARY_PATH="/opt/qt6/6.7.0/linux_gcc_arm64/lib:$LD_LIBRARY_PATH"
+              echo "=== 解压 Qt6 环境 (arm64) ==="
+              cd /opt
+              tar -xzf /workspace/qt6-env-arm64.tar.gz
+              export PATH="/opt/qt6/bin:$PATH"
+              export QT_PLUGIN_PATH="/opt/qt6/plugins"
+              export LD_LIBRARY_PATH="/opt/qt6/lib:$LD_LIBRARY_PATH"
+              qmake --version
               echo "Qt6 环境已配置"
             fi
             
@@ -360,5 +435,14 @@ jobs:
       with:
         tag_name: ${{ github.event.release.tag_name }}
         files: python-env-${{ matrix.arch }}.7z
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: 上传 Qt6 环境到发布 (arm64)
+      if: github.event_name == 'release' && github.event.release.tag_name != '' && matrix.arch == 'arm64'
+      uses: softprops/action-gh-release@v3
+      with:
+        tag_name: ${{ github.event.release.tag_name }}
+        files: qt6-env-arm64.tar.gz
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
