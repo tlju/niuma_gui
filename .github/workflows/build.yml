@@ -133,9 +133,9 @@ jobs:
       run: |
         cd dist
         if [ "${{ matrix.platform }}" = "windows" ]; then
-          7z a -t7z -mx=9 -m0=lzma2 -mfb=64 -md=32m -ms=on ${{ matrix.output_name }}.7z ${{ matrix.output_name }}
+          7z a -t7z -mx=9 -m0=lzma2 -mfb=64 -md=32m -ms=on ${{ matrix.output_name }}.7z ${{ matrix.output_name }}/*
         else
-          tar -I "gzip -9" -cvf ${{ matrix.output_name }}.tar.gz ${{ matrix.output_name }}
+          tar -I "gzip -9" -cvf ${{ matrix.output_name }}.tar.gz -C ${{ matrix.output_name }} .
         fi
         ls -lh ${{ matrix.output_name }}.*
       shell: bash
