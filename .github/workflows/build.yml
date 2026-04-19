@@ -243,7 +243,7 @@ jobs:
             cd /workspace
             python3 -m nuitka --standalone \
               --enable-plugins=pyqt6 \
-              --include-qt-plugins=qml \
+              --include-qt-plugins=qml,platforms,imageformats,iconengines,styles \
               --follow-imports \
               --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest \
               --nofollow-import-to=tests \
@@ -285,7 +285,7 @@ jobs:
       run: |
         python -m nuitka --standalone \
           --enable-plugins=pyqt6 \
-          --include-qt-plugins=qml \
+          --include-qt-plugins=qml,platforms,imageformats,iconengines,styles \
           --follow-imports \
           --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest \
           --nofollow-import-to=tests \

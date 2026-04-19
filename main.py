@@ -4,8 +4,8 @@ import sys
 import os
 import traceback
 
-from PyQt6.QtWidgets import QApplication, QMessageBox
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QApplication, QMessageBox
 from gui.main_window import MainWindow
 from gui.login_dialog import LoginDialog
 from gui.style_manager import load_stylesheet, setup_app_fonts

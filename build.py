@@ -33,7 +33,7 @@ def build():
         sys.executable, '-m', 'nuitka',
         '--standalone',
         '--enable-plugins=pyqt6',
-        '--include-qt-plugins=qml',
+        '--include-qt-plugins=qml,platforms,imageformats,iconengines,styles',
         '--follow-imports',
         '--nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest',
         '--nofollow-import-to=tests',
