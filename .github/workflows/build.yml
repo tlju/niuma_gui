@@ -23,15 +23,18 @@ jobs:
             platform: linux
             platform_name: linux/amd64
             output_name: niuma-linux-x64
+            python_cache_name: python-env-linux-x64
           - os: ubuntu-22.04
             arch: arm64
             platform: linux
             platform_name: linux/arm64
             output_name: niuma-linux-arm64
+            python_cache_name: python-env-linux-arm64
           - os: windows-2022
             arch: x64
             platform: windows
             output_name: niuma-windows-x64
+            python_cache_name: python-env-windows-x64
 
     steps:
     - name: 检出代码
@@ -41,27 +44,67 @@ jobs:
       if: matrix.arch == 'arm64'
       uses: docker/setup-qemu-action@v3
 
-    - name: 设置 Python (Windows)
+    - name: 获取依赖哈希值
+      id: dep-hash
+      run: |
+        hash="${{ hashFiles('requirements.txt', '.github/workflows/build.yml') }}"
+        echo "hash=$hash" >> $GITHUB_OUTPUT
+      shell: bash
+
+    - name: 恢复 Python 环境缓存 (Linux)
+      if: matrix.platform == 'linux'
+      uses: actions/cache@v4
+      id: cache-python-linux
+      with:
+        path: python-env-${{ matrix.arch }}.tar.gz
+        key: ${{ matrix.python_cache_name }}-${{ steps.dep-hash.outputs.hash }}
+        restore-keys: |
+          ${{ matrix.python_cache_name }}-
+
+    - name: 恢复 Python 环境缓存 (Windows)
       if: matrix.platform == 'windows'
+      uses: actions/cache@v4
+      id: cache-python-windows
+      with:
+        path: python-env-${{ matrix.arch }}.7z
+        key: ${{ matrix.python_cache_name }}-${{ steps.dep-hash.outputs.hash }}
+        restore-keys: |
+          ${{ matrix.python_cache_name }}-
+
+    - name: 设置 Python (Windows)
+      if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-        cache: 'pip'
-        cache-dependency-path: |
-          requirements.txt
-          .github/workflows/build.yml
 
     - name: 安装依赖 (Windows)
-      if: matrix.platform == 'windows'
+      if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       run: |
         python -m pip install --upgrade pip setuptools wheel
         pip install -r requirements.txt
         pip install nuitka ordered-set zstandard
 
     - name: 安装构建依赖 (Windows)
-      if: matrix.platform == 'windows'
+      if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       run: |
         choco install ccache -y
+
+    - name: 打包 Python 环境 (Windows)
+      if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
+      run: |
+        $pythonPath = python -c "import sys; print(sys.prefix)"
+        7z a -t7z -mx=9 python-env-${{ matrix.arch }}.7z "$pythonPath\*"
+      shell: powershell
+
+    - name: 恢复 Python 环境 (Windows)
+      if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit == 'true'
+      run: |
+        $destPath = "$env:LOCALAPPDATA\python-cache"
+        New-Item -ItemType Directory -Force -Path $destPath
+        7z x python-env-${{ matrix.arch }}.7z -o"$destPath" -y
+        echo "$destPath\Scripts" >> $env:GITHUB_PATH
+        echo "$destPath" >> $env:GITHUB_PATH
+      shell: powershell
 
     - name: 验证 Python 环境 (Windows)
       if: matrix.platform == 'windows'
@@ -70,9 +113,10 @@ jobs:
         pip --version
         pip list | grep -i nuitka
         ccache --version || echo "ccache not available"
+      shell: bash
 
-    - name: 在 Debian 10.10 容器内构建 (Linux)
-      if: matrix.platform == 'linux'
+    - name: 准备 Python 环境 (Linux)
+      if: matrix.platform == 'linux' && steps.cache-python-linux.outputs.cache-hit != 'true'
       run: |
         docker run --rm \
           --platform ${{ matrix.platform_name }} \
@@ -113,18 +157,64 @@ jobs:
             ./configure --enable-optimizations --prefix=/usr/local/python3.10
             make -j$(nproc)
             make install
+            
+            echo "=== 安装 Python 依赖 ==="
+            cd /workspace
+            /usr/local/python3.10/bin/python3.10 -m pip install --upgrade pip setuptools wheel
+            /usr/local/python3.10/bin/pip3.10 install --only-binary=:all: PyQt6 PyQt6-Qt6 PyQt6-sip
+            /usr/local/python3.10/bin/pip3.10 install -r requirements.txt
+            /usr/local/python3.10/bin/pip3.10 install nuitka ordered-set zstandard
+            
+            echo "=== 打包 Python 环境 ==="
+            cd /usr/local
+            tar -czf /workspace/python-env-${{ matrix.arch }}.tar.gz python3.10
+            ls -lh /workspace/python-env-${{ matrix.arch }}.tar.gz
+          '
+      shell: bash
+
+    - name: 在 Debian 10.10 容器内构建 (Linux)
+      if: matrix.platform == 'linux'
+      run: |
+        docker run --rm \
+          --platform ${{ matrix.platform_name }} \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          debian:10.10 \
+          bash -c '
+            set -e
+            
+            echo "=== 配置 apt 源 (Debian 10 已归档) ==="
+            echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
+            echo "deb http://archive.debian.org/debian buster-updates main" >> /etc/apt/sources.list
+            echo "Acquire::Check-Valid-Until false;" > /etc/apt/apt.conf.d/99no-check-valid-until
+            
+            echo "=== 安装系统依赖 ==="
+            apt-get update
+            apt-get install -y \
+              gcc g++ make wget patchelf \
+              libxrender-dev libxext-dev libx11-dev \
+              libxcb1-dev libxkbcommon-dev \
+              libgl1-mesa-dev libegl1-mesa-dev \
+              libxkbcommon-x11-dev \
+              libssl-dev \
+              bzip2 libbz2-dev \
+              libffi-dev \
+              zlib1g-dev \
+              liblzma-dev \
+              libsqlite3-dev \
+              libreadline-dev \
+              tk-dev \
+              libgdbm-dev
+            
+            echo "=== 解压 Python 环境 ==="
+            cd /usr/local
+            tar -xzf /workspace/python-env-${{ matrix.arch }}.tar.gz
             ln -sf /usr/local/python3.10/bin/python3.10 /usr/local/bin/python3
             ln -sf /usr/local/python3.10/bin/pip3.10 /usr/local/bin/pip3
             python3 --version
             
-            echo "=== 安装 Python 依赖 ==="
-            cd /workspace
-            python3 -m pip install --upgrade pip setuptools wheel
-            pip3 install --only-binary=:all: PyQt6 PyQt6-Qt6 PyQt6-sip
-            pip3 install -r requirements.txt
-            pip3 install nuitka ordered-set zstandard
-            
             echo "=== 使用 Nuitka 构建 ==="
+            cd /workspace
             python3 -m nuitka --standalone \
               --enable-plugins=pyqt6 \
               --include-qt-plugins=qml \
@@ -157,6 +247,10 @@ jobs:
             cd dist
             tar -I "gzip -9" -cvf ${{ matrix.output_name }}.tar.gz -C ${{ matrix.output_name }} .
             ls -lh ${{ matrix.output_name }}.*
+            
+            echo "=== 修复文件权限 ==="
+            chown -R 1001:1001 /workspace/dist
+            chmod -R 755 /workspace/dist
           '
       shell: bash
 
@@ -197,14 +291,11 @@ jobs:
         fi
       shell: bash
 
-    - name: 压缩构建产物
+    - name: 压缩构建产物 (Windows)
+      if: matrix.platform == 'windows'
       run: |
         cd dist
-        if [ "${{ matrix.platform }}" = "windows" ]; then
-          7z a -t7z -mx=9 -m0=lzma2 -mfb=64 -md=32m -ms=on ${{ matrix.output_name }}.7z ${{ matrix.output_name }}/*
-        else
-          tar -I "gzip -9" -cvf ${{ matrix.output_name }}.tar.gz -C ${{ matrix.output_name }} .
-        fi
+        7z a -t7z -mx=9 -m0=lzma2 -mfb=64 -md=32m -ms=on ${{ matrix.output_name }}.7z ${{ matrix.output_name }}/*
         ls -lh ${{ matrix.output_name }}.*
       shell: bash
 
@@ -228,113 +319,20 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build-uos:
-    runs-on: ubuntu-22.04
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: x64
-            platform_name: linux/amd64
-            output_name: niuma-uos-x64
-          - arch: arm64
-            platform_name: linux/arm64
-            output_name: niuma-uos-arm64
-
-    steps:
-    - name: 设置 QEMU (arm64)
-      if: matrix.arch == 'arm64'
-      uses: docker/setup-qemu-action@v3
-
-    - name: 检出代码
-      uses: actions/checkout@v4
-
-    - name: 在 Docker 容器内构建
-      run: |
-        docker run --rm \
-          --platform ${{ matrix.platform_name }} \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace \
-          macrosan/uos:v20-1060 \
-          bash -c '
-            set -e
-            
-            echo "=== 安装系统依赖 ==="
-            yum install -y \
-              gcc gcc-c++ make \
-              libXrender-devel libXext-devel libX11-devel \
-              libxcb-devel libxkbcommon-devel \
-              mesa-libGL-devel mesa-libEGL-devel \
-              libxkbcommon-x11-devel \
-              openssl-devel bzip2-devel libffi-devel \
-              zlib-devel xz-devel sqlite-devel \
-              readline-devel tk-devel gdbm-devel wget
-            
-            echo "=== 安装 Python 3.10 ==="
-            cd /tmp
-            wget -q https://www.python.org/ftp/python/3.10.14/Python-3.10.14.tgz
-            tar xzf Python-3.10.14.tgz
-            cd Python-3.10.14
-            ./configure --enable-optimizations --prefix=/usr/local/python3.10
-            make -j$(nproc)
-            make install
-            ln -sf /usr/local/python3.10/bin/python3.10 /usr/local/bin/python3
-            ln -sf /usr/local/python3.10/bin/pip3.10 /usr/local/bin/pip3
-            python3 --version
-            
-            echo "=== 安装 Python 依赖 ==="
-            python3 -m pip install --upgrade pip setuptools wheel
-            pip3 install -r requirements.txt
-            pip3 install nuitka ordered-set zstandard PyQt6
-            
-            echo "=== 使用 Nuitka 构建 ==="
-            python3 -m nuitka --standalone \
-              --enable-plugins=pyqt6 \
-              --include-qt-plugins=qml \
-              --follow-imports \
-              --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest \
-              --nofollow-import-to=tests \
-              --include-data-dir=gui/styles=gui/styles \
-              --output-dir=dist \
-              --output-filename=${{ matrix.output_name }} \
-              --assume-yes-for-downloads \
-              --jobs=$(nproc) \
-              --file-reference-choice=runtime \
-              --include-package-data=PyQt6 \
-              --linux-icon=icons/app.png \
-              main.py
-            
-            echo "=== 验证构建输出 ==="
-            ls -la dist/
-            if [ -d "dist/main.dist" ]; then
-              echo "构建成功: main.dist"
-              ls -la dist/main.dist
-              mv dist/main.dist dist/${{ matrix.output_name }}
-              echo "重命名为: ${{ matrix.output_name }}"
-            else
-              echo "构建失败: 输出目录未找到"
-              exit 1
-            fi
-            
-            echo "=== 压缩构建产物 ==="
-            cd dist
-            tar -I "gzip -9" -cvf ${{ matrix.output_name }}.tar.gz -C ${{ matrix.output_name }} .
-            ls -lh ${{ matrix.output_name }}.*
-          '
-      shell: bash
-
-    - name: 上传构建产物
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.output_name }}
-        path: dist/${{ matrix.output_name }}.tar.gz
-        retention-days: 30
-
-    - name: 上传到发布
-      if: github.event_name == 'release' && github.event.release.tag_name != ''
+    - name: 上传 Python 环境到发布 (Linux)
+      if: github.event_name == 'release' && github.event.release.tag_name != '' && matrix.platform == 'linux'
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ github.event.release.tag_name }}
-        files: dist/${{ matrix.output_name }}.tar.gz
+        files: python-env-${{ matrix.arch }}.tar.gz
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: 上传 Python 环境到发布 (Windows)
+      if: github.event_name == 'release' && github.event.release.tag_name != '' && matrix.platform == 'windows'
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.event.release.tag_name }}
+        files: python-env-${{ matrix.arch }}.7z
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
