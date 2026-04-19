@@ -38,7 +38,7 @@ jobs:
 
     steps:
     - name: 检出代码
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: 设置 QEMU (arm64)
       if: matrix.arch == 'arm64'
@@ -46,7 +46,7 @@ jobs:
 
     - name: 恢复 Python 环境缓存 (Linux)
       if: matrix.platform == 'linux'
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: cache-python-linux
       with:
         path: python-env-${{ matrix.arch }}.tar.gz
@@ -54,7 +54,7 @@ jobs:
 
     - name: 恢复 Python 环境缓存 (Windows)
       if: matrix.platform == 'windows'
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: cache-python-windows
       with:
         path: python-env-${{ matrix.arch }}.7z
@@ -62,7 +62,7 @@ jobs:
 
     - name: 设置 Python (Windows)
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
@@ -318,7 +318,7 @@ jobs:
       shell: bash
 
     - name: 上传构建产物
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ matrix.output_name }}
         path: |
@@ -328,7 +328,7 @@ jobs:
 
     - name: 上传到发布
       if: github.event_name == 'release' && github.event.release.tag_name != ''
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         tag_name: ${{ github.event.release.tag_name }}
         files: |
@@ -339,7 +339,7 @@ jobs:
 
     - name: 上传 Python 环境到发布 (Linux)
       if: github.event_name == 'release' && github.event.release.tag_name != '' && matrix.platform == 'linux'
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         tag_name: ${{ github.event.release.tag_name }}
         files: python-env-${{ matrix.arch }}.tar.gz
@@ -348,7 +348,7 @@ jobs:
 
     - name: 上传 Python 环境到发布 (Windows)
       if: github.event_name == 'release' && github.event.release.tag_name != '' && matrix.platform == 'windows'
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         tag_name: ${{ github.event.release.tag_name }}
         files: python-env-${{ matrix.arch }}.7z
