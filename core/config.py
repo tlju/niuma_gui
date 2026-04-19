@@ -16,7 +16,7 @@ def _get_base_path():
     支持 PyInstaller (sys.frozen) 和 Nuitka (__compiled__)
     """
     if getattr(sys, 'frozen', False) or globals().get('__compiled__'):
-        return os.path.dirname(sys.executable)
+        return os.path.dirname(os.path.abspath(sys.argv[0]))
     else:
         return os.path.dirname(os.path.dirname(__file__))
 

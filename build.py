@@ -33,7 +33,9 @@ def build():
         '--onefile',
         '--enable-plugin=pyqt6',
         '--follow-imports',
-        '--nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,unittest,doctest,tests',
+        '--nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest,tests,unittest',
+        '--nofollow-import-to=tests',
+        '--include-module=unittest.mock',
         '--include-package=paramiko',
         '--include-package=bcrypt',
         '--include-package=cryptography',
@@ -55,12 +57,12 @@ def build():
     ]
 
     if system == 'windows':
-        cmd.append('--windows-console-mode=enable')
+        cmd.append('--windows-console-mode=force')
         cmd.append('--include-data-file=icons/app.ico=icons/app.ico')
         if os.path.exists('icons/app.ico'):
             cmd.append('--windows-icon-from-ico=icons/app.ico')
     else:
-        cmd.append('--windows-console-mode=enable')
+        cmd.append('--windows-console-mode=force')
         cmd.append('--file-reference-choice=runtime')
         if os.path.exists('icons/app.png'):
             cmd.append('--linux-icon=icons/app.png')
