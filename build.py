@@ -30,25 +30,13 @@ def build():
         sys.executable, '-m', 'nuitka',
         '--standalone',
         '--show-progress',
-        '--onefile',
         '--enable-plugin=pyqt6',
         '--follow-imports',
-        '--nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest,tests,unittest',
+        '--nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest',
         '--nofollow-import-to=tests',
-        '--include-module=unittest.mock',
-        '--include-package=paramiko',
-        '--include-package=bcrypt',
-        '--include-package=cryptography',
-        '--include-package=openpyxl',
-        '--include-package=xlsxwriter',
-        '--include-package=sqlalchemy',
-        '--include-package=pydantic',
-        '--include-package=pydantic_settings',
-        '--include-package=numpy',
-        '--include-package=pyqtgraph',
-        '--include-package=dotenv',
         '--include-data-dir=gui/styles=gui/styles',
         '--output-dir=dist',
+        #'--lto=yes'
         f'--output-filename={output_name}',
         '--assume-yes-for-downloads',
         f'--jobs={os.cpu_count()}',
@@ -57,12 +45,12 @@ def build():
     ]
 
     if system == 'windows':
-        cmd.append('--windows-console-mode=force')
+        cmd.append('--windows-console-mode=disable')
         cmd.append('--include-data-file=icons/app.ico=icons/app.ico')
         if os.path.exists('icons/app.ico'):
             cmd.append('--windows-icon-from-ico=icons/app.ico')
     else:
-        cmd.append('--windows-console-mode=force')
+        cmd.append('--windows-console-mode=disable')
         cmd.append('--file-reference-choice=runtime')
         if os.path.exists('icons/app.png'):
             cmd.append('--linux-icon=icons/app.png')

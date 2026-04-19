@@ -29,7 +29,7 @@ jobs:
           - os: windows-2022
             arch: x64
             platform: windows
-            output_name: niuma-windows-x64.exe
+            output_name: niuma-windows-x64
 
     steps:
     - name: 检出代码
@@ -64,30 +64,34 @@ jobs:
           libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
           libxcb-cursor0
 
+    - name: 安装构建依赖 (Windows)
+      if: matrix.platform == 'windows'
+      run: |
+        choco install ccache -y
+
+    - name: 设置 ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ matrix.os }}-${{ matrix.arch }}
+        restore-keys: |
+          ${{ matrix.os }}-${{ matrix.arch }}
+          ${{ matrix.os }}
+
     - name: 验证 Python 环境
       run: |
         python --version
         pip --version
         pip list | grep -i nuitka
+        ccache --version || echo "ccache not available"
 
     - name: 使用 Nuitka 构建
       run: |
         if [ "${{ matrix.platform }}" = "windows" ]; then
-          python -m nuitka --standalone --show-progress --onefile \
+          python -m nuitka --standalone --show-progress \
             --enable-plugin=pyqt6 \
             --follow-imports \
-            --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,unittest,doctest,tests \
-            --include-package=paramiko \
-            --include-package=bcrypt \
-            --include-package=cryptography \
-            --include-package=openpyxl \
-            --include-package=xlsxwriter \
-            --include-package=sqlalchemy \
-            --include-package=pydantic \
-            --include-package=pydantic_settings \
-            --include-package=numpy \
-            --include-package=pyqtgraph \
-            --include-package=dotenv \
+            --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest \
+            --nofollow-import-to=tests \
             --include-data-dir=gui/styles=gui/styles \
             --include-data-file=icons/app.ico=icons/app.ico \
             --windows-console-mode=disable \
@@ -95,65 +99,60 @@ jobs:
             --output-filename=${{ matrix.output_name }} \
             --assume-yes-for-downloads \
             --jobs=$(nproc) \
-            --lto=yes \
             --include-package-data=pyqt6 \
             --windows-icon-from-ico=icons/app.ico \
-            --remove-output \
-            --no-progress-bar \
             main.py
         else
-          python -m nuitka --standalone --show-progress --onefile \
+          python -m nuitka --standalone --show-progress \
             --enable-plugin=pyqt6 \
             --follow-imports \
-            --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,unittest,doctest,tests \
-            --include-package=paramiko \
-            --include-package=bcrypt \
-            --include-package=cryptography \
-            --include-package=openpyxl \
-            --include-package=xlsxwriter \
-            --include-package=sqlalchemy \
-            --include-package=pydantic \
-            --include-package=pydantic_settings \
-            --include-package=numpy \
-            --include-package=pyqtgraph \
-            --include-package=dotenv \
+            --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest \
+            --nofollow-import-to=tests \
             --include-data-dir=gui/styles=gui/styles \
             --output-dir=dist \
             --output-filename=${{ matrix.output_name }} \
-            --lto=yes \
             --assume-yes-for-downloads \
             --jobs=$(nproc) \
             --file-reference-choice=runtime \
             --include-package-data=pyqt6 \
             --linux-icon=icons/app.png \
-            --remove-output \
-            --no-progress-bar \
             main.py
         fi
       shell: bash
 
     - name: 验证构建输出
       run: |
-        if [ -f "dist/${{ matrix.output_name }}" ]; then
-          echo "构建成功: ${{ matrix.output_name }}"
-          ls -lh dist/${{ matrix.output_name }}
+        if [ -d "dist/${{ matrix.output_name }}.dist" ]; then
+          echo "构建成功: ${{ matrix.output_name }}.dist"
+          ls -la dist/${{ matrix.output_name }}.dist
         else
-          echo "构建失败: 输出文件未找到"
+          echo "构建失败: 输出目录未找到"
           exit 1
         fi
+      shell: bash
+
+    - name: 压缩构建产物
+      run: |
+        cd dist
+        if [ "${{ matrix.platform }}" = "windows" ]; then
+          7z a -tzip ${{ matrix.output_name }}.zip ${{ matrix.output_name }}.dist
+        else
+          zip -r ${{ matrix.output_name }}.zip ${{ matrix.output_name }}.dist
+        fi
+        ls -lh ${{ matrix.output_name }}.zip
       shell: bash
 
     - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.output_name }}
-        path: dist/${{ matrix.output_name }}
+        path: dist/${{ matrix.output_name }}.zip
         retention-days: 30
 
     - name: 上传到发布
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v2
       with:
-        files: dist/${{ matrix.output_name }}
+        files: dist/${{ matrix.output_name }}.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
