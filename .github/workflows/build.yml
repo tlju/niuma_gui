@@ -77,6 +77,18 @@ jobs:
           ${{ matrix.os }}-${{ matrix.arch }}
           ${{ matrix.os }}
 
+    - name: 缓存 Nuitka 编译缓存
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/nuitka
+          ~/.local/cache/nuitka
+          ~/AppData/Local/Nuitka/Nuitka/Cache
+        key: nuitka-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('**/*.py', 'requirements.txt') }}
+        restore-keys: |
+          nuitka-${{ matrix.os }}-${{ matrix.arch }}-
+          nuitka-${{ matrix.os }}-
+
     - name: 验证 Python 环境
       run: |
         python --version
@@ -141,18 +153,20 @@ jobs:
       run: |
         cd dist
         if [ "${{ matrix.platform }}" = "windows" ]; then
-          zip -r8 ${{ matrix.output_name }}.zip ${{ matrix.output_name }}
+          7z a -t7z -mx=9 -m0=lzma2 -mfb=64 -md=32m -ms=on ${{ matrix.output_name }}.7z ${{ matrix.output_name }}
         else
-          zip -r8 ${{ matrix.output_name }}.zip ${{ matrix.output_name }}
+          tar -I "gzip -9" -cvf ${{ matrix.output_name }}.tar.gz ${{ matrix.output_name }}
         fi
-        ls -lh ${{ matrix.output_name }}.zip
+        ls -lh ${{ matrix.output_name }}.*
       shell: bash
 
     - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.output_name }}
-        path: dist/${{ matrix.output_name }}.zip
+        path: |
+          dist/${{ matrix.output_name }}.tar.gz
+          dist/${{ matrix.output_name }}.7z
         retention-days: 30
 
     - name: 上传到发布
@@ -160,6 +174,8 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ github.event.release.tag_name }}
-        files: dist/${{ matrix.output_name }}.zip
+        files: |
+          dist/${{ matrix.output_name }}.tar.gz
+          dist/${{ matrix.output_name }}.7z
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

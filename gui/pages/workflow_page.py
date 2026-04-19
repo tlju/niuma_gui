@@ -10,6 +10,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QThread, QDateTime
 from PyQt6.QtGui import QColor, QFont, QIcon
 from typing import Dict, List, Optional, Any
 from datetime import datetime
+from collections import deque
 import json
 import html
 
@@ -57,6 +58,39 @@ class WorkflowExecutionWorker(BaseWorker):
             execution_callback=on_execution_update,
             log_callback=on_log
         )
+
+
+def topological_sort_nodes(nodes: List[dict], connections: List[dict]) -> List[int]:
+    if not nodes:
+        return []
+    
+    node_ids = {node["id"] for node in nodes}
+    in_degree = {node_id: 0 for node_id in node_ids}
+    adjacency = {node_id: [] for node_id in node_ids}
+    
+    for conn in connections:
+        source = conn.get("source")
+        target = conn.get("target")
+        if source in node_ids and target in node_ids:
+            adjacency[source].append(target)
+            in_degree[target] += 1
+    
+    queue = deque([node_id for node_id, degree in in_degree.items() if degree == 0])
+    result = []
+    
+    while queue:
+        node_id = queue.popleft()
+        result.append(node_id)
+        for neighbor in adjacency[node_id]:
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                queue.append(neighbor)
+    
+    for node_id in node_ids:
+        if node_id not in result:
+            result.append(node_id)
+    
+    return result
 
 
 class ExecutionDetailDialog(QDialog):
@@ -156,7 +190,26 @@ class ExecutionDetailDialog(QDialog):
         nodes_table.verticalHeader().setVisible(False)
         nodes_table.setShowGrid(False)
         
-        node_executions = self.execution.node_executions if self.execution.node_executions else []
+        raw_node_executions = self.execution.node_executions if self.execution.node_executions else []
+        
+        graph_data = {}
+        if self.execution.workflow and self.execution.workflow.graph_data:
+            graph_data = self.execution.workflow.graph_data
+        
+        nodes = graph_data.get("nodes", [])
+        connections = graph_data.get("connections", [])
+        sorted_node_ids = topological_sort_nodes(nodes, connections)
+        
+        node_exec_map = {ne.node_id: ne for ne in raw_node_executions}
+        node_executions = []
+        for node_id in sorted_node_ids:
+            if node_id in node_exec_map:
+                node_executions.append(node_exec_map[node_id])
+        
+        for ne in raw_node_executions:
+            if ne not in node_executions:
+                node_executions.append(ne)
+        
         nodes_table.setRowCount(len(node_executions))
         
         for row, node_exec in enumerate(node_executions):

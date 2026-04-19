@@ -4,6 +4,8 @@ import platform
 import shutil
 import subprocess
 import sys
+import tarfile
+import zipfile
 
 def build():
     print("开始构建 运维辅助工具 GUI...")
@@ -66,11 +68,31 @@ def build():
                 shutil.rmtree(output_dist)
             shutil.move(main_dist, output_dist)
             print(f"构建成功！输出目录: {output_dist}")
+            
+            compress_output(output_dist, output_name, system)
         else:
             print(f"构建成功！可执行文件: dist/{output_name}")
     else:
         print("构建失败")
         sys.exit(1)
+
+def compress_output(output_dist, output_name, system):
+    print("开始压缩...")
+    
+    if system == 'windows':
+        archive_path = os.path.join('dist', f'{output_name}.7z')
+        subprocess.run([
+            '7z', 'a', '-t7z', '-mx=9', '-m0=lzma2',
+            '-mfb=64', '-md=32m', '-ms=on',
+            archive_path, output_name
+        ], cwd='dist', check=True)
+    else:
+        archive_path = os.path.join('dist', f'{output_name}.tar.gz')
+        with tarfile.open(archive_path, 'w:gz', compresslevel=9) as tar:
+            tar.add(output_dist, arcname=output_name)
+    
+    archive_size = os.path.getsize(archive_path) / (1024 * 1024)
+    print(f"压缩完成: {archive_path} ({archive_size:.2f} MB)")
 
 if __name__ == '__main__':
     build()

@@ -551,3 +551,80 @@ class TestVariableReplacement:
         assert result.status == NodeStatus.SUCCESS
         assert "python" in result.output
         mock_dict_service.get_dict_items.assert_called_once_with("script_language")
+
+
+class TestTopologicalSort:
+    def test_simple_linear_workflow(self):
+        from gui.pages.workflow_page import topological_sort_nodes
+        
+        nodes = [
+            {"id": 3, "name": "结束"},
+            {"id": 1, "name": "开始"},
+            {"id": 2, "name": "中间"}
+        ]
+        connections = [
+            {"source": 1, "target": 2},
+            {"source": 2, "target": 3}
+        ]
+        
+        result = topological_sort_nodes(nodes, connections)
+        
+        assert result.index(1) < result.index(2)
+        assert result.index(2) < result.index(3)
+    
+    def test_parallel_workflow(self):
+        from gui.pages.workflow_page import topological_sort_nodes
+        
+        nodes = [
+            {"id": 1, "name": "开始"},
+            {"id": 2, "name": "并行"},
+            {"id": 3, "name": "分支1"},
+            {"id": 4, "name": "分支2"},
+            {"id": 5, "name": "合并"},
+            {"id": 6, "name": "结束"}
+        ]
+        connections = [
+            {"source": 1, "target": 2},
+            {"source": 2, "target": 3},
+            {"source": 2, "target": 4},
+            {"source": 3, "target": 5},
+            {"source": 4, "target": 5},
+            {"source": 5, "target": 6}
+        ]
+        
+        result = topological_sort_nodes(nodes, connections)
+        
+        assert result.index(1) < result.index(2)
+        assert result.index(2) < result.index(3)
+        assert result.index(2) < result.index(4)
+        assert result.index(3) < result.index(5)
+        assert result.index(4) < result.index(5)
+        assert result.index(5) < result.index(6)
+    
+    def test_empty_nodes(self):
+        from gui.pages.workflow_page import topological_sort_nodes
+        
+        result = topological_sort_nodes([], [])
+        assert result == []
+    
+    def test_single_node(self):
+        from gui.pages.workflow_page import topological_sort_nodes
+        
+        nodes = [{"id": 1, "name": "单独节点"}]
+        result = topological_sort_nodes(nodes, [])
+        assert result == [1]
+    
+    def test_disconnected_nodes(self):
+        from gui.pages.workflow_page import topological_sort_nodes
+        
+        nodes = [
+            {"id": 1, "name": "节点1"},
+            {"id": 2, "name": "节点2"},
+            {"id": 3, "name": "节点3"}
+        ]
+        connections = []
+        
+        result = topological_sort_nodes(nodes, connections)
+        
+        assert set(result) == {1, 2, 3}
+        assert len(result) == 3
