@@ -126,6 +126,7 @@ jobs:
               gcc g++ make wget patchelf \
               libxrender-dev libxext-dev libx11-dev \
               libxcb1-dev libxkbcommon-dev \
+              libxcb-* \
               libgl1-mesa-dev libegl1-mesa-dev \
               libxkbcommon-x11-dev \
               libssl-dev \
@@ -202,6 +203,7 @@ jobs:
               gcc g++ make wget patchelf \
               libxrender-dev libxext-dev libx11-dev \
               libxcb1-dev libxkbcommon-dev \
+              libxcb-* \
               libgl1-mesa-dev libegl1-mesa-dev \
               libxkbcommon-x11-dev \
               libssl-dev \
