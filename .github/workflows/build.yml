@@ -50,7 +50,10 @@ jobs:
       id: cache-python-linux
       with:
         path: python-env-${{ matrix.arch }}.tar.gz
-        key: ${{ matrix.python_cache_name }}
+        key: ${{ matrix.python_cache_name }}-${{ github.ref_name }}
+        restore-keys: |
+          ${{ matrix.python_cache_name }}-main
+          ${{ matrix.python_cache_name }}-
 
     - name: 恢复 Python 环境缓存 (Windows)
       if: matrix.platform == 'windows'
@@ -58,7 +61,10 @@ jobs:
       id: cache-python-windows
       with:
         path: python-env-${{ matrix.arch }}.7z
-        key: ${{ matrix.python_cache_name }}
+        key: ${{ matrix.python_cache_name }}-${{ github.ref_name }}
+        restore-keys: |
+          ${{ matrix.python_cache_name }}-main
+          ${{ matrix.python_cache_name }}-
 
     - name: 设置 Python (Windows)
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
