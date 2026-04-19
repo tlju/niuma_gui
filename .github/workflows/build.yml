@@ -69,26 +69,6 @@ jobs:
       run: |
         choco install ccache -y
 
-    - name: 设置 ccache
-      uses: hendrikmuhs/ccache-action@v1.2
-      with:
-        key: ${{ matrix.os }}-${{ matrix.arch }}
-        restore-keys: |
-          ${{ matrix.os }}-${{ matrix.arch }}
-          ${{ matrix.os }}
-
-    - name: 缓存 Nuitka 编译缓存
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/nuitka
-          ~/.local/cache/nuitka
-          ~/AppData/Local/Nuitka/Nuitka/Cache
-        key: nuitka-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('**/*.py', 'requirements.txt') }}
-        restore-keys: |
-          nuitka-${{ matrix.os }}-${{ matrix.arch }}-
-          nuitka-${{ matrix.os }}-
-
     - name: 验证 Python 环境
       run: |
         python --version
