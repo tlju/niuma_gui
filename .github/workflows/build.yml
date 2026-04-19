@@ -159,3 +159,99 @@ jobs:
           dist/${{ matrix.output_name }}.7z
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-uos:
+    runs-on: ubuntu-22.04
+    container:
+      image: macrosan/uos:v20-1060
+      options: --platform ${{ matrix.platform_name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            platform_name: linux/amd64
+            output_name: niuma-uos-x64
+          - arch: arm64
+            platform_name: linux/arm64
+            output_name: niuma-uos-arm64
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置 QEMU (arm64)
+      if: matrix.arch == 'arm64'
+      uses: docker/setup-qemu-action@v3
+
+    - name: 安装系统依赖
+      run: |
+        yum install -y python3 python3-pip python3-devel \
+          gcc gcc-c++ make ccache \
+          libXrender-devel libXext-devel libX11-devel \
+          libxcb-devel libxkbcommon-devel \
+          mesa-libGL-devel mesa-libEGL-devel \
+          libxkbcommon-x11-devel
+
+    - name: 安装 Python 依赖
+      run: |
+        python3 -m pip install --upgrade pip setuptools wheel
+        pip3 install -r requirements.txt
+        pip3 install nuitka ordered-set zstandard PyQt6
+
+    - name: 使用 Nuitka 构建
+      run: |
+        python3 -m nuitka --standalone \
+          --enable-plugins=pyqt6 \
+          --include-qt-plugins=qml \
+          --follow-imports \
+          --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest \
+          --nofollow-import-to=tests \
+          --include-data-dir=gui/styles=gui/styles \
+          --output-dir=dist \
+          --output-filename=${{ matrix.output_name }} \
+          --assume-yes-for-downloads \
+          --jobs=$(nproc) \
+          --file-reference-choice=runtime \
+          --include-package-data=PyQt6 \
+          --linux-icon=icons/app.png \
+          main.py
+      shell: bash
+
+    - name: 验证构建输出
+      run: |
+        echo "检查 dist 目录内容:"
+        ls -la dist/
+        if [ -d "dist/main.dist" ]; then
+          echo "构建成功: main.dist"
+          ls -la dist/main.dist
+          mv dist/main.dist dist/${{ matrix.output_name }}
+          echo "重命名为: ${{ matrix.output_name }}"
+        else
+          echo "构建失败: 输出目录未找到"
+          exit 1
+        fi
+      shell: bash
+
+    - name: 压缩构建产物
+      run: |
+        cd dist
+        tar -I "gzip -9" -cvf ${{ matrix.output_name }}.tar.gz -C ${{ matrix.output_name }} .
+        ls -lh ${{ matrix.output_name }}.*
+      shell: bash
+
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.output_name }}
+        path: dist/${{ matrix.output_name }}.tar.gz
+        retention-days: 30
+
+    - name: 上传到发布
+      if: github.event_name == 'release' && github.event.release.tag_name != ''
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.event.release.tag_name }}
+        files: dist/${{ matrix.output_name }}.tar.gz
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
