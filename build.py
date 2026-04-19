@@ -29,8 +29,8 @@ def build():
     cmd = [
         sys.executable, '-m', 'nuitka',
         '--standalone',
-        '--show-progress',
-        '--enable-plugin=pyqt6',
+        '--enable-plugins=pyqt6',
+        '--include-qt-plugins=qml',
         '--follow-imports',
         '--nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest',
         '--nofollow-import-to=tests',
@@ -40,7 +40,7 @@ def build():
         f'--output-filename={output_name}',
         '--assume-yes-for-downloads',
         f'--jobs={os.cpu_count()}',
-        '--include-package-data=pyqt6',
+        '--include-package-data=PyQt6',
         'main.py'
     ]
 

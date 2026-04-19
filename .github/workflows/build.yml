@@ -87,8 +87,9 @@ jobs:
     - name: 使用 Nuitka 构建
       run: |
         if [ "${{ matrix.platform }}" = "windows" ]; then
-          python -m nuitka --standalone --show-progress \
-            --enable-plugin=pyqt6 \
+          python -m nuitka --standalone \
+            --enable-plugins=pyqt6 \
+            --include-qt-plugins=qml \
             --follow-imports \
             --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest \
             --nofollow-import-to=tests \
@@ -99,12 +100,13 @@ jobs:
             --output-filename=${{ matrix.output_name }} \
             --assume-yes-for-downloads \
             --jobs=$(nproc) \
-            --include-package-data=pyqt6 \
+            --include-package-data=PyQt6 \
             --windows-icon-from-ico=icons/app.ico \
             main.py
         else
-          python -m nuitka --standalone --show-progress \
-            --enable-plugin=pyqt6 \
+          python -m nuitka --standalone \
+            --enable-plugins=pyqt6 \
+            --include-qt-plugins=qml \
             --follow-imports \
             --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest \
             --nofollow-import-to=tests \
@@ -114,7 +116,7 @@ jobs:
             --assume-yes-for-downloads \
             --jobs=$(nproc) \
             --file-reference-choice=runtime \
-            --include-package-data=pyqt6 \
+            --include-package-data=PyQt6 \
             --linux-icon=icons/app.png \
             main.py
         fi
