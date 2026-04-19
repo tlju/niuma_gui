@@ -192,8 +192,8 @@ jobs:
             set -e
             
             echo "=== 安装系统依赖 ==="
-            apt-get update
-            apt-get install -y \
+            apt update
+            apt install -y \
               python3.10 python3.10-dev python3.10-venv python3-pip \
               gcc g++ make \
               libxrender-dev libxext-dev libx11-dev \
