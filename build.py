@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import platform
+import shutil
 import subprocess
 import sys
 
@@ -18,7 +19,7 @@ def build():
         arch_name = arch
 
     if system == 'windows':
-        output_name = f'niuma-windows-{arch_name}.exe'
+        output_name = f'niuma-windows-{arch_name}'
     elif system == 'linux':
         output_name = f'niuma-linux-{arch_name}'
     elif system == 'darwin':
@@ -36,7 +37,6 @@ def build():
         '--nofollow-import-to=tests',
         '--include-data-dir=gui/styles=gui/styles',
         '--output-dir=dist',
-        #'--lto=yes'
         f'--output-filename={output_name}',
         '--assume-yes-for-downloads',
         f'--jobs={os.cpu_count()}',
@@ -50,7 +50,6 @@ def build():
         if os.path.exists('icons/app.ico'):
             cmd.append('--windows-icon-from-ico=icons/app.ico')
     else:
-        cmd.append('--windows-console-mode=disable')
         cmd.append('--file-reference-choice=runtime')
         if os.path.exists('icons/app.png'):
             cmd.append('--linux-icon=icons/app.png')
@@ -59,7 +58,16 @@ def build():
     result = subprocess.run(cmd)
 
     if result.returncode == 0:
-        print(f"构建成功！可执行文件: dist/{output_name}")
+        main_dist = os.path.join('dist', 'main.dist')
+        output_dist = os.path.join('dist', f'{output_name}.dist')
+        
+        if os.path.exists(main_dist):
+            if os.path.exists(output_dist):
+                shutil.rmtree(output_dist)
+            shutil.move(main_dist, output_dist)
+            print(f"构建成功！输出目录: {output_dist}")
+        else:
+            print(f"构建成功！可执行文件: dist/{output_name}")
     else:
         print("构建失败")
         sys.exit(1)

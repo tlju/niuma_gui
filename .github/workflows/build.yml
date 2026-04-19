@@ -124,9 +124,13 @@ jobs:
 
     - name: 验证构建输出
       run: |
-        if [ -d "dist/${{ matrix.output_name }}.dist" ]; then
-          echo "构建成功: ${{ matrix.output_name }}.dist"
-          ls -la dist/${{ matrix.output_name }}.dist
+        echo "检查 dist 目录内容:"
+        ls -la dist/
+        if [ -d "dist/main.dist" ]; then
+          echo "构建成功: main.dist"
+          ls -la dist/main.dist
+          mv dist/main.dist dist/${{ matrix.output_name }}.dist
+          echo "重命名为: ${{ matrix.output_name }}.dist"
         else
           echo "构建失败: 输出目录未找到"
           exit 1
