@@ -10,6 +10,7 @@ permissions:
 
 env:
   PYTHON_VERSION: '3.12'
+  CACHE_VERSION: v2
 
 jobs:
   build:
@@ -50,9 +51,10 @@ jobs:
       id: cache-python-linux
       with:
         path: python-env-${{ matrix.arch }}.tar.gz
-        key: ${{ matrix.python_cache_name }}
+        key: ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
         restore-keys: |
-          ${{ matrix.python_cache_name }}
+          ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-
+          ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-
 
     - name: 恢复 Qt6 环境缓存 (arm64)
       if: matrix.platform == 'linux' && matrix.arch == 'arm64'
@@ -60,9 +62,9 @@ jobs:
       id: cache-qt6-arm64
       with:
         path: qt6-env-arm64.tar.gz
-        key: qt6-env-arm64
+        key: ${{ env.CACHE_VERSION }}-qt6-env-arm64-${{ hashFiles('requirements.txt') }}
         restore-keys: |
-          qt6-env-arm64
+          ${{ env.CACHE_VERSION }}-qt6-env-arm64-
 
     - name: 恢复 Python 环境缓存 (Windows)
       if: matrix.platform == 'windows'
@@ -70,9 +72,10 @@ jobs:
       id: cache-python-windows
       with:
         path: python-env-${{ matrix.arch }}.7z
-        key: ${{ matrix.python_cache_name }}
+        key: ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
         restore-keys: |
-          ${{ matrix.python_cache_name }}
+          ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-
+          ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-
 
     - name: 设置 Python (Windows)
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
