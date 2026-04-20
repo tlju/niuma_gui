@@ -237,7 +237,7 @@ jobs:
               
               echo "=== 安装 PyQt6 (arm64 - 从源码编译) ==="
               cd /workspace
-              /usr/local/python3.12/bin/pip3.12 install PyQt6-sip sip
+              /usr/local/python3.12/bin/pip3.12 install PyQt6-sip sip html5lib
               /usr/local/python3.12/bin/pip3.12 install --no-binary :all: PyQt6
               
               echo "=== 编译 PyQt6-QScintilla (arm64) ==="
