@@ -370,7 +370,7 @@ jobs:
               python3 -c "import sys; print(sys.executable)"
               
               echo "=== 验证 PyQt6 ==="
-              python3 -c "import PyQt6; print(PyQt6.__version__)"
+              python3 -c "from PyQt6.QtCore import PYQT_VERSION_STR; print(f'PyQt6 version: {PYQT_VERSION_STR}')"
             '
         else
           echo "缓存文件未找到"
@@ -424,13 +424,13 @@ jobs:
       if: matrix.platform == 'windows'
       run: |
         Write-Host "========================================"
-        Write-Host "缓存测试总结"
+        Write-Host "Cache Test Summary"
         Write-Host "========================================"
-        Write-Host "平台: ${{ matrix.platform }} (${{ matrix.arch }})"
+        Write-Host "Platform: ${{ matrix.platform }} (${{ matrix.arch }})"
         if ("${{ steps.cache-python-windows.outputs.cache-hit }}" -eq "true") {
-          Write-Host "Python 缓存状态: 命中"
+          Write-Host "Python Cache Status: HIT"
         } else {
-          Write-Host "Python 缓存状态: 未命中 (已构建新缓存)"
+          Write-Host "Python Cache Status: MISS (New cache built)"
         }
         Write-Host "========================================"
       shell: powershell
