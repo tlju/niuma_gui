@@ -214,7 +214,7 @@ jobs:
               echo "=== 配置 Qt6 (arm64) ==="
               mkdir build && cd build
               cmake .. \
-                -GNinja \
+                -G "Unix Makefiles" \
                 -DCMAKE_BUILD_TYPE=Release \
                 -DCMAKE_INSTALL_PREFIX=/opt/qt6 \
                 -DQT_BUILD_EXAMPLES=OFF \
@@ -225,7 +225,7 @@ jobs:
                 -DQT_FEATURE_egl=ON
               
               echo "=== 编译 Qt6 (arm64 - 这可能需要较长时间) ==="
-              cmake --build . --parallel
+              make -j$(nproc)
               
               echo "=== 安装 Qt6 (arm64) ==="
               cmake --install .
