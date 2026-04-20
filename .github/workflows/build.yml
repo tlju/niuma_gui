@@ -207,9 +207,9 @@ jobs:
               
               echo "=== 下载 Qt6 源码 (arm64) ==="
               cd /tmp
-              wget -q https://download.qt.io/official_releases/qt/6.8/6.8.0/single/qt-everywhere-src-6.8.0.tar.xz
-              tar -xf qt-everywhere-src-6.8.0.tar.xz
-              cd qt-everywhere-src-6.8.0
+              wget -q https://download.qt.io/official_releases/qt/6.5/6.5.3/single/qt-everywhere-src-6.5.3.tar.xz
+              tar -xf qt-everywhere-src-6.5.3.tar.xz
+              cd qt-everywhere-src-6.5.3
               
               echo "=== 配置 Qt6 (arm64) ==="
               mkdir build && cd build
@@ -219,6 +219,8 @@ jobs:
                 -DCMAKE_INSTALL_PREFIX=/opt/qt6 \
                 -DCMAKE_CXX_FLAGS="-lstdc++fs" \
                 -DCMAKE_EXE_LINKER_FLAGS="-lstdc++fs" \
+                -DCMAKE_SHARED_LINKER_FLAGS="-lstdc++fs" \
+                -DCMAKE_MODULE_LINKER_FLAGS="-lstdc++fs" \
                 -DQT_BUILD_EXAMPLES=OFF \
                 -DQT_BUILD_TESTS=OFF \
                 -DQT_FEATURE_vulkan=OFF \
@@ -239,11 +241,13 @@ jobs:
               
               echo "=== 安装 PyQt6 (arm64 - 从源码编译) ==="
               cd /workspace
-              /usr/local/python3.12/bin/pip3.12 install PyQt6-sip sip html5lib
-              /usr/local/python3.12/bin/pip3.12 install --no-binary :all: PyQt6
+              export PATH="/usr/local/python3.12/bin:$PATH"
+              export PYTHONPATH="/usr/local/python3.12/lib/python3.12/site-packages:$PYTHONPATH"
+              pip3.12 install PyQt6-sip sip html5lib
+              pip3.12 install --no-binary :all: PyQt6
               
               echo "=== 编译 PyQt6-QScintilla (arm64) ==="
-              /usr/local/python3.12/bin/pip3.12 install --no-binary :all: PyQt6-QScintilla
+              pip3.12 install --no-binary :all: PyQt6-QScintilla
             elif [ "$PYTHON_CACHED" != "true" ]; then
               echo "=== 安装 PyQt6 (x64 - 使用预编译包) ==="
               /usr/local/python3.12/bin/pip3.12 install --only-binary=:all: PyQt6 PyQt6-Qt6 PyQt6-sip
