@@ -57,6 +57,14 @@ jobs:
         echo ""
         echo "=== Expected Cache Key ==="
         echo "${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}"
+        echo ""
+        echo "=== Actual Hash Values ==="
+        echo "requirements.txt hash: ${{ hashFiles('requirements.txt') }}"
+        echo "requirements.txt content hash (sha256):"
+        sha256sum requirements.txt || echo "File not found"
+        echo ""
+        echo "requirements.txt content:"
+        cat requirements.txt || echo "File not found"
 
     - name: '3. 显示缓存信息 (Windows)'
       if: matrix.platform == 'windows'
@@ -108,6 +116,8 @@ jobs:
       if: matrix.platform == 'linux'
       run: |
         echo "=== Cache Hit Status ==="
+        echo "Expected cache key: ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}"
+        echo "Actual cache-hit value: ${{ steps.cache-python-linux.outputs.cache-hit }}"
         if [ "${{ steps.cache-python-linux.outputs.cache-hit }}" = "true" ]; then
           echo "Python Cache HIT!"
           echo "Cache file info:"
