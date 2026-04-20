@@ -50,9 +50,8 @@ jobs:
       id: cache-python-linux
       with:
         path: python-env-${{ matrix.arch }}.tar.gz
-        key: ${{ matrix.python_cache_name }}-${{ github.ref_name }}
+        key: ${{ matrix.python_cache_name }}-${{ hashFiles('requirements.txt') }}
         restore-keys: |
-          ${{ matrix.python_cache_name }}-main
           ${{ matrix.python_cache_name }}-
 
     - name: 恢复 Qt6 环境缓存 (arm64)
@@ -61,9 +60,8 @@ jobs:
       id: cache-qt6-arm64
       with:
         path: qt6-env-arm64.tar.gz
-        key: qt6-env-arm64-${{ github.ref_name }}
+        key: qt6-env-arm64-${{ hashFiles('requirements.txt') }}
         restore-keys: |
-          qt6-env-arm64-main
           qt6-env-arm64-
 
     - name: 恢复 Python 环境缓存 (Windows)
@@ -72,9 +70,8 @@ jobs:
       id: cache-python-windows
       with:
         path: python-env-${{ matrix.arch }}.7z
-        key: ${{ matrix.python_cache_name }}-${{ github.ref_name }}
+        key: ${{ matrix.python_cache_name }}-${{ hashFiles('requirements.txt') }}
         restore-keys: |
-          ${{ matrix.python_cache_name }}-main
           ${{ matrix.python_cache_name }}-
 
     - name: 设置 Python (Windows)
