@@ -274,7 +274,8 @@ jobs:
                 libgbm-dev libasound2-dev libpulse-dev \
                 libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
                 libfreetype6-dev libfontconfig1-dev \
-                libharfbuzz-dev libjpeg-dev libpng-dev
+                libharfbuzz-dev libjpeg-dev libpng-dev \
+                libstdc++-dev
               
               echo "=== 安装 CMake 3.30 (Qt6 需要 3.16+) ==="
               cd /tmp
@@ -296,16 +297,20 @@ jobs:
                 -G "Unix Makefiles" \
                 -DCMAKE_BUILD_TYPE=Release \
                 -DCMAKE_INSTALL_PREFIX=/opt/qt6 \
-                -DCMAKE_CXX_FLAGS="-lstdc++fs" \
+                -DCMAKE_CXX_FLAGS="-std=c++17" \
                 -DCMAKE_EXE_LINKER_FLAGS="-lstdc++fs" \
                 -DCMAKE_SHARED_LINKER_FLAGS="-lstdc++fs" \
                 -DCMAKE_MODULE_LINKER_FLAGS="-lstdc++fs" \
+                -DCMAKE_CXX_STANDARD_LIBRARIES="-lstdc++fs" \
                 -DQT_BUILD_EXAMPLES=OFF \
                 -DQT_BUILD_TESTS=OFF \
                 -DQT_FEATURE_vulkan=OFF \
                 -DQT_FEATURE_opengl=ON \
                 -DQT_FEATURE_opengles2=ON \
-                -DQT_FEATURE_egl=ON
+                -DQT_FEATURE_egl=ON \
+                -DQT_FEATURE_xcb=ON \
+                -DQT_FEATURE_xcb_xlib=ON \
+                -DQT_FEATURE_xlib=ON
               
               echo "=== 编译 Qt6 (arm64 - 这可能需要较长时间) ==="
               make -j$(nproc)
@@ -384,7 +389,18 @@ jobs:
               libsqlite3-dev \
               libreadline-dev \
               tk-dev \
-              libgdbm-dev
+              libgdbm-dev \
+              libxkbcommon-x11-0 \
+              libxcb-cursor0 \
+              libxcb-icccm4 \
+              libxcb-image0 \
+              libxcb-keysyms1 \
+              libxcb-randr0 \
+              libxcb-render-util0 \
+              libxcb-shape0 \
+              libxcb-xfixes0 \
+              libxcb-xinerama0 \
+              libxcb-xkb1
             
             echo "=== 解压 Python 环境 ==="
             cd /usr/local
@@ -400,6 +416,8 @@ jobs:
               export PATH="/opt/qt6/bin:$PATH"
               export QT_PLUGIN_PATH="/opt/qt6/plugins"
               export LD_LIBRARY_PATH="/opt/qt6/lib:$LD_LIBRARY_PATH"
+              echo "Qt6 插件目录内容:"
+              ls -la /opt/qt6/plugins/platforms/ || echo "platforms 目录不存在"
               qmake --version
               echo "Qt6 环境已配置"
             fi
