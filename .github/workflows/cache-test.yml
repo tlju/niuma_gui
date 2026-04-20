@@ -183,7 +183,22 @@ jobs:
             
             echo "=== Installing system dependencies ==="
             apt-get update
-            apt-get install -y gcc g++ make wget zlib1g-dev libffi-dev libssl-dev
+            apt-get install -y \
+              gcc g++ make wget patchelf \
+              libxrender-dev libxext-dev libx11-dev \
+              libxcb1-dev libxkbcommon-dev \
+              libxcb-* \
+              libgl1-mesa-dev libegl1-mesa-dev \
+              libxkbcommon-x11-dev \
+              libssl-dev \
+              bzip2 libbz2-dev \
+              libffi-dev \
+              zlib1g-dev \
+              liblzma-dev \
+              libsqlite3-dev \
+              libreadline-dev \
+              tk-dev \
+              libgdbm-dev
             
             echo "=== Compiling Python 3.12 ==="
             cd /tmp
@@ -197,6 +212,16 @@ jobs:
             echo "=== Installing Python dependencies ==="
             cd /workspace
             /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
+            
+            if [ "${{ matrix.arch }}" = "arm64" ]; then
+              echo "=== Installing PyQt6 for ARM64 (from source) ==="
+              /usr/local/python3.12/bin/pip3.12 install PyQt6-sip sip html5lib
+              /usr/local/python3.12/bin/pip3.12 install --no-binary :all: PyQt6
+            else
+              echo "=== Installing PyQt6 for x64 (pre-built) ==="
+              /usr/local/python3.12/bin/pip3.12 install --only-binary=:all: PyQt6 PyQt6-Qt6 PyQt6-sip
+            fi
+            
             /usr/local/python3.12/bin/pip3.12 install -r requirements.txt
             /usr/local/python3.12/bin/pip3.12 install nuitka ordered-set zstandard
             
@@ -222,11 +247,31 @@ jobs:
             debian:10.10 \
             bash -c '
               set -e
+              
+              echo "=== Installing system dependencies for verification ==="
+              echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
+              echo "deb http://archive.debian.org/debian buster-updates main" >> /etc/apt/sources.list
+              echo "Acquire::Check-Valid-Until false;" > /etc/apt/apt.conf.d/99no-check-valid-until
+              apt-get update
+              apt-get install -y \
+                libxrender-dev libxext-dev libx11-dev \
+                libxcb1-dev libxkbcommon-dev \
+                libxcb-* \
+                libgl1-mesa-dev libegl1-mesa-dev \
+                libxkbcommon-x11-dev
+              
+              echo "=== Extracting Python environment ==="
               cd /usr/local
               tar -xzf /workspace/python-env-${{ matrix.arch }}.tar.gz
               ln -sf /usr/local/python3.12/bin/python3.12 /usr/local/bin/python3
+              ln -sf /usr/local/python3.12/bin/pip3.12 /usr/local/bin/pip3
+              
+              echo "=== Verifying Python ==="
               python3 --version
               python3 -c "import sys; print(sys.executable)"
+              
+              echo "=== Verifying PyQt6 ==="
+              python3 -c "import PyQt6; print(PyQt6.__version__)"
             '
         else
           echo "Cache file not found"
