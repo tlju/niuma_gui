@@ -49,27 +49,27 @@ jobs:
     - name: 显示缓存信息 (Linux)
       if: matrix.platform == 'linux'
       run: |
-        echo "=== 缓存配置信息 ==="
-        echo "平台: ${{ matrix.platform }}"
-        echo "架构: ${{ matrix.arch }}"
-        echo "Python 版本: ${{ env.PYTHON_VERSION }}"
-        echo "缓存版本: ${{ env.CACHE_VERSION }}"
-        echo "缓存名称: ${{ matrix.python_cache_name }}"
+        echo "=== Cache Configuration ==="
+        echo "Platform: ${{ matrix.platform }}"
+        echo "Architecture: ${{ matrix.arch }}"
+        echo "Python Version: ${{ env.PYTHON_VERSION }}"
+        echo "Cache Version: ${{ env.CACHE_VERSION }}"
+        echo "Cache Name: ${{ matrix.python_cache_name }}"
         echo ""
-        echo "=== 预期缓存 Key ==="
+        echo "=== Expected Cache Key ==="
         echo "${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}"
 
     - name: 显示缓存信息 (Windows)
       if: matrix.platform == 'windows'
       run: |
-        Write-Host "=== 缓存配置信息 ==="
-        Write-Host "平台: ${{ matrix.platform }}"
-        Write-Host "架构: ${{ matrix.arch }}"
-        Write-Host "Python 版本: ${{ env.PYTHON_VERSION }}"
-        Write-Host "缓存版本: ${{ env.CACHE_VERSION }}"
-        Write-Host "缓存名称: ${{ matrix.python_cache_name }}"
+        Write-Host "=== Cache Configuration ==="
+        Write-Host "Platform: ${{ matrix.platform }}"
+        Write-Host "Architecture: ${{ matrix.arch }}"
+        Write-Host "Python Version: ${{ env.PYTHON_VERSION }}"
+        Write-Host "Cache Version: ${{ env.CACHE_VERSION }}"
+        Write-Host "Cache Name: ${{ matrix.python_cache_name }}"
         Write-Host ""
-        Write-Host "=== 预期缓存 Key ==="
+        Write-Host "=== Expected Cache Key ==="
         Write-Host "${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}"
       shell: powershell
 
@@ -98,27 +98,27 @@ jobs:
     - name: 检查缓存命中状态 (Linux)
       if: matrix.platform == 'linux'
       run: |
-        echo "=== 缓存命中状态 ==="
+        echo "=== Cache Hit Status ==="
         if [ "${{ steps.cache-python-linux.outputs.cache-hit }}" = "true" ]; then
-          echo "缓存命中！"
-          echo "缓存文件信息:"
-          ls -lh python-env-${{ matrix.arch }}.tar.gz || echo "缓存文件不存在"
+          echo "Cache HIT!"
+          echo "Cache file info:"
+          ls -lh python-env-${{ matrix.arch }}.tar.gz || echo "Cache file not found"
         else
-          echo "缓存未命中"
-          echo "将执行 Python 环境构建..."
+          echo "Cache MISS"
+          echo "Will build Python environment..."
         fi
 
     - name: 检查缓存命中状态 (Windows)
       if: matrix.platform == 'windows'
       run: |
-        Write-Host "=== 缓存命中状态 ==="
+        Write-Host "=== Cache Hit Status ==="
         if ("${{ steps.cache-python-windows.outputs.cache-hit }}" -eq "true") {
-          Write-Host "缓存命中！"
-          Write-Host "缓存文件信息:"
+          Write-Host "Cache HIT!"
+          Write-Host "Cache file info:"
           Get-Item python-env-${{ matrix.arch }}.7z -ErrorAction SilentlyContinue | Select-Object Name, Length, LastWriteTime
         } else {
-          Write-Host "缓存未命中"
-          Write-Host "将执行 Python 环境构建..."
+          Write-Host "Cache MISS"
+          Write-Host "Will build Python environment..."
         }
       shell: powershell
 
@@ -131,35 +131,35 @@ jobs:
     - name: 安装依赖 (Windows)
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       run: |
-        Write-Host "=== 安装 Python 依赖 ==="
+        Write-Host "=== Installing Python Dependencies ==="
         python -m pip install --upgrade pip setuptools wheel
         pip install -r requirements.txt
         pip install nuitka ordered-set zstandard
-        Write-Host "=== 依赖安装完成 ==="
+        Write-Host "=== Dependencies Installed ==="
         pip list
       shell: powershell
 
     - name: 打包 Python 环境 (Windows)
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       run: |
-        Write-Host "=== 打包 Python 环境 ==="
+        Write-Host "=== Packaging Python Environment ==="
         $pythonPath = python -c "import sys; print(sys.prefix)"
-        Write-Host "Python 路径: $pythonPath"
+        Write-Host "Python Path: $pythonPath"
         7z a -t7z -mx=9 python-env-${{ matrix.arch }}.7z "$pythonPath\*"
-        Write-Host "=== 打包完成 ==="
+        Write-Host "=== Packaging Complete ==="
         Get-Item python-env-${{ matrix.arch }}.7z | Select-Object Name, Length, LastWriteTime
       shell: powershell
 
     - name: 恢复 Python 环境 (Windows)
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit == 'true'
       run: |
-        Write-Host "=== 恢复 Python 环境 ==="
+        Write-Host "=== Restoring Python Environment ==="
         $destPath = "$env:LOCALAPPDATA\python-cache"
         New-Item -ItemType Directory -Force -Path $destPath
         7z x python-env-${{ matrix.arch }}.7z -o"$destPath" -y
         Add-Content -Path $env:GITHUB_PATH -Value "$destPath\Scripts"
         Add-Content -Path $env:GITHUB_PATH -Value "$destPath"
-        Write-Host "=== 环境恢复完成 ==="
+        Write-Host "=== Environment Restored ==="
         python --version
         pip --version
       shell: powershell
@@ -167,7 +167,7 @@ jobs:
     - name: 构建 Python 环境 (Linux)
       if: matrix.platform == 'linux' && steps.cache-python-linux.outputs.cache-hit != 'true'
       run: |
-        echo "=== 构建 Python 环境 ==="
+        echo "=== Building Python Environment ==="
         docker run --rm \
           --platform ${{ matrix.platform_name }} \
           -v ${{ github.workspace }}:/workspace \
@@ -176,16 +176,16 @@ jobs:
           bash -c '
             set -e
             
-            echo "=== 配置 apt 源 ==="
+            echo "=== Configuring apt sources ==="
             echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
             echo "deb http://archive.debian.org/debian buster-updates main" >> /etc/apt/sources.list
             echo "Acquire::Check-Valid-Until false;" > /etc/apt/apt.conf.d/99no-check-valid-until
             
-            echo "=== 安装系统依赖 ==="
+            echo "=== Installing system dependencies ==="
             apt-get update
             apt-get install -y gcc g++ make wget zlib1g-dev libffi-dev libssl-dev
             
-            echo "=== 编译 Python 3.12 ==="
+            echo "=== Compiling Python 3.12 ==="
             cd /tmp
             wget -q https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz
             tar xzf Python-3.12.13.tgz
@@ -194,13 +194,13 @@ jobs:
             make -j$(nproc)
             make install
             
-            echo "=== 安装 Python 依赖 ==="
+            echo "=== Installing Python dependencies ==="
             cd /workspace
             /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
             /usr/local/python3.12/bin/pip3.12 install -r requirements.txt
             /usr/local/python3.12/bin/pip3.12 install nuitka ordered-set zstandard
             
-            echo "=== 打包 Python 环境 ==="
+            echo "=== Packaging Python environment ==="
             cd /usr/local
             tar -czf /workspace/python-env-${{ matrix.arch }}.tar.gz python3.12
             ls -lh /workspace/python-env-${{ matrix.arch }}.tar.gz
@@ -209,12 +209,12 @@ jobs:
     - name: 验证 Python 环境 (Linux)
       if: matrix.platform == 'linux'
       run: |
-        echo "=== 验证 Python 环境 ==="
+        echo "=== Verifying Python Environment ==="
         if [ -f "python-env-${{ matrix.arch }}.tar.gz" ]; then
-          echo "缓存文件存在"
+          echo "Cache file exists"
           ls -lh python-env-${{ matrix.arch }}.tar.gz
           
-          echo "=== 测试解压 ==="
+          echo "=== Testing extraction ==="
           docker run --rm \
             --platform ${{ matrix.platform_name }} \
             -v ${{ github.workspace }}:/workspace \
@@ -229,18 +229,18 @@ jobs:
               python3 -c "import sys; print(sys.executable)"
             '
         else
-          echo "缓存文件不存在"
+          echo "Cache file not found"
           exit 1
         fi
 
     - name: 验证 Python 环境 (Windows)
       if: matrix.platform == 'windows'
       run: |
-        Write-Host "=== 验证 Python 环境 ==="
+        Write-Host "=== Verifying Python Environment ==="
         python --version
         pip --version
         python -c "import sys; print(sys.executable)"
-        Write-Host "Python 环境验证成功"
+        Write-Host "Python Environment Verified Successfully"
       shell: powershell
 
     - name: 上传缓存文件
@@ -256,13 +256,13 @@ jobs:
       if: matrix.platform == 'linux'
       run: |
         echo "========================================"
-        echo "缓存测试总结"
+        echo "Cache Test Summary"
         echo "========================================"
-        echo "平台: ${{ matrix.platform }} (${{ matrix.arch }})"
+        echo "Platform: ${{ matrix.platform }} (${{ matrix.arch }})"
         if [ "${{ steps.cache-python-linux.outputs.cache-hit }}" = "true" ]; then
-          echo "缓存状态: 命中"
+          echo "Cache Status: HIT"
         else
-          echo "缓存状态: 未命中 (已构建新缓存)"
+          echo "Cache Status: MISS (New cache built)"
         fi
         echo "========================================"
 
@@ -270,13 +270,13 @@ jobs:
       if: matrix.platform == 'windows'
       run: |
         Write-Host "========================================"
-        Write-Host "缓存测试总结"
+        Write-Host "Cache Test Summary"
         Write-Host "========================================"
-        Write-Host "平台: ${{ matrix.platform }} (${{ matrix.arch }})"
+        Write-Host "Platform: ${{ matrix.platform }} (${{ matrix.arch }})"
         if ("${{ steps.cache-python-windows.outputs.cache-hit }}" -eq "true") {
-          Write-Host "缓存状态: 命中"
+          Write-Host "Cache Status: HIT"
         } else {
-          Write-Host "缓存状态: 未命中 (已构建新缓存)"
+          Write-Host "Cache Status: MISS (New cache built)"
         }
         Write-Host "========================================"
       shell: powershell
