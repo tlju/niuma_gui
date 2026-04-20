@@ -285,7 +285,7 @@ jobs:
                 libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
                 libfreetype6-dev libfontconfig1-dev \
                 libharfbuzz-dev libjpeg-dev libpng-dev \
-                libstdc++-dev
+                libstdc++*
               
               echo "=== 安装 CMake 3.30 (Qt6 需要 3.16+) ==="
               cd /tmp
