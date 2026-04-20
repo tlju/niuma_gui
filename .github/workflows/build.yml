@@ -52,7 +52,7 @@ jobs:
         path: python-env-${{ matrix.arch }}.tar.gz
         key: ${{ matrix.python_cache_name }}
         restore-keys: |
-          ${{ matrix.python_cache_name }}-
+          ${{ matrix.python_cache_name }}
 
     - name: 恢复 Qt6 环境缓存 (arm64)
       if: matrix.platform == 'linux' && matrix.arch == 'arm64'
@@ -62,7 +62,7 @@ jobs:
         path: qt6-env-arm64.tar.gz
         key: qt6-env-arm64
         restore-keys: |
-          qt6-env-arm64-
+          qt6-env-arm64
 
     - name: 恢复 Python 环境缓存 (Windows)
       if: matrix.platform == 'windows'
@@ -72,7 +72,7 @@ jobs:
         path: python-env-${{ matrix.arch }}.7z
         key: ${{ matrix.python_cache_name }}
         restore-keys: |
-          ${{ matrix.python_cache_name }}-
+          ${{ matrix.python_cache_name }}
 
     - name: 设置 Python (Windows)
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
