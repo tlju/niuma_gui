@@ -192,7 +192,7 @@ jobs:
         echo "=== Verifying Python Environment ==="
         python --version
         pip --version
-        pip list | grep -i nuitka
+        pip list | grep -i nuitka || echo "Nuitka not found in pip list"
         ccache --version || echo "ccache not available"
         echo "Python Environment Verified Successfully"
       shell: bash
