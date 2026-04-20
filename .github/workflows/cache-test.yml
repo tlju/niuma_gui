@@ -84,6 +84,16 @@ jobs:
           ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-
           ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-
 
+    - name: 恢复 Qt6 环境缓存 (arm64)
+      if: matrix.platform == 'linux' && matrix.arch == 'arm64'
+      uses: actions/cache@v5
+      id: cache-qt6-arm64
+      with:
+        path: qt6-env-arm64.tar.gz
+        key: ${{ env.CACHE_VERSION }}-qt6-env-arm64-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ env.CACHE_VERSION }}-qt6-env-arm64-
+
     - name: 恢复 Python 缓存 (Windows)
       if: matrix.platform == 'windows'
       id: cache-python-windows
@@ -164,10 +174,9 @@ jobs:
         pip --version
       shell: powershell
 
-    - name: 构建 Python 环境 (Linux)
-      if: matrix.platform == 'linux' && steps.cache-python-linux.outputs.cache-hit != 'true'
+    - name: 准备 Python 环境 (Linux)
+      if: matrix.platform == 'linux' && (steps.cache-python-linux.outputs.cache-hit != 'true' || (matrix.arch == 'arm64' && steps.cache-qt6-arm64.outputs.cache-hit != 'true'))
       run: |
-        echo "=== Building Python Environment ==="
         docker run --rm \
           --platform ${{ matrix.platform_name }} \
           -v ${{ github.workspace }}:/workspace \
@@ -176,12 +185,28 @@ jobs:
           bash -c '
             set -e
             
-            echo "=== Configuring apt sources ==="
+            echo "=== 检查缓存状态 ==="
+            PYTHON_CACHED="${{ steps.cache-python-linux.outputs.cache-hit }}"
+            QT6_CACHED="${{ steps.cache-qt6-arm64.outputs.cache-hit }}"
+            echo "Python 缓存命中: $PYTHON_CACHED"
+            echo "Qt6 缓存命中: $QT6_CACHED"
+            
+            if [ "$PYTHON_CACHED" = "true" ] && [ "${{ matrix.arch }}" != "arm64" ]; then
+              echo "Python 环境已缓存，跳过编译"
+              exit 0
+            fi
+            
+            if [ "$PYTHON_CACHED" = "true" ] && [ "${{ matrix.arch }}" = "arm64" ] && [ "$QT6_CACHED" = "true" ]; then
+              echo "Python 和 Qt6 环境已缓存，跳过编译"
+              exit 0
+            fi
+            
+            echo "=== 配置 apt 源 (Debian 10 已归档) ==="
             echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
             echo "deb http://archive.debian.org/debian buster-updates main" >> /etc/apt/sources.list
             echo "Acquire::Check-Valid-Until false;" > /etc/apt/apt.conf.d/99no-check-valid-until
             
-            echo "=== Installing system dependencies ==="
+            echo "=== 安装系统依赖 ==="
             apt-get update
             apt-get install -y \
               gcc g++ make wget patchelf \
@@ -200,46 +225,118 @@ jobs:
               tk-dev \
               libgdbm-dev
             
-            echo "=== Compiling Python 3.12 ==="
-            cd /tmp
-            wget -q https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz
-            tar xzf Python-3.12.13.tgz
-            cd Python-3.12.13
-            ./configure --enable-optimizations --prefix=/usr/local/python3.12
-            make -j$(nproc)
-            make install
-            
-            echo "=== Installing Python dependencies ==="
-            cd /workspace
-            /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
-            
-            if [ "${{ matrix.arch }}" = "arm64" ]; then
-              echo "=== Installing PyQt6 for ARM64 (from source) ==="
-              /usr/local/python3.12/bin/pip3.12 install PyQt6-sip sip html5lib
-              /usr/local/python3.12/bin/pip3.12 install --no-binary :all: PyQt6
+            if [ "$PYTHON_CACHED" != "true" ]; then
+              echo "=== 安装 Python 3.12 ==="
+              cd /tmp
+              wget -q https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz
+              tar xzf Python-3.12.13.tgz
+              cd Python-3.12.13
+              ./configure --enable-optimizations --prefix=/usr/local/python3.12
+              make -j$(nproc)
+              make install
+              
+              echo "=== 安装 Python 依赖 ==="
+              cd /workspace
+              /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
             else
-              echo "=== Installing PyQt6 for x64 (pre-built) ==="
+              echo "=== Python 环境已缓存，跳过 Python 编译 ==="
+            fi
+            
+            if [ "${{ matrix.arch }}" = "arm64" ] && [ "$QT6_CACHED" != "true" ]; then
+              echo "=== 安装 Qt6 编译依赖 (arm64) ==="
+              apt-get install -y \
+                ninja-build perl python3 \
+                libgles2-mesa-dev libwayland-dev wayland-protocols \
+                libinput-dev libxkbcommon-dev libdrm-dev \
+                libgbm-dev libasound2-dev libpulse-dev \
+                libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+                libfreetype6-dev libfontconfig1-dev \
+                libharfbuzz-dev libjpeg-dev libpng-dev
+              
+              echo "=== 安装 CMake 3.30 (Qt6 需要 3.16+) ==="
+              cd /tmp
+              CMAKE_VERSION=3.30.5
+              wget -q https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-aarch64.tar.gz
+              tar -xzf cmake-${CMAKE_VERSION}-linux-aarch64.tar.gz
+              export PATH=/tmp/cmake-${CMAKE_VERSION}-linux-aarch64/bin:$PATH
+              cmake --version
+              
+              echo "=== 下载 Qt6 源码 (arm64) ==="
+              cd /tmp
+              wget -q https://download.qt.io/official_releases/qt/6.5/6.5.3/single/qt-everywhere-src-6.5.3.tar.xz
+              tar -xf qt-everywhere-src-6.5.3.tar.xz
+              cd qt-everywhere-src-6.5.3
+              
+              echo "=== 配置 Qt6 (arm64) ==="
+              mkdir build && cd build
+              cmake .. \
+                -G "Unix Makefiles" \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_INSTALL_PREFIX=/opt/qt6 \
+                -DCMAKE_CXX_FLAGS="-lstdc++fs" \
+                -DCMAKE_EXE_LINKER_FLAGS="-lstdc++fs" \
+                -DCMAKE_SHARED_LINKER_FLAGS="-lstdc++fs" \
+                -DCMAKE_MODULE_LINKER_FLAGS="-lstdc++fs" \
+                -DQT_BUILD_EXAMPLES=OFF \
+                -DQT_BUILD_TESTS=OFF \
+                -DQT_FEATURE_vulkan=OFF \
+                -DQT_FEATURE_opengl=ON \
+                -DQT_FEATURE_opengles2=ON \
+                -DQT_FEATURE_egl=ON
+              
+              echo "=== 编译 Qt6 (arm64 - 这可能需要较长时间) ==="
+              make -j$(nproc)
+              
+              echo "=== 安装 Qt6 (arm64) ==="
+              cmake --install .
+              
+              export PATH="/opt/qt6/bin:$PATH"
+              export QT_PLUGIN_PATH="/opt/qt6/plugins"
+              export LD_LIBRARY_PATH="/opt/qt6/lib:$LD_LIBRARY_PATH"
+              qmake --version
+              
+              echo "=== 安装 PyQt6 (arm64 - 从源码编译) ==="
+              cd /workspace
+              export PATH="/usr/local/python3.12/bin:$PATH"
+              export PYTHONPATH="/usr/local/python3.12/lib/python3.12/site-packages:$PYTHONPATH"
+              pip3.12 install PyQt6-sip sip html5lib
+              pip3.12 install --no-binary :all: PyQt6
+              
+              echo "=== 编译 PyQt6-QScintilla (arm64) ==="
+              pip3.12 install --no-binary :all: PyQt6-QScintilla
+            elif [ "$PYTHON_CACHED" != "true" ]; then
+              echo "=== 安装 PyQt6 (x64 - 使用预编译包) ==="
               /usr/local/python3.12/bin/pip3.12 install --only-binary=:all: PyQt6 PyQt6-Qt6 PyQt6-sip
             fi
             
-            /usr/local/python3.12/bin/pip3.12 install -r requirements.txt
-            /usr/local/python3.12/bin/pip3.12 install nuitka ordered-set zstandard
+            if [ "$PYTHON_CACHED" != "true" ]; then
+              /usr/local/python3.12/bin/pip3.12 install -r requirements.txt
+              /usr/local/python3.12/bin/pip3.12 install nuitka ordered-set zstandard
+              
+              echo "=== 打包 Python 环境 ==="
+              cd /usr/local
+              tar -czf /workspace/python-env-${{ matrix.arch }}.tar.gz python3.12
+              ls -lh /workspace/python-env-${{ matrix.arch }}.tar.gz
+            fi
             
-            echo "=== Packaging Python environment ==="
-            cd /usr/local
-            tar -czf /workspace/python-env-${{ matrix.arch }}.tar.gz python3.12
-            ls -lh /workspace/python-env-${{ matrix.arch }}.tar.gz
+            if [ "${{ matrix.arch }}" = "arm64" ] && [ "$QT6_CACHED" != "true" ]; then
+              echo "=== 打包 Qt6 环境 (arm64) ==="
+              cd /opt
+              tar -czf /workspace/qt6-env-arm64.tar.gz qt6
+              ls -lh /workspace/qt6-env-arm64.tar.gz
+            fi
           '
+      shell: bash
 
     - name: 验证 Python 环境 (Linux)
       if: matrix.platform == 'linux'
       run: |
-        echo "=== Verifying Python Environment ==="
+        echo "=== 验证 Python 环境 ==="
         if [ -f "python-env-${{ matrix.arch }}.tar.gz" ]; then
-          echo "Cache file exists"
+          echo "缓存文件存在"
           ls -lh python-env-${{ matrix.arch }}.tar.gz
           
-          echo "=== Testing extraction ==="
+          echo "=== 测试解压 ==="
           docker run --rm \
             --platform ${{ matrix.platform_name }} \
             -v ${{ github.workspace }}:/workspace \
@@ -248,10 +345,12 @@ jobs:
             bash -c '
               set -e
               
-              echo "=== Installing system dependencies for verification ==="
+              echo "=== 配置 apt 源 (Debian 10 已归档) ==="
               echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
               echo "deb http://archive.debian.org/debian buster-updates main" >> /etc/apt/sources.list
               echo "Acquire::Check-Valid-Until false;" > /etc/apt/apt.conf.d/99no-check-valid-until
+              
+              echo "=== 安装系统依赖 ==="
               apt-get update
               apt-get install -y \
                 libxrender-dev libxext-dev libx11-dev \
@@ -260,23 +359,24 @@ jobs:
                 libgl1-mesa-dev libegl1-mesa-dev \
                 libxkbcommon-x11-dev
               
-              echo "=== Extracting Python environment ==="
+              echo "=== 解压 Python 环境 ==="
               cd /usr/local
               tar -xzf /workspace/python-env-${{ matrix.arch }}.tar.gz
               ln -sf /usr/local/python3.12/bin/python3.12 /usr/local/bin/python3
               ln -sf /usr/local/python3.12/bin/pip3.12 /usr/local/bin/pip3
               
-              echo "=== Verifying Python ==="
+              echo "=== 验证 Python ==="
               python3 --version
               python3 -c "import sys; print(sys.executable)"
               
-              echo "=== Verifying PyQt6 ==="
+              echo "=== 验证 PyQt6 ==="
               python3 -c "import PyQt6; print(PyQt6.__version__)"
             '
         else
-          echo "Cache file not found"
+          echo "缓存文件未找到"
           exit 1
         fi
+      shell: bash
 
     - name: 验证 Python 环境 (Windows)
       if: matrix.platform == 'windows'
@@ -295,33 +395,42 @@ jobs:
         path: |
           python-env-${{ matrix.arch }}.tar.gz
           python-env-${{ matrix.arch }}.7z
+          qt6-env-arm64.tar.gz
         retention-days: 7
 
     - name: 测试总结 (Linux)
       if: matrix.platform == 'linux'
       run: |
         echo "========================================"
-        echo "Cache Test Summary"
+        echo "缓存测试总结"
         echo "========================================"
-        echo "Platform: ${{ matrix.platform }} (${{ matrix.arch }})"
+        echo "平台: ${{ matrix.platform }} (${{ matrix.arch }})"
         if [ "${{ steps.cache-python-linux.outputs.cache-hit }}" = "true" ]; then
-          echo "Cache Status: HIT"
+          echo "Python 缓存状态: 命中"
         else
-          echo "Cache Status: MISS (New cache built)"
+          echo "Python 缓存状态: 未命中 (已构建新缓存)"
+        fi
+        if [ "${{ matrix.arch }}" = "arm64" ]; then
+          if [ "${{ steps.cache-qt6-arm64.outputs.cache-hit }}" = "true" ]; then
+            echo "Qt6 缓存状态: 命中"
+          else
+            echo "Qt6 缓存状态: 未命中 (已构建新缓存)"
+          fi
         fi
         echo "========================================"
+      shell: bash
 
     - name: 测试总结 (Windows)
       if: matrix.platform == 'windows'
       run: |
         Write-Host "========================================"
-        Write-Host "Cache Test Summary"
+        Write-Host "缓存测试总结"
         Write-Host "========================================"
-        Write-Host "Platform: ${{ matrix.platform }} (${{ matrix.arch }})"
+        Write-Host "平台: ${{ matrix.platform }} (${{ matrix.arch }})"
         if ("${{ steps.cache-python-windows.outputs.cache-hit }}" -eq "true") {
-          Write-Host "Cache Status: HIT"
+          Write-Host "Python 缓存状态: 命中"
         } else {
-          Write-Host "Cache Status: MISS (New cache built)"
+          Write-Host "Python 缓存状态: 未命中 (已构建新缓存)"
         }
         Write-Host "========================================"
       shell: powershell
