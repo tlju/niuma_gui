@@ -100,11 +100,11 @@ jobs:
       run: |
         echo "=== 缓存命中状态 ==="
         if [ "${{ steps.cache-python-linux.outputs.cache-hit }}" = "true" ]; then
-          echo "✅ 缓存命中！"
+          echo "缓存命中！"
           echo "缓存文件信息:"
           ls -lh python-env-${{ matrix.arch }}.tar.gz || echo "缓存文件不存在"
         else
-          echo "❌ 缓存未命中"
+          echo "缓存未命中"
           echo "将执行 Python 环境构建..."
         fi
 
@@ -211,7 +211,7 @@ jobs:
       run: |
         echo "=== 验证 Python 环境 ==="
         if [ -f "python-env-${{ matrix.arch }}.tar.gz" ]; then
-          echo "✅ 缓存文件存在"
+          echo "缓存文件存在"
           ls -lh python-env-${{ matrix.arch }}.tar.gz
           
           echo "=== 测试解压 ==="
@@ -229,7 +229,7 @@ jobs:
               python3 -c "import sys; print(sys.executable)"
             '
         else
-          echo "❌ 缓存文件不存在"
+          echo "缓存文件不存在"
           exit 1
         fi
 
