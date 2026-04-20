@@ -190,14 +190,15 @@ jobs:
             wget -q https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz
             tar xzf Python-3.12.13.tgz
             cd Python-3.12.13
-            ./configure --prefix=/usr/local/python3.12
+            ./configure --enable-optimizations --prefix=/usr/local/python3.12
             make -j$(nproc)
             make install
             
             echo "=== 安装 Python 依赖 ==="
             cd /workspace
+            /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
             /usr/local/python3.12/bin/pip3.12 install -r requirements.txt
-            /usr/local/python3.12/bin/pip3.12 install nuitka ordered
+            /usr/local/python3.12/bin/pip3.12 install nuitka ordered-set zstandard
             
             echo "=== 打包 Python 环境 ==="
             cd /usr/local
