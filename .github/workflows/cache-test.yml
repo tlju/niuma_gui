@@ -46,7 +46,8 @@ jobs:
       if: matrix.arch == 'arm64'
       uses: docker/setup-qemu-action@v4
 
-    - name: 显示缓存信息
+    - name: 显示缓存信息 (Linux)
+      if: matrix.platform == 'linux'
       run: |
         echo "=== 缓存配置信息 ==="
         echo "平台: ${{ matrix.platform }}"
@@ -57,6 +58,20 @@ jobs:
         echo ""
         echo "=== 预期缓存 Key ==="
         echo "${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}"
+
+    - name: 显示缓存信息 (Windows)
+      if: matrix.platform == 'windows'
+      run: |
+        Write-Host "=== 缓存配置信息 ==="
+        Write-Host "平台: ${{ matrix.platform }}"
+        Write-Host "架构: ${{ matrix.arch }}"
+        Write-Host "Python 版本: ${{ env.PYTHON_VERSION }}"
+        Write-Host "缓存版本: ${{ env.CACHE_VERSION }}"
+        Write-Host "缓存名称: ${{ matrix.python_cache_name }}"
+        Write-Host ""
+        Write-Host "=== 预期缓存 Key ==="
+        Write-Host "${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}"
+      shell: powershell
 
     - name: 恢复 Python 缓存 (Linux)
       if: matrix.platform == 'linux'
@@ -96,14 +111,14 @@ jobs:
     - name: 检查缓存命中状态 (Windows)
       if: matrix.platform == 'windows'
       run: |
-        echo "=== 缓存命中状态 ==="
+        Write-Host "=== 缓存命中状态 ==="
         if ("${{ steps.cache-python-windows.outputs.cache-hit }}" -eq "true") {
-          echo "✅ 缓存命中！"
-          echo "缓存文件信息:"
+          Write-Host "缓存命中！"
+          Write-Host "缓存文件信息:"
           Get-Item python-env-${{ matrix.arch }}.7z -ErrorAction SilentlyContinue | Select-Object Name, Length, LastWriteTime
         } else {
-          echo "❌ 缓存未命中"
-          echo "将执行 Python 环境构建..."
+          Write-Host "缓存未命中"
+          Write-Host "将执行 Python 环境构建..."
         }
       shell: powershell
 
@@ -116,17 +131,18 @@ jobs:
     - name: 安装依赖 (Windows)
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       run: |
-        echo "=== 安装 Python 依赖 ==="
+        Write-Host "=== 安装 Python 依赖 ==="
         python -m pip install --upgrade pip setuptools wheel
         pip install -r requirements.txt
         pip install nuitka ordered-set zstandard
-        echo "=== 依赖安装完成 ==="
+        Write-Host "=== 依赖安装完成 ==="
         pip list
+      shell: powershell
 
     - name: 打包 Python 环境 (Windows)
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       run: |
-        echo "=== 打包 Python 环境 ==="
+        Write-Host "=== 打包 Python 环境 ==="
         $pythonPath = python -c "import sys; print(sys.prefix)"
         Write-Host "Python 路径: $pythonPath"
         7z a -t7z -mx=9 python-env-${{ matrix.arch }}.7z "$pythonPath\*"
@@ -137,12 +153,12 @@ jobs:
     - name: 恢复 Python 环境 (Windows)
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit == 'true'
       run: |
-        echo "=== 恢复 Python 环境 ==="
+        Write-Host "=== 恢复 Python 环境 ==="
         $destPath = "$env:LOCALAPPDATA\python-cache"
         New-Item -ItemType Directory -Force -Path $destPath
         7z x python-env-${{ matrix.arch }}.7z -o"$destPath" -y
-        echo "$destPath\Scripts" >> $env:GITHUB_PATH
-        echo "$destPath" >> $env:GITHUB_PATH
+        Add-Content -Path $env:GITHUB_PATH -Value "$destPath\Scripts"
+        Add-Content -Path $env:GITHUB_PATH -Value "$destPath"
         Write-Host "=== 环境恢复完成 ==="
         python --version
         pip --version
@@ -219,11 +235,12 @@ jobs:
     - name: 验证 Python 环境 (Windows)
       if: matrix.platform == 'windows'
       run: |
-        echo "=== 验证 Python 环境 ==="
+        Write-Host "=== 验证 Python 环境 ==="
         python --version
         pip --version
         python -c "import sys; print(sys.executable)"
-        echo "✅ Python 环境验证成功"
+        Write-Host "Python 环境验证成功"
+      shell: powershell
 
     - name: 上传缓存文件
       uses: actions/upload-artifact@v7
@@ -234,23 +251,31 @@ jobs:
           python-env-${{ matrix.arch }}.7z
         retention-days: 7
 
-    - name: 测试总结
+    - name: 测试总结 (Linux)
+      if: matrix.platform == 'linux'
       run: |
         echo "========================================"
         echo "缓存测试总结"
         echo "========================================"
         echo "平台: ${{ matrix.platform }} (${{ matrix.arch }})"
-        if [ "${{ matrix.platform }}" = "linux" ]; then
-          if [ "${{ steps.cache-python-linux.outputs.cache-hit }}" = "true" ]; then
-            echo "缓存状态: ✅ 命中"
-          else
-            echo "缓存状态: ❌ 未命中 (已构建新缓存)"
-          fi
+        if [ "${{ steps.cache-python-linux.outputs.cache-hit }}" = "true" ]; then
+          echo "缓存状态: 命中"
         else
-          if [ "${{ steps.cache-python-windows.outputs.cache-hit }}" = "true" ]; then
-            echo "缓存状态: ✅ 命中"
-          else
-            echo "缓存状态: ❌ 未命中 (已构建新缓存)"
-          fi
+          echo "缓存状态: 未命中 (已构建新缓存)"
         fi
         echo "========================================"
+
+    - name: 测试总结 (Windows)
+      if: matrix.platform == 'windows'
+      run: |
+        Write-Host "========================================"
+        Write-Host "缓存测试总结"
+        Write-Host "========================================"
+        Write-Host "平台: ${{ matrix.platform }} (${{ matrix.arch }})"
+        if ("${{ steps.cache-python-windows.outputs.cache-hit }}" -eq "true") {
+          Write-Host "缓存状态: 命中"
+        } else {
+          Write-Host "缓存状态: 未命中 (已构建新缓存)"
+        }
+        Write-Host "========================================"
+      shell: powershell
