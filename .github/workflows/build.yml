@@ -38,14 +38,14 @@ jobs:
             python_cache_name: python-env-windows-x64
 
     steps:
-    - name: 检出代码
+    - name: '1. 检出代码'
       uses: actions/checkout@v6
 
-    - name: 设置 QEMU (arm64)
+    - name: '2. 设置 QEMU (arm64)'
       if: matrix.arch == 'arm64'
       uses: docker/setup-qemu-action@v4
 
-    - name: 显示缓存信息 (Linux)
+    - name: '3. 显示缓存信息 (Linux)'
       if: matrix.platform == 'linux'
       run: |
         echo "=== Cache Configuration ==="
@@ -58,7 +58,7 @@ jobs:
         echo "=== Expected Cache Key ==="
         echo "${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}"
 
-    - name: 显示缓存信息 (Windows)
+    - name: '3. 显示缓存信息 (Windows)'
       if: matrix.platform == 'windows'
       run: |
         Write-Host "=== Cache Configuration ==="
@@ -72,7 +72,7 @@ jobs:
         Write-Host "${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}"
       shell: powershell
 
-    - name: 恢复 Python 环境缓存 (Linux)
+    - name: '4. 恢复 Python 环境缓存 (Linux)'
       if: matrix.platform == 'linux'
       uses: actions/cache@v5
       id: cache-python-linux
@@ -83,7 +83,7 @@ jobs:
           ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-
           ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-
 
-    - name: 恢复 Qt6 环境缓存 (arm64)
+    - name: '5. 恢复 Qt6 环境缓存 (arm64)'
       if: matrix.platform == 'linux' && matrix.arch == 'arm64'
       uses: actions/cache@v5
       id: cache-qt6-arm64
@@ -93,7 +93,7 @@ jobs:
         restore-keys: |
           ${{ env.CACHE_VERSION }}-qt6-env-arm64-
 
-    - name: 恢复 Python 环境缓存 (Windows)
+    - name: '6. 恢复 Python 环境缓存 (Windows)'
       if: matrix.platform == 'windows'
       uses: actions/cache@v5
       id: cache-python-windows
@@ -104,7 +104,7 @@ jobs:
           ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-
           ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-
 
-    - name: 检查缓存命中状态 (Linux)
+    - name: '7. 检查缓存命中状态 (Linux)'
       if: matrix.platform == 'linux'
       run: |
         echo "=== Cache Hit Status ==="
@@ -125,7 +125,7 @@ jobs:
           fi
         fi
 
-    - name: 检查缓存命中状态 (Windows)
+    - name: '7. 检查缓存命中状态 (Windows)'
       if: matrix.platform == 'windows'
       run: |
         Write-Host "=== Cache Hit Status ==="
@@ -139,13 +139,13 @@ jobs:
         }
       shell: powershell
 
-    - name: 设置 Python (Windows)
+    - name: '8. 设置 Python (Windows)'
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       uses: actions/setup-python@v6
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: 安装依赖 (Windows)
+    - name: '9. 安装依赖 (Windows)'
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       run: |
         Write-Host "=== Installing Python Dependencies ==="
@@ -156,12 +156,12 @@ jobs:
         pip list
       shell: powershell
 
-    - name: 安装构建依赖 (Windows)
+    - name: '10. 安装构建依赖 (Windows)'
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       run: |
         choco install ccache -y
 
-    - name: 打包 Python 环境 (Windows)
+    - name: '11. 打包 Python 环境 (Windows)'
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       run: |
         Write-Host "=== Packaging Python Environment ==="
@@ -172,7 +172,7 @@ jobs:
         Get-Item python-env-${{ matrix.arch }}.7z | Select-Object Name, Length, LastWriteTime
       shell: powershell
 
-    - name: 恢复 Python 环境 (Windows)
+    - name: '12. 恢复 Python 环境 (Windows)'
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit == 'true'
       run: |
         Write-Host "=== Restoring Python Environment ==="
@@ -186,7 +186,7 @@ jobs:
         pip --version
       shell: powershell
 
-    - name: 验证 Python 环境 (Windows)
+    - name: '13. 验证 Python 环境 (Windows)'
       if: matrix.platform == 'windows'
       run: |
         echo "=== Verifying Python Environment ==="
@@ -197,7 +197,7 @@ jobs:
         echo "Python Environment Verified Successfully"
       shell: bash
 
-    - name: 准备 Python 环境 (Linux)
+    - name: '14. 准备 Python 环境 (Linux)'
       if: matrix.platform == 'linux' && (steps.cache-python-linux.outputs.cache-hit != 'true' || (matrix.arch == 'arm64' && steps.cache-qt6-arm64.outputs.cache-hit != 'true'))
       run: |
         docker run --rm \
@@ -351,7 +351,7 @@ jobs:
           '
       shell: bash
 
-    - name: 在 Debian 10.10 容器内构建 (Linux)
+    - name: '15. 在 Debian 10.10 容器内构建 (Linux)'
       if: matrix.platform == 'linux'
       run: |
         docker run --rm \
@@ -405,8 +405,8 @@ jobs:
             fi
             
             echo "=== 验证 Python 环境 ==="
-            python3 -c "import sys; print(sys.executable)"
-            python3 -c "from PyQt6.QtCore import PYQT_VERSION_STR; print(f'PyQt6 version: {PYQT_VERSION_STR}')"
+            python3 -c '"'"'import sys; print(sys.executable)'"'"'
+            python3 -c '"'"'from PyQt6.QtCore import PYQT_VERSION_STR; print("PyQt6 version:", PYQT_VERSION_STR)'"'"'
             
             echo "=== 使用 Nuitka 构建 ==="
             cd /workspace
@@ -449,7 +449,7 @@ jobs:
           '
       shell: bash
 
-    - name: 使用 Nuitka 构建 (Windows)
+    - name: '16. 使用 Nuitka 构建 (Windows)'
       if: matrix.platform == 'windows'
       run: |
         python -m nuitka --standalone \
@@ -470,7 +470,7 @@ jobs:
           main.py
       shell: bash
 
-    - name: 验证构建输出 (Windows)
+    - name: '17. 验证构建输出 (Windows)'
       if: matrix.platform == 'windows'
       run: |
         echo "检查 dist 目录内容:"
@@ -486,7 +486,7 @@ jobs:
         fi
       shell: bash
 
-    - name: 压缩构建产物 (Windows)
+    - name: '18. 压缩构建产物 (Windows)'
       if: matrix.platform == 'windows'
       run: |
         cd dist
@@ -494,7 +494,7 @@ jobs:
         ls -lh ${{ matrix.output_name }}.*
       shell: bash
 
-    - name: 上传构建产物
+    - name: '19. 上传构建产物'
       uses: actions/upload-artifact@v7
       with:
         name: ${{ matrix.output_name }}
@@ -503,7 +503,7 @@ jobs:
           dist/${{ matrix.output_name }}.7z
         retention-days: 30
 
-    - name: 上传到发布
+    - name: '20. 上传到发布'
       if: github.event_name == 'release' && github.event.release.tag_name != ''
       uses: softprops/action-gh-release@v3
       with:
@@ -514,7 +514,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: 上传 Python 环境到发布 (Linux)
+    - name: '21. 上传 Python 环境到发布 (Linux)'
       if: github.event_name == 'release' && github.event.release.tag_name != '' && matrix.platform == 'linux'
       uses: softprops/action-gh-release@v3
       with:
@@ -523,7 +523,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: 上传 Python 环境到发布 (Windows)
+    - name: '22. 上传 Python 环境到发布 (Windows)'
       if: github.event_name == 'release' && github.event.release.tag_name != '' && matrix.platform == 'windows'
       uses: softprops/action-gh-release@v3
       with:
@@ -532,7 +532,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: 上传 Qt6 环境到发布 (arm64)
+    - name: '23. 上传 Qt6 环境到发布 (arm64)'
       if: github.event_name == 'release' && github.event.release.tag_name != '' && matrix.arch == 'arm64'
       uses: softprops/action-gh-release@v3
       with:
@@ -541,7 +541,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: 构建总结 (Linux)
+    - name: '24. 构建总结 (Linux)'
       if: matrix.platform == 'linux'
       run: |
         echo "========================================"
@@ -564,7 +564,7 @@ jobs:
         echo "========================================"
       shell: bash
 
-    - name: 构建总结 (Windows)
+    - name: '24. 构建总结 (Windows)'
       if: matrix.platform == 'windows'
       run: |
         Write-Host "========================================"
