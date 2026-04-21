@@ -109,7 +109,7 @@ class DocumentsPage(QWidget):
             self.count_label.setText(f"共 {len(self.all_documents)} 条记录")
             if reload_categories:
                 self._load_categories()
-            logger.info(f"加载了 {len(self.all_documents)} 个文档")
+            logger.debug(f"加载了 {len(self.all_documents)} 个文档")
         except Exception as e:
             logger.error(f"加载文档失败: {e}")
             QMessageBox.critical(self, "错误", f"加载文档失败:\n{e}")

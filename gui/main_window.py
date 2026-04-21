@@ -345,7 +345,7 @@ class MainWindow(QMainWindow):
         if page_name in page_map:
             page, name = page_map[page_name]
             self.stacked_widget.setCurrentWidget(page)
-            logger.info(f"切换到{name}页面")
+            logger.debug(f"切换到{name}页面")
 
     def show_about(self):
         QMessageBox.about(

@@ -100,10 +100,10 @@ class ScriptsPage(QWidget):
         self.loading_worker.finished.connect(self._on_scripts_loaded)
         self.loading_worker.error.connect(self._on_load_error)
         self.loading_worker.start()
-        logger.info("开始加载脚本列表")
+        logger.debug("开始加载脚本列表")
 
     def _on_scripts_loaded(self, scripts):
-        logger.info(f"成功加载 {len(scripts)} 个脚本")
+        logger.debug(f"成功加载 {len(scripts)} 个脚本")
         self.scripts_data = scripts
         self._populate_table(scripts)
 

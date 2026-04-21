@@ -185,7 +185,7 @@ class AssetsPage(QWidget):
         self.loading_worker.finished.connect(self._on_assets_loaded)
         self.loading_worker.error.connect(self._on_load_error)
         self.loading_worker.start()
-        logger.info("开始加载资产列表")
+        logger.debug("开始加载资产列表")
 
     def _on_assets_loaded(self, assets):
         self.refresh_btn.setEnabled(True)
@@ -194,7 +194,7 @@ class AssetsPage(QWidget):
         self.filtered_assets = assets
         self._populate_table(assets)
         self._update_count_label()
-        logger.info(f"成功加载 {len(assets)} 个资产")
+        logger.debug(f"成功加载 {len(assets)} 个资产")
 
     def _on_load_error(self, error_msg):
         self.refresh_btn.setEnabled(True)

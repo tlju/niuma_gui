@@ -43,7 +43,7 @@ class AuditService:
         resource_id: Optional[int] = None,
         details: Optional[str] = None,
         ip_address: Optional[str] = None
-    ):
+    ) -> AuditLog:
         audit = AuditLog(
             user_id=user_id,
             action_type=action_type,
@@ -55,3 +55,5 @@ class AuditService:
         )
         self.db.add(audit)
         self.db.commit()
+        self.db.refresh(audit)
+        return audit

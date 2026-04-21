@@ -268,7 +268,7 @@ class WorkflowService:
                 execution_callback(update)
 
         def db_log_callback(log_entry):
-            logger.info(f"[Workflow {workflow_id}] {log_entry['message']}")
+            logger.debug(f"[Workflow {workflow_id}] {log_entry['message']}")
             
             execution_logs.append(log_entry)
 

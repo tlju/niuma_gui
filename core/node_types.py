@@ -146,11 +146,11 @@ class CommandNode(BaseNode):
                         dict_code = parts[1]
                         item_name = parts[2]
                         items = self.dict_service.get_dict_items(dict_code)
-                        logger.info(f"字典变量替换: 查找字典 '{dict_code}' 中的项 '{item_name}'，共 {len(items)} 个字典项")
+                        logger.debug(f"字典变量替换: 查找字典 '{dict_code}' 中的项 '{item_name}'，共 {len(items)} 个字典项")
                         for item in items:
-                            logger.info(f"  - 字典项: code='{item.item_code}', name='{item.item_name}'")
+                            logger.debug(f"  - 字典项: code='{item.item_code}', name='{item.item_name}'")
                             if item.item_name == item_name:
-                                logger.info(f"字典变量替换成功: @{var_path} -> {item.item_code}")
+                                logger.debug(f"字典变量替换成功: @{var_path} -> {item.item_code}")
                                 return item.item_code
                         logger.warning(f"字典变量替换失败: 未找到匹配的字典项 @{var_path}")
                 elif source_type == "dict" and not self.dict_service:
@@ -160,7 +160,7 @@ class CommandNode(BaseNode):
                     logger.debug(f"尝试替换参数变量: param_code={param_code}")
                     param = self.param_service.get_param_by_code(param_code)
                     if param:
-                        logger.info(f"参数变量替换成功: @{var_path} -> {param.param_value}")
+                        logger.debug(f"参数变量替换成功: @{var_path} -> {param.param_value}")
                         return param.param_value
                     else:
                         logger.warning(f"参数变量替换失败: 未找到参数 @{var_path}")
@@ -310,11 +310,11 @@ class ScriptNode(BaseNode):
                         dict_code = parts[1]
                         item_name = parts[2]
                         items = self.dict_service.get_dict_items(dict_code)
-                        logger.info(f"字典变量替换: 查找字典 '{dict_code}' 中的项 '{item_name}'，共 {len(items)} 个字典项")
+                        logger.debug(f"字典变量替换: 查找字典 '{dict_code}' 中的项 '{item_name}'，共 {len(items)} 个字典项")
                         for item in items:
-                            logger.info(f"  - 字典项: code='{item.item_code}', name='{item.item_name}'")
+                            logger.debug(f"  - 字典项: code='{item.item_code}', name='{item.item_name}'")
                             if item.item_name == item_name:
-                                logger.info(f"字典变量替换成功: @{var_path} -> {item.item_code}")
+                                logger.debug(f"字典变量替换成功: @{var_path} -> {item.item_code}")
                                 return item.item_code
                         logger.warning(f"字典变量替换失败: 未找到匹配的字典项 @{var_path}")
                 elif source_type == "dict" and not self.dict_service:
@@ -324,7 +324,7 @@ class ScriptNode(BaseNode):
                     logger.debug(f"尝试替换参数变量: param_code={param_code}")
                     param = self.param_service.get_param_by_code(param_code)
                     if param:
-                        logger.info(f"参数变量替换成功: @{var_path} -> {param.param_value}")
+                        logger.debug(f"参数变量替换成功: @{var_path} -> {param.param_value}")
                         return param.param_value
                     else:
                         logger.warning(f"参数变量替换失败: 未找到参数 @{var_path}")
@@ -894,7 +894,7 @@ class BastionNode(BaseNode):
                     param_code = parts[1]
                     param = param_service.get_param_by_code(param_code)
                     if param:
-                        logger.info(f"参数变量替换成功: @{var_path} -> {param.param_value}")
+                        logger.debug(f"参数变量替换成功: @{var_path} -> {param.param_value}")
                         return param.param_value
                     else:
                         logger.warning(f"参数变量替换失败: 未找到参数 @{var_path}")

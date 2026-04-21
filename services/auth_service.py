@@ -15,20 +15,24 @@ class AuthService:
     def authenticate(self, username: str, password: str) -> Optional[User]:
         user = self.get_user_by_username(username)
         if not user:
+            logger.warning(f"登录失败: 用户不存在 - {username}")
             return None
 
         if not verify_password(password, user.hashed_password):
+            logger.warning(f"登录失败: 密码错误 - {username}")
             return None
 
         if user.status != UserStatus.ACTIVE:
+            logger.warning(f"登录失败: 用户状态异常 - {username}, 状态: {user.status}")
             return None
 
         self._log_audit(user.id, "login", "user", user.id, f"用户登录: {username}")
-
+        logger.info(f"用户登录成功: {username}")
         return user
 
     def logout(self, user_id: int, username: str = None):
         self._log_audit(user_id, "logout", "user", user_id, f"用户登出: {username or str(user_id)}")
+        logger.info(f"用户登出: {username or str(user_id)}")
 
     def get_user_by_username(self, username: str) -> Optional[User]:
         return self.db.query(User).filter(User.username == username).first()

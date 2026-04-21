@@ -2,6 +2,9 @@ import paramiko
 import threading
 from typing import Optional, Callable
 from dataclasses import dataclass
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 @dataclass
 class SSHSession:
@@ -54,9 +57,11 @@ class SessionManager:
     ) -> Optional[SSHSession]:
         import uuid
         session_id = str(uuid.uuid4())
+        logger.debug(f"创建SSH会话: user_id={user_id}, server_id={server_id}")
 
         password = get_password_fn(server_id)
         if not password:
+            logger.warning(f"无法获取服务器密码: server_id={server_id}")
             return None
 
         from models.server_asset import ServerAsset
@@ -69,6 +74,7 @@ class SessionManager:
         db.close()
 
         if not server:
+            logger.warning(f"服务器不存在: server_id={server_id}")
             return None
 
         try:
@@ -94,10 +100,11 @@ class SessionManager:
             with self.lock:
                 self.sessions[session_id] = session
 
+            logger.info(f"SSH会话创建成功: session_id={session_id}, server={server.ip}")
             return session
 
         except Exception as e:
-            print(f"SSH connection failed: {e}")
+            logger.error(f"SSH连接失败: {e}")
             return None
 
     def get_session(self, session_id: str) -> Optional[SSHSession]:
@@ -109,6 +116,7 @@ class SessionManager:
             session = self.sessions.pop(session_id, None)
             if session:
                 session.close()
+                logger.info(f"SSH会话已关闭: session_id={session_id}")
                 return True
         return False
 

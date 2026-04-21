@@ -502,12 +502,12 @@ class CodeEditor(QPlainTextEdit):
         self.document().markContentsDirty(start_block.position(), block.position() - start_block.position())
 
     def _load_completion_words(self):
-        logger.info(f"_load_completion_words called, param_service={self._param_service}, dict_service={self._dict_service}")
+        logger.debug(f"_load_completion_words called, param_service={self._param_service}, dict_service={self._dict_service}")
         self._completion_words = []
         if self._param_service:
             try:
                 params = self._param_service.get_params()
-                logger.info(f"Loaded {len(params) if params else 0} params")
+                logger.debug(f"Loaded {len(params) if params else 0} params")
                 for param in params:
                     if param.status == 1:
                         self._completion_words.append(f"@param.{param.param_code}")
@@ -516,7 +516,7 @@ class CodeEditor(QPlainTextEdit):
         if self._dict_service:
             try:
                 dicts = self._dict_service.get_dicts()
-                logger.info(f"Loaded {len(dicts) if dicts else 0} dicts")
+                logger.debug(f"Loaded {len(dicts) if dicts else 0} dicts")
                 for d in dicts:
                     if d.is_active == "Y":
                         self._completion_words.append(f"@dict.{d.code}")
@@ -526,7 +526,7 @@ class CodeEditor(QPlainTextEdit):
                                 self._completion_words.append(f"@dict.{d.code}.{item.item_name}")
             except Exception as e:
                 logger.error(f"Error loading dicts: {e}\n{traceback.format_exc()}")
-        logger.info(f"Total completion words: {len(self._completion_words)}")
+        logger.debug(f"Total completion words: {len(self._completion_words)}")
         self._completer.update_completions(self._completion_words)
 
     def _get_word_before_cursor(self):
@@ -539,25 +539,25 @@ class CodeEditor(QPlainTextEdit):
         return text[start:pos_in_block], start, pos_in_block
 
     def _show_completion(self, word):
-        logger.info(f"_show_completion called with word='{word}', completion_words_count={len(self._completion_words)}")
+        logger.debug(f"_show_completion called with word='{word}', completion_words_count={len(self._completion_words)}")
         if not self._completion_words:
-            logger.info("No completion words available, returning")
+            logger.debug("No completion words available, returning")
             return
         if word.startswith("@"):
             self._completer.setCompletionPrefix(word)
-            logger.info(f"Set completion prefix to: '{word}'")
+            logger.debug(f"Set completion prefix to: '{word}'")
             try:
                 cursor_rect = self.cursorRect()
                 popup = self._completer.popup()
                 popup.setFixedWidth(300)
                 popup.setFixedHeight(200)
                 point = self.viewport().mapToGlobal(cursor_rect.bottomLeft())
-                logger.info(f"Popup position: {point}")
-                logger.info("Calling completer.complete()")
+                logger.debug(f"Popup position: {point}")
+                logger.debug("Calling completer.complete()")
                 self._completer.complete()
                 popup.move(point)
                 popup.show()
-                logger.info("Popup shown successfully")
+                logger.debug("Popup shown successfully")
             except Exception as e:
                 logger.error(f"Error showing completion: {e}\n{traceback.format_exc()}")
 
@@ -571,16 +571,16 @@ class CodeEditor(QPlainTextEdit):
         self.setTextCursor(cursor)
 
     def keyPressEvent(self, e):
-        logger.info(f"keyPressEvent: key={e.key()}, text='{e.text()}'")
+        logger.debug(f"keyPressEvent: key={e.key()}, text='{e.text()}'")
         try:
             if self._completer.popup().isVisible():
                 if e.key() in (Qt.Key.Key_Up, Qt.Key.Key_Down, Qt.Key.Key_Enter,
                               Qt.Key.Key_Return, Qt.Key.Key_Escape, Qt.Key.Key_Tab):
-                    logger.info(f"Forwarding key {e.key()} to completer popup")
+                    logger.debug(f"Forwarding key {e.key()} to completer popup")
                     self._completer.popup().keyPressEvent(e)
                     return
                 if e.key() == Qt.Key.Key_Escape:
-                    logger.info("Hiding completer popup via Escape")
+                    logger.debug("Hiding completer popup via Escape")
                     self._completer.popup().hide()
                     return
 
@@ -601,7 +601,7 @@ class CodeEditor(QPlainTextEdit):
             text = e.text()
             if text and (text == "@" or text.isalnum() or text in "._"):
                 word, start, end = self._get_word_before_cursor()
-                logger.info(f"Word before cursor: '{word}'")
+                logger.debug(f"Word before cursor: '{word}'")
                 if word.startswith("@"):
                     self._show_completion(word)
         except Exception as e:

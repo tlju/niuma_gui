@@ -32,6 +32,7 @@ class ScriptService:
         self.db.add(script)
         self.db.commit()
         self.db.refresh(script)
+        logger.info(f"创建脚本: {name}, ID: {script.id}")
 
         if created_by:
             audit = AuditLog(
@@ -77,6 +78,7 @@ class ScriptService:
 
         script.updated_at = get_local_now()
         self.db.commit()
+        logger.info(f"更新脚本: {script.name}, ID: {script_id}")
 
         if updated_by:
             audit = AuditLog(
@@ -95,8 +97,10 @@ class ScriptService:
     def delete(self, script_id: int, user_id: int) -> bool:
         script = self.get_by_id(script_id)
         if not script:
+            logger.warning(f"删除脚本失败: 脚本不存在, ID: {script_id}")
             return False
 
+        script_name = script.name
         audit = AuditLog(
             user_id=user_id,
             action_type="delete",
@@ -109,4 +113,5 @@ class ScriptService:
 
         self.db.delete(script)
         self.db.commit()
+        logger.info(f"删除脚本: {script_name}, ID: {script_id}")
         return True

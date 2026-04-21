@@ -126,7 +126,7 @@ class TodosPage(QWidget):
                 self.all_todos = self.todo_service.get_todos(limit=1000)
             self._populate_table(self.all_todos)
             self.count_label.setText(f"共 {len(self.all_todos)} 条记录")
-            logger.info(f"加载了 {len(self.all_todos)} 个待办事项")
+            logger.debug(f"加载了 {len(self.all_todos)} 个待办事项")
         except Exception as e:
             logger.error(f"加载待办事项失败: {e}")
             QMessageBox.critical(self, "错误", f"加载待办事项失败:\n{e}")

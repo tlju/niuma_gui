@@ -108,7 +108,7 @@ class DataDictsPage(QWidget):
             self.all_dicts = self.dict_service.get_dicts(limit=1000)
             self._populate_dicts(self.all_dicts)
             self.count_label.setText(f"共 {len(self.all_dicts)} 条记录")
-            logger.info(f"加载了 {len(self.all_dicts)} 个数据字典")
+            logger.debug(f"加载了 {len(self.all_dicts)} 个数据字典")
         except Exception as e:
             logger.error(f"加载数据字典失败: {e}")
             QMessageBox.critical(self, "错误", f"加载数据字典失败:\n{e}")

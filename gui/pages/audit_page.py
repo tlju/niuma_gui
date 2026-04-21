@@ -95,10 +95,10 @@ class AuditPage(QWidget):
         self.loading_worker.finished.connect(self._on_logs_loaded)
         self.loading_worker.error.connect(self._on_load_error)
         self.loading_worker.start()
-        logger.info(f"开始加载审计日志，操作类型: {action_type or '全部'}")
+        logger.debug(f"开始加载审计日志，操作类型: {action_type or '全部'}")
 
     def _on_logs_loaded(self, logs):
-        logger.info(f"成功加载 {len(logs)} 条审计日志")
+        logger.debug(f"成功加载 {len(logs)} 条审计日志")
         self._populate_table(logs)
 
     def _on_load_error(self, error_msg):
