@@ -77,9 +77,7 @@ jobs:
               libjpeg62-turbo \
               libpng16-16 \
               libpcre2-16-0 \
-              libdouble-conversion3 \
               libicu63 \
-              libmd4c0 \
               libb2-1
             
             if [ "$PYTHON_CACHED" != "true" ]; then
