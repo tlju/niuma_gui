@@ -207,6 +207,98 @@ class WorkflowService:
         self.db.refresh(node_exec)
         return node_exec
 
+    def delete_execution(self, execution_id: int, user_id: int = None) -> bool:
+        execution = self.get_execution_by_id(execution_id)
+        if not execution:
+            return False
+
+        if user_id:
+            audit = AuditLog(
+                user_id=user_id,
+                action_type="delete",
+                resource_type="workflow_execution",
+                resource_id=execution_id,
+                details=f"删除工作流执行记录: #{execution_id}",
+                created_at=get_local_now()
+            )
+            self.db.add(audit)
+
+        self.db.delete(execution)
+        self.db.commit()
+        logger.info(f"删除工作流执行记录: #{execution_id}")
+        return True
+
+    def delete_executions(self, execution_ids: List[int], user_id: int = None) -> int:
+        deleted_count = 0
+        for execution_id in execution_ids:
+            if self.delete_execution(execution_id, user_id):
+                deleted_count += 1
+        return deleted_count
+
+    def export_workflow(self, workflow_id: int) -> Optional[Dict[str, Any]]:
+        workflow = self.get_by_id(workflow_id)
+        if not workflow:
+            return None
+
+        export_data = {
+            "name": workflow.name,
+            "description": workflow.description or "",
+            "graph_data": workflow.graph_data or {"nodes": [], "connections": []},
+            "export_version": "1.0"
+        }
+
+        logger.info(f"导出工作流: {workflow.name}, ID: {workflow_id}")
+        return export_data
+
+    def import_workflow(self, data: Dict[str, Any], user_id: int = None) -> Optional[Workflow]:
+        if not data:
+            return None
+
+        name = data.get("name", "导入的工作流")
+        description = data.get("description", "")
+        graph_data = data.get("graph_data", {"nodes": [], "connections": []})
+
+        name = self._generate_unique_name(name)
+
+        workflow = self.create(
+            name=name,
+            description=description,
+            user_id=user_id,
+            graph_data=graph_data
+        )
+
+        if user_id:
+            audit = AuditLog(
+                user_id=user_id,
+                action_type="import",
+                resource_type="workflow",
+                resource_id=workflow.id,
+                details=f"导入工作流: {name}",
+                created_at=get_local_now()
+            )
+            self.db.add(audit)
+            self.db.commit()
+
+        logger.info(f"导入工作流: {name}, ID: {workflow.id}")
+        return workflow
+
+    def _generate_unique_name(self, base_name: str) -> str:
+        existing_names = set(
+            w.name for w in self.db.query(Workflow.name).filter(
+                Workflow.is_active == True
+            ).all()
+        )
+        
+        if base_name not in existing_names:
+            return base_name
+        
+        counter = 1
+        while True:
+            new_name = f"{base_name} ({counter})"
+            if new_name not in existing_names:
+                return new_name
+            counter += 1
+
     def execute_workflow(self, workflow_id: int, user_id: int = None, max_workers: int = 4,
                          execution_callback=None, log_callback=None) -> Dict[str, Any]:
         workflow = self.get_by_id(workflow_id)

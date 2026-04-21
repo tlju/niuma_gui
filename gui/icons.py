@@ -427,6 +427,12 @@ class IconProvider:
     def about_icon(self):
         return self._create_icon(self._draw_about)
 
+    def import_icon(self):
+        return self._create_icon(self._draw_upload)
+
+    def export_icon(self):
+        return self._create_icon(self._draw_download)
+
     def save_icon(self):
         return self._create_icon(self._draw_download)
 

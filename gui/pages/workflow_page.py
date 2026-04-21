@@ -4,7 +4,8 @@ from PyQt6.QtWidgets import (
     QLineEdit, QTextEdit, QMessageBox, QHeaderView,
     QFrame, QApplication, QComboBox, QSplitter,
     QListWidget, QListWidgetItem, QGroupBox, QTabWidget,
-    QPlainTextEdit, QProgressBar, QSpinBox, QCheckBox
+    QPlainTextEdit, QProgressBar, QSpinBox, QCheckBox,
+    QFileDialog
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, QDateTime
 from PyQt6.QtGui import QColor, QFont, QIcon
@@ -480,6 +481,13 @@ class WorkflowPage(QWidget):
         self.refresh_btn.clicked.connect(self.load_workflows)
         toolbar_layout.addWidget(self.refresh_btn)
 
+        self.import_btn = QPushButton("导入")
+        self.import_btn.setIcon(icons.import_icon())
+        self.import_btn.setMinimumHeight(34)
+        self.import_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.import_btn.clicked.connect(self.import_workflow)
+        toolbar_layout.addWidget(self.import_btn)
+
         toolbar_layout.addStretch()
         layout.addWidget(toolbar_frame)
 
@@ -512,10 +520,25 @@ class WorkflowPage(QWidget):
         self.execution_tab = QWidget()
         exec_layout = QVBoxLayout(self.execution_tab)
 
+        exec_toolbar = QHBoxLayout()
+        
+        self.select_all_checkbox = QCheckBox("全选")
+        self.select_all_checkbox.stateChanged.connect(self._on_select_all_executions)
+        exec_toolbar.addWidget(self.select_all_checkbox)
+        
+        self.batch_delete_btn = QPushButton("批量删除")
+        self.batch_delete_btn.setProperty("class", "table-delete")
+        self.batch_delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.batch_delete_btn.clicked.connect(self.batch_delete_executions)
+        exec_toolbar.addWidget(self.batch_delete_btn)
+        
+        exec_toolbar.addStretch()
+        exec_layout.addLayout(exec_toolbar)
+
         self.exec_table = QTableWidget()
-        self.exec_table.setColumnCount(6)
+        self.exec_table.setColumnCount(7)
         self.exec_table.setHorizontalHeaderLabels([
-            "ID", "工作流", "状态", "开始时间", "结束时间", "操作"
+            "", "ID", "工作流", "状态", "开始时间", "结束时间", "操作"
         ])
         self.exec_table.setAlternatingRowColors(True)
         self.exec_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -526,6 +549,7 @@ class WorkflowPage(QWidget):
 
         exec_header = self.exec_table.horizontalHeader()
         exec_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        exec_header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
 
         exec_layout.addWidget(self.exec_table)
         self.tabs.addTab(self.execution_tab, "执行历史")
@@ -576,6 +600,12 @@ class WorkflowPage(QWidget):
             run_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             run_btn.clicked.connect(lambda checked, w=workflow: self.execute_workflow(w))
             btn_layout.addWidget(run_btn)
+
+            export_btn = QPushButton("导出")
+            export_btn.setProperty("class", "table-view")
+            export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            export_btn.clicked.connect(lambda checked, w=workflow: self.export_workflow(w))
+            btn_layout.addWidget(export_btn)
 
             delete_btn = QPushButton("删除")
             delete_btn.setProperty("class", "table-delete")
@@ -697,6 +727,7 @@ class WorkflowPage(QWidget):
         executions = self.workflow_service.get_executions(limit=100)
 
         self.exec_table.setRowCount(len(executions))
+        self.select_all_checkbox.setChecked(False)
 
         status_colors = {
             "pending": "#FFC107",
@@ -710,22 +741,27 @@ class WorkflowPage(QWidget):
         }
 
         for row, execution in enumerate(executions):
-            self.exec_table.setItem(row, 0, QTableWidgetItem(str(execution.id)))
+            checkbox_item = QTableWidgetItem()
+            checkbox_item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
+            checkbox_item.setCheckState(Qt.CheckState.Unchecked)
+            self.exec_table.setItem(row, 0, checkbox_item)
+
+            self.exec_table.setItem(row, 1, QTableWidgetItem(str(execution.id)))
 
             workflow_name = execution.workflow.name if execution.workflow else f"#{execution.workflow_id}"
-            self.exec_table.setItem(row, 1, QTableWidgetItem(workflow_name))
+            self.exec_table.setItem(row, 2, QTableWidgetItem(workflow_name))
 
             status_item = QTableWidgetItem(execution.status)
             status_item.setBackground(QColor(status_colors.get(execution.status, "#9E9E9E")))
             if execution.status in status_text_colors:
                 status_item.setForeground(QColor(status_text_colors[execution.status]))
-            self.exec_table.setItem(row, 2, status_item)
+            self.exec_table.setItem(row, 3, status_item)
 
             started_at = execution.started_at.strftime("%Y-%m-%d %H:%M:%S") if execution.started_at else ""
-            self.exec_table.setItem(row, 3, QTableWidgetItem(started_at))
+            self.exec_table.setItem(row, 4, QTableWidgetItem(started_at))
 
             finished_at = execution.finished_at.strftime("%Y-%m-%d %H:%M:%S") if execution.finished_at else ""
-            self.exec_table.setItem(row, 4, QTableWidgetItem(finished_at))
+            self.exec_table.setItem(row, 5, QTableWidgetItem(finished_at))
 
             btn_widget = QWidget()
             btn_layout = QHBoxLayout(btn_widget)
@@ -735,11 +771,119 @@ class WorkflowPage(QWidget):
 
             view_btn = QPushButton("查看")
             view_btn.setProperty("class", "table-view")
+            view_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             view_btn.clicked.connect(lambda checked, e=execution: self.show_execution_detail(e))
             btn_layout.addWidget(view_btn)
 
-            self.exec_table.setCellWidget(row, 5, btn_widget)
+            delete_btn = QPushButton("删除")
+            delete_btn.setProperty("class", "table-delete")
+            delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            delete_btn.clicked.connect(lambda checked, e=execution: self.delete_execution(e))
+            btn_layout.addWidget(delete_btn)
+
+            self.exec_table.setCellWidget(row, 6, btn_widget)
 
     def show_execution_detail(self, execution):
         dialog = ExecutionDetailDialog(execution, parent=self)
         dialog.exec()
+
+    def _on_select_all_executions(self, state):
+        check_state = Qt.CheckState.Checked if state == Qt.CheckState.Checked.value else Qt.CheckState.Unchecked
+        for row in range(self.exec_table.rowCount()):
+            item = self.exec_table.item(row, 0)
+            if item:
+                item.setCheckState(check_state)
+
+    def delete_execution(self, execution):
+        reply = QMessageBox.question(
+            self, "确认删除",
+            f"确定要删除执行记录 #{execution.id} 吗？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            self.workflow_service.delete_execution(execution.id, user_id=self.current_user_id)
+            self.load_executions()
+
+    def batch_delete_executions(self):
+        selected_ids = []
+        for row in range(self.exec_table.rowCount()):
+            item = self.exec_table.item(row, 0)
+            if item and item.checkState() == Qt.CheckState.Checked:
+                id_item = self.exec_table.item(row, 1)
+                if id_item:
+                    selected_ids.append(int(id_item.text()))
+
+        if not selected_ids:
+            QMessageBox.warning(self, "提示", "请先选择要删除的执行记录")
+            return
+
+        reply = QMessageBox.question(
+            self, "确认删除",
+            f"确定要删除选中的 {len(selected_ids)} 条执行记录吗？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            deleted_count = self.workflow_service.delete_executions(selected_ids, user_id=self.current_user_id)
+            self.load_executions()
+            QMessageBox.information(self, "成功", f"成功删除 {deleted_count} 条执行记录")
+
+    def export_workflow(self, workflow):
+        export_data = self.workflow_service.export_workflow(workflow.id)
+        if not export_data:
+            QMessageBox.warning(self, "警告", "导出工作流失败")
+            return
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "导出工作流",
+            f"{workflow.name}.json",
+            "JSON文件 (*.json)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(export_data, f, ensure_ascii=False, indent=2)
+            QMessageBox.information(self, "成功", f"工作流已导出到: {file_path}")
+        except Exception as e:
+            logger.error(f"导出工作流失败: {e}")
+            QMessageBox.critical(self, "错误", f"导出工作流失败: {str(e)}")
+
+    def import_workflow(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "导入工作流",
+            "",
+            "JSON文件 (*.json)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                import_data = json.load(f)
+
+            if not isinstance(import_data, dict):
+                QMessageBox.warning(self, "警告", "无效的工作流文件格式")
+                return
+
+            if "graph_data" not in import_data:
+                QMessageBox.warning(self, "警告", "工作流文件缺少必要的数据")
+                return
+
+            workflow = self.workflow_service.import_workflow(import_data, user_id=self.current_user_id)
+            if workflow:
+                self.load_workflows()
+                QMessageBox.information(self, "成功", f"工作流 '{workflow.name}' 导入成功")
+            else:
+                QMessageBox.warning(self, "警告", "导入工作流失败")
+        except json.JSONDecodeError:
+            QMessageBox.critical(self, "错误", "无效的JSON文件格式")
+        except Exception as e:
+            logger.error(f"导入工作流失败: {e}")
+            QMessageBox.critical(self, "错误", f"导入工作流失败: {str(e)}")
