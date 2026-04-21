@@ -121,7 +121,7 @@ jobs:
           echo "=== 安装系统依赖 ==="
           apt-get update
           apt-get install -y \
-            gcc g++ make wget patchelf \
+            gcc g++ clang make wget patchelf \
             libxrender-dev libxext-dev libx11-dev \
             libxcb1-dev libxkbcommon-dev \
             libxcb-* \
@@ -196,6 +196,13 @@ jobs:
         docker rm -f $CONTAINER_ID
       shell: bash
 
+    - name: '10.5. 保存 Docker 镜像缓存 (Linux)'
+      if: matrix.platform == 'linux' && steps.cache-docker-image.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: docker-image-${{ matrix.arch }}.tar
+        key: ${{ env.CACHE_VERSION }}-docker-image-${{ matrix.arch }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
+
     - name: '11. 加载 Docker 镜像并安装项目依赖 (Linux)'
       if: matrix.platform == 'linux'
       run: |
@@ -263,7 +270,7 @@ jobs:
           if [ "${{ matrix.arch }}" = "arm64" ]; then
             OPT_FLAGS="--clang --lto=yes"
           elif [ "${{ matrix.arch }}" = "x64" ]; then
-            OPT_FLAGS="--clang --lto=yes --windows-uac-admin"
+            OPT_FLAGS="--clang --lto=yes"
           fi
           
           python3 -m nuitka --standalone \
