@@ -94,7 +94,7 @@ jobs:
         7z a -t7z -mx=9 python-env-${{ matrix.arch }}.7z "$pythonPath\*"
       shell: powershell
 
-    - name: '10. 恢复 Python 环境 (Windows)'
+    - name: '9. 恢复 Python 环境 (Windows)'
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit == 'true'
       run: |
         $destPath = "$env:LOCALAPPDATA\python-cache"
@@ -104,7 +104,45 @@ jobs:
         Add-Content -Path $env:GITHUB_PATH -Value "$destPath"
       shell: powershell
 
-    - name: '10. 准备并构建 (Linux)'
+    - name: '10. 编译 Python 并缓存 (Linux)'
+      if: matrix.platform == 'linux' && steps.cache-python-linux.outputs.cache-hit != 'true'
+      run: |
+        docker run --rm \
+          --platform ${{ matrix.platform_name }} \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          debian:10.10 \
+          bash -c '
+            set -e
+            
+            echo "=== 配置 apt 源 (Debian 10 已归档) ==="
+            echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
+            echo "deb http://archive.debian.org/debian buster-updates main" >> /etc/apt/sources.list
+            echo "Acquire::Check-Valid-Until false;" > /etc/apt/apt.conf.d/99no-check-valid-until
+            
+            echo "=== 安装编译依赖 ==="
+            apt-get update
+            apt-get install -y gcc g++ make wget bzip2 libbz2-dev libffi-dev zlib1g-dev liblzma-dev libsqlite3-dev libreadline-dev tk-dev libgdbm-dev libssl-dev
+            
+            echo "=== 编译 Python 3.12 ==="
+            cd /tmp
+            wget -q https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz
+            tar xzf Python-3.12.13.tgz
+            cd Python-3.12.13
+            ./configure --enable-optimizations --prefix=/usr/local/python3.12
+            make -j$(nproc)
+            make install
+            cd /workspace
+            /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
+            
+            echo "=== 打包 Python 环境 (缓存) ==="
+            cd /usr/local
+            tar -czf /workspace/python-env-${{ matrix.arch }}.tar.gz python3.12
+            chown -R 1001:1001 /workspace/python-env-${{ matrix.arch }}.tar.gz
+          '
+      shell: bash
+
+    - name: '11. 构建应用 (Linux)'
       if: matrix.platform == 'linux'
       run: |
         docker run --rm \
@@ -115,31 +153,19 @@ jobs:
           bash -c '
             set -e
             
-            PYTHON_CACHED="${{ steps.cache-python-linux.outputs.cache-hit }}"
-            
             echo "=== 配置 apt 源 (Debian 10 已归档) ==="
             echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
             echo "deb http://archive.debian.org/debian buster-updates main" >> /etc/apt/sources.list
             echo "Acquire::Check-Valid-Until false;" > /etc/apt/apt.conf.d/99no-check-valid-until
             
-            echo "=== 安装系统依赖 ==="
+            echo "=== 安装运行时依赖 ==="
             apt-get update
-            apt-get install -y \
-              gcc g++ make wget patchelf \
+            apt-get install -y patchelf \
               libxrender-dev libxext-dev libx11-dev \
               libxcb1-dev libxkbcommon-dev \
               libxcb-* \
               libgl1-mesa-dev libegl1-mesa-dev \
               libxkbcommon-x11-dev \
-              libssl-dev \
-              bzip2 libbz2-dev \
-              libffi-dev \
-              zlib1g-dev \
-              liblzma-dev \
-              libsqlite3-dev \
-              libreadline-dev \
-              tk-dev \
-              libgdbm-dev \
               libxkbcommon-x11-0 \
               libxcb-cursor0 \
               libxcb-icccm4 \
@@ -152,36 +178,19 @@ jobs:
               libxcb-xinerama0 \
               libxcb-xkb1
             
-            if [ "$PYTHON_CACHED" != "true" ]; then
-              echo "=== 编译 Python 3.12 ==="
-              cd /tmp
-              wget -q https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz
-              tar xzf Python-3.12.13.tgz
-              cd Python-3.12.13
-              ./configure --enable-optimizations --prefix=/usr/local/python3.12
-              make -j$(nproc)
-              make install
-              cd /workspace
-              /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
-              
-              echo "=== 安装 PyQt6 (预编译版本) ==="
-              /usr/local/python3.12/bin/pip3.12 install PyQt6 PyQt6-Qt6 PyQt6-sip
-              
-              echo "=== 安装项目依赖 ==="
-              /usr/local/python3.12/bin/pip3.12 install -r requirements.txt
-              /usr/local/python3.12/bin/pip3.12 install nuitka ordered-set zstandard
-              
-              echo "=== 打包 Python 环境 ==="
-              cd /usr/local
-              tar -czf /workspace/python-env-${{ matrix.arch }}.tar.gz python3.12
-            fi
-            
             echo "=== 解压 Python 环境 ==="
             cd /usr/local
             tar -xzf /workspace/python-env-${{ matrix.arch }}.tar.gz
             ln -sf /usr/local/python3.12/bin/python3.12 /usr/local/bin/python3
             ln -sf /usr/local/python3.12/bin/pip3.12 /usr/local/bin/pip3
             python3 --version
+            
+            echo "=== 安装 PyQt6 (预编译版本) ==="
+            pip3.12 install PyQt6 PyQt6-Qt6 PyQt6-sip
+            
+            echo "=== 安装项目依赖 ==="
+            pip3.12 install -r requirements.txt
+            pip3.12 install nuitka ordered-set zstandard
             
             echo "=== 使用 Nuitka 构建 ==="
             cd /workspace
@@ -216,7 +225,7 @@ jobs:
           '
       shell: bash
 
-    - name: '11. 使用 Nuitka 构建 (Windows)'
+    - name: '12. 使用 Nuitka 构建 (Windows)'
       if: matrix.platform == 'windows'
       run: |
         $jobs = [Environment]::ProcessorCount
@@ -238,7 +247,7 @@ jobs:
           main.py
       shell: powershell
 
-    - name: '12. 验证并打包构建产物 (Windows)'
+    - name: '13. 验证并打包构建产物 (Windows)'
       if: matrix.platform == 'windows'
       run: |
         if (Test-Path "dist\main.dist") {
@@ -251,7 +260,7 @@ jobs:
         }
       shell: powershell
 
-    - name: '13. 上传构建产物'
+    - name: '14. 上传构建产物'
       uses: actions/upload-artifact@v7
       with:
         name: ${{ matrix.output_name }}
@@ -261,7 +270,7 @@ jobs:
         retention-days: 30
         if-no-files-found: ignore
 
-    - name: '14. 上传到发布'
+    - name: '15. 上传到发布'
       if: github.event_name == 'release' && github.event.release.tag_name != ''
       uses: softprops/action-gh-release@v3
       with:
