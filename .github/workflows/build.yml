@@ -56,17 +56,9 @@ jobs:
           ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-
           ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-
 
-    - name: '4. 恢复 Qt6 环境缓存 (arm64)'
-      if: matrix.platform == 'linux' && matrix.arch == 'arm64'
-      uses: actions/cache@v5
-      id: cache-qt6-arm64
-      with:
-        path: qt6-env-arm64.tar.gz
-        key: ${{ env.CACHE_VERSION }}-qt6-env-arm64-${{ hashFiles('requirements.txt') }}
-        restore-keys: |
-          ${{ env.CACHE_VERSION }}-qt6-env-arm64-
 
-    - name: '5. 恢复 Python 环境缓存 (Windows)'
+
+    - name: '4. 恢复 Python 环境缓存 (Windows)'
       if: matrix.platform == 'windows'
       uses: actions/cache@v5
       id: cache-python-windows
@@ -77,13 +69,13 @@ jobs:
           ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-
           ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-
 
-    - name: '6. 设置 Python (Windows)'
+    - name: '5. 设置 Python (Windows)'
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       uses: actions/setup-python@v6
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: '7. 安装依赖 (Windows)'
+    - name: '6. 安装依赖 (Windows)'
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       run: |
         python -m pip install --upgrade pip setuptools wheel
@@ -91,11 +83,11 @@ jobs:
         pip install nuitka ordered-set zstandard
       shell: powershell
 
-    - name: '8. 安装构建依赖 (Windows)'
+    - name: '7. 安装构建依赖 (Windows)'
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       run: choco install ccache -y
 
-    - name: '9. 打包 Python 环境 (Windows)'
+    - name: '8. 打包 Python 环境 (Windows)'
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       run: |
         $pythonPath = python -c "import sys; print(sys.prefix)"
@@ -112,7 +104,7 @@ jobs:
         Add-Content -Path $env:GITHUB_PATH -Value "$destPath"
       shell: powershell
 
-    - name: '11. 准备并构建 (Linux)'
+    - name: '10. 准备并构建 (Linux)'
       if: matrix.platform == 'linux'
       run: |
         docker run --rm \
@@ -124,7 +116,6 @@ jobs:
             set -e
             
             PYTHON_CACHED="${{ steps.cache-python-linux.outputs.cache-hit }}"
-            QT6_CACHED="${{ steps.cache-qt6-arm64.outputs.cache-hit }}"
             
             echo "=== 配置 apt 源 (Debian 10 已归档) ==="
             echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
@@ -161,27 +152,7 @@ jobs:
               libxcb-xinerama0 \
               libxcb-xkb1
             
-            NEED_PYTHON="false"
-            NEED_QT6="false"
-            
             if [ "$PYTHON_CACHED" != "true" ]; then
-              NEED_PYTHON="true"
-            fi
-            
-            if [ "${{ matrix.arch }}" = "arm64" ] && [ "$QT6_CACHED" != "true" ]; then
-              NEED_QT6="true"
-              apt-get install -y \
-                ninja-build perl python3 \
-                libgles2-mesa-dev libwayland-dev wayland-protocols \
-                libinput-dev libxkbcommon-dev libdrm-dev \
-                libgbm-dev libasound2-dev libpulse-dev \
-                libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-                libfreetype6-dev libfontconfig1-dev \
-                libharfbuzz-dev libjpeg-dev libpng-dev \
-                libstdc++-8-dev
-            fi
-            
-            if [ "$NEED_PYTHON" = "true" ]; then
               echo "=== 编译 Python 3.12 ==="
               cd /tmp
               wget -q https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz
@@ -192,64 +163,11 @@ jobs:
               make install
               cd /workspace
               /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
-            fi
-            
-            if [ "$NEED_QT6" = "true" ]; then
-              echo "=== 安装 CMake 3.30 ==="
-              cd /tmp
-              CMAKE_VERSION=3.30.5
-              wget -q https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-aarch64.tar.gz
-              tar -xzf cmake-${CMAKE_VERSION}-linux-aarch64.tar.gz
-              export PATH=/tmp/cmake-${CMAKE_VERSION}-linux-aarch64/bin:$PATH
-              cmake --version
               
-              echo "=== 下载并编译 Qt6 (arm64) ==="
-              cd /tmp
-              wget -q https://download.qt.io/official_releases/qt/6.5/6.5.3/single/qt-everywhere-src-6.5.3.tar.xz
-              tar -xf qt-everywhere-src-6.5.3.tar.xz
-              cd qt-everywhere-src-6.5.3
+              echo "=== 安装 PyQt6 (预编译版本) ==="
+              /usr/local/python3.12/bin/pip3.12 install PyQt6 PyQt6-Qt6 PyQt6-sip
               
-              mkdir build && cd build
-              cmake .. \
-                -G "Unix Makefiles" \
-                -DCMAKE_BUILD_TYPE=Release \
-                -DCMAKE_INSTALL_PREFIX=/opt/qt6 \
-                -DCMAKE_CXX_FLAGS="-std=c++17 -lstdc++fs" \
-                -DCMAKE_EXE_LINKER_FLAGS="-lstdc++fs" \
-                -DCMAKE_SHARED_LINKER_FLAGS="-lstdc++fs" \
-                -DCMAKE_MODULE_LINKER_FLAGS="-lstdc++fs" \
-                -DCMAKE_CXX_STANDARD_LIBRARIES="-lstdc++fs" \
-                -DQT_BUILD_EXAMPLES=OFF \
-                -DQT_BUILD_TESTS=OFF \
-                -DQT_FEATURE_vulkan=OFF \
-                -DQT_FEATURE_opengl=ON \
-                -DQT_FEATURE_opengles2=ON \
-                -DQT_FEATURE_egl=ON \
-                -DQT_FEATURE_xcb=ON \
-                -DQT_FEATURE_xcb_xlib=ON \
-                -DQT_FEATURE_xlib=ON
-              
-              export LDFLAGS="-lstdc++fs"
-              make -j$(nproc)
-              cmake --install .
-              
-              export PATH="/opt/qt6/bin:$PATH"
-              export QT_PLUGIN_PATH="/opt/qt6/plugins"
-              export LD_LIBRARY_PATH="/opt/qt6/lib:$LD_LIBRARY_PATH"
-              
-              echo "=== 编译 PyQt6 (arm64) ==="
-              cd /workspace
-              export PATH="/usr/local/python3.12/bin:$PATH"
-              export PYTHONPATH="/usr/local/python3.12/lib/python3.12/site-packages:$PYTHONPATH"
-              pip3.12 install PyQt6-sip sip html5lib
-              pip3.12 install --no-binary :all: PyQt6
-              pip3.12 install --no-binary :all: PyQt6-QScintilla
-            elif [ "$NEED_PYTHON" = "true" ]; then
-              echo "=== 安装 PyQt6 (x64) ==="
-              /usr/local/python3.12/bin/pip3.12 install --only-binary=:all: PyQt6 PyQt6-Qt6 PyQt6-sip
-            fi
-            
-            if [ "$NEED_PYTHON" = "true" ]; then
+              echo "=== 安装项目依赖 ==="
               /usr/local/python3.12/bin/pip3.12 install -r requirements.txt
               /usr/local/python3.12/bin/pip3.12 install nuitka ordered-set zstandard
               
@@ -258,28 +176,12 @@ jobs:
               tar -czf /workspace/python-env-${{ matrix.arch }}.tar.gz python3.12
             fi
             
-            if [ "$NEED_QT6" = "true" ]; then
-              echo "=== 打包 Qt6 环境 ==="
-              cd /opt
-              tar -czf /workspace/qt6-env-arm64.tar.gz qt6
-            fi
-            
             echo "=== 解压 Python 环境 ==="
             cd /usr/local
             tar -xzf /workspace/python-env-${{ matrix.arch }}.tar.gz
             ln -sf /usr/local/python3.12/bin/python3.12 /usr/local/bin/python3
             ln -sf /usr/local/python3.12/bin/pip3.12 /usr/local/bin/pip3
             python3 --version
-            
-            if [ "${{ matrix.arch }}" = "arm64" ]; then
-              echo "=== 解压 Qt6 环境 ==="
-              cd /opt
-              tar -xzf /workspace/qt6-env-arm64.tar.gz
-              export PATH="/opt/qt6/bin:$PATH"
-              export QT_PLUGIN_PATH="/opt/qt6/plugins"
-              export LD_LIBRARY_PATH="/opt/qt6/lib:$LD_LIBRARY_PATH"
-              qmake --version
-            fi
             
             echo "=== 使用 Nuitka 构建 ==="
             cd /workspace
@@ -314,7 +216,7 @@ jobs:
           '
       shell: bash
 
-    - name: '12. 使用 Nuitka 构建 (Windows)'
+    - name: '11. 使用 Nuitka 构建 (Windows)'
       if: matrix.platform == 'windows'
       run: |
         $jobs = [Environment]::ProcessorCount
@@ -336,7 +238,7 @@ jobs:
           main.py
       shell: powershell
 
-    - name: '13. 验证并打包构建产物 (Windows)'
+    - name: '12. 验证并打包构建产物 (Windows)'
       if: matrix.platform == 'windows'
       run: |
         if (Test-Path "dist\main.dist") {
@@ -349,7 +251,7 @@ jobs:
         }
       shell: powershell
 
-    - name: '14. 上传构建产物'
+    - name: '13. 上传构建产物'
       uses: actions/upload-artifact@v7
       with:
         name: ${{ matrix.output_name }}
@@ -359,7 +261,7 @@ jobs:
         retention-days: 30
         if-no-files-found: ignore
 
-    - name: '15. 上传到发布'
+    - name: '14. 上传到发布'
       if: github.event_name == 'release' && github.event.release.tag_name != ''
       uses: softprops/action-gh-release@v3
       with:
@@ -369,6 +271,5 @@ jobs:
           dist/${{ matrix.output_name }}.7z
           python-env-${{ matrix.arch }}.tar.gz
           python-env-${{ matrix.arch }}.7z
-          qt6-env-arm64.tar.gz
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
