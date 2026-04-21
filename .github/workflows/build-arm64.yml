@@ -8,7 +8,7 @@ permissions:
 
 env:
   PYTHON_VERSION: '3.12'
-  CACHE_VERSION: v4
+  CACHE_VERSION: v5
 
 jobs:
   build-arm64:
@@ -43,6 +43,11 @@ jobs:
             
             PYTHON_CACHED="${{ steps.cache-python.outputs.cache-hit }}"
             
+            echo "=== 配置 apt 源 (Debian 10 已归档) ==="
+            echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
+            echo "deb http://archive.debian.org/debian buster-updates main" >> /etc/apt/sources.list
+            echo "Acquire::Check-Valid-Until false;" > /etc/apt/apt.conf.d/99no-check-valid-until
+            
             echo "=== 安装系统依赖 ==="
             apt-get update
             apt-get install -y \
@@ -53,7 +58,7 @@ jobs:
               libxkbcommon-x11-0 \
               libssl1.1 \
               bzip2 libbz2-1.0 \
-              libffi7 \
+              libffi6 \
               zlib1g \
               liblzma5 \
               libsqlite3-0 \
@@ -72,11 +77,69 @@ jobs:
               libjpeg62-turbo \
               libpng16-16 \
               libpcre2-16-0 \
-              libicu67 \
-              libb2-1 \
-              qt6-base-dev
+              libicu63 \
+              libb2-1
             
             if [ "$PYTHON_CACHED" != "true" ]; then
+              echo "=== 安装 Qt6 编译依赖 ==="
+              apt-get install -y \
+                libgl1-mesa-dev \
+                libxkbcommon-dev \
+                libxcb-xkb-dev \
+                libx11-xcb-dev \
+                libxcb-icccm4-dev \
+                libxcb-image0-dev \
+                libxcb-keysyms1-dev \
+                libxcb-randr0-dev \
+                libxcb-render-util0-dev \
+                libxcb-shape0-dev \
+                libxcb-xfixes0-dev \
+                libxcb-xinerama0-dev \
+                libxcb-sync-dev \
+                libxcb-shm0-dev \
+                libegl1-mesa-dev \
+                libwayland-dev \
+                wayland-protocols \
+                libinput-dev \
+                libdrm-dev \
+                libgbm-dev \
+                libfreetype6-dev \
+                libfontconfig1-dev \
+                libharfbuzz-dev \
+                libjpeg-dev \
+                libpng-dev \
+                libglib2.0-dev \
+                libdbus-1-dev \
+                ninja-build \
+                cmake \
+                perl \
+                python3
+                
+              echo "=== 编译 Qt6 (qtbase only) ==="
+              cd /tmp
+              wget -q https://download.qt.io/official_releases/qt/6.5/6.5.3/submodules/qtbase-everywhere-src-6.5.3.tar.xz
+              tar -xf qtbase-everywhere-src-6.5.3.tar.xz
+              cd qtbase-everywhere-src-6.5.3
+              mkdir build && cd build
+              cmake .. \
+                -G Ninja \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_INSTALL_PREFIX=/opt/qt6 \
+                -DQT_BUILD_EXAMPLES=OFF \
+                -DQT_BUILD_TESTS=OFF \
+                -DQT_FEATURE_vulkan=OFF \
+                -DQT_FEATURE_opengl=ON \
+                -DQT_FEATURE_opengles2=ON \
+                -DQT_FEATURE_egl=ON \
+                -DQT_FEATURE_xcb=ON \
+                -DQT_FEATURE_xcb_xlib=ON \
+                -DQT_FEATURE_xlib=ON
+              cmake --build . --parallel
+              cmake --install .
+              export PATH="/opt/qt6/bin:$PATH"
+              export LD_LIBRARY_PATH="/opt/qt6/lib:$LD_LIBRARY_PATH"
+              qmake --version
+              
               echo "=== 编译 Python 3.12 ==="
               apt-get install -y \
                 libssl-dev \
@@ -103,12 +166,8 @@ jobs:
               /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
               /usr/local/python3.12/bin/pip3.12 install --only-binary=:all: PyQt6 PyQt6-Qt6 PyQt6-sip
               
-              echo "=== 配置 Qt6 环境变量 (使用系统 Qt6 构建) ==="
-              export QT6DIR=/usr/lib/aarch64-linux-gnu/qt6
-              export PATH="/usr/lib/qt6/bin:$PATH"
-              qmake --version
-              
               echo "=== 安装 PyQt6-QScintilla ==="
+              export PATH="/opt/qt6/bin:$PATH"
               /usr/local/python3.12/bin/pip3.12 install PyQt6-QScintilla
               
               /usr/local/python3.12/bin/pip3.12 install -r requirements.txt || true
