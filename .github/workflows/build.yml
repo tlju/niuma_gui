@@ -104,45 +104,17 @@ jobs:
         Add-Content -Path $env:GITHUB_PATH -Value "$destPath"
       shell: powershell
 
-    - name: '10. 编译 Python 并缓存 (Linux)'
-      if: matrix.platform == 'linux' && steps.cache-python-linux.outputs.cache-hit != 'true'
-      run: |
-        docker run --rm \
-          --platform ${{ matrix.platform_name }} \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace \
-          debian:10.10 \
-          bash -c '
-            set -e
-            
-            echo "=== 配置 apt 源 (Debian 10 已归档) ==="
-            echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
-            echo "deb http://archive.debian.org/debian buster-updates main" >> /etc/apt/sources.list
-            echo "Acquire::Check-Valid-Until false;" > /etc/apt/apt.conf.d/99no-check-valid-until
-            
-            echo "=== 安装编译依赖 ==="
-            apt-get update
-            apt-get install -y gcc g++ make wget bzip2 libbz2-dev libffi-dev zlib1g-dev liblzma-dev libsqlite3-dev libreadline-dev tk-dev libgdbm-dev libssl-dev
-            
-            echo "=== 编译 Python 3.12 ==="
-            cd /tmp
-            wget -q https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz
-            tar xzf Python-3.12.13.tgz
-            cd Python-3.12.13
-            ./configure --enable-optimizations --prefix=/usr/local/python3.12
-            make -j$(nproc)
-            make install
-            cd /workspace
-            /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
-            
-            echo "=== 打包 Python 环境 (缓存) ==="
-            cd /usr/local
-            tar -czf /workspace/python-env-${{ matrix.arch }}.tar.gz python3.12
-            chown -R 1001:1001 /workspace/python-env-${{ matrix.arch }}.tar.gz
-          '
-      shell: bash
+    - name: '10. 恢复 Python 编译缓存 (Linux arm64)'
+      if: matrix.platform == 'linux' && matrix.arch == 'arm64'
+      uses: actions/cache@v5
+      id: cache-python-compiled-arm64
+      with:
+        path: python-compiled-arm64.tar.gz
+        key: ${{ env.CACHE_VERSION }}-python-compiled-arm64-${{ env.PYTHON_VERSION }}
+        restore-keys: |
+          ${{ env.CACHE_VERSION }}-python-compiled-arm64-
 
-    - name: '11. 构建应用 (Linux)'
+    - name: '11. 安装系统依赖 (Linux)'
       if: matrix.platform == 'linux'
       run: |
         docker run --rm \
@@ -158,14 +130,24 @@ jobs:
             echo "deb http://archive.debian.org/debian buster-updates main" >> /etc/apt/sources.list
             echo "Acquire::Check-Valid-Until false;" > /etc/apt/apt.conf.d/99no-check-valid-until
             
-            echo "=== 安装运行时依赖 ==="
+            echo "=== 安装系统依赖 ==="
             apt-get update
-            apt-get install -y patchelf \
+            apt-get install -y \
+              gcc g++ make wget patchelf \
               libxrender-dev libxext-dev libx11-dev \
               libxcb1-dev libxkbcommon-dev \
               libxcb-* \
               libgl1-mesa-dev libegl1-mesa-dev \
               libxkbcommon-x11-dev \
+              libssl-dev \
+              bzip2 libbz2-dev \
+              libffi-dev \
+              zlib1g-dev \
+              liblzma-dev \
+              libsqlite3-dev \
+              libreadline-dev \
+              tk-dev \
+              libgdbm-dev \
               libxkbcommon-x11-0 \
               libxcb-cursor0 \
               libxcb-icccm4 \
@@ -177,6 +159,109 @@ jobs:
               libxcb-xfixes0 \
               libxcb-xinerama0 \
               libxcb-xkb1
+          '
+      shell: bash
+
+    - name: '12. 编译 Python (Linux arm64)'
+      if: matrix.platform == 'linux' && matrix.arch == 'arm64' && steps.cache-python-compiled-arm64.outputs.cache-hit != 'true'
+      run: |
+        docker run --rm \
+          --platform ${{ matrix.platform_name }} \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          debian:10.10 \
+          bash -c '
+            set -e
+            
+            echo "=== 编译 Python 3.12 ==="
+            cd /tmp
+            wget -q https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz
+            tar xzf Python-3.12.13.tgz
+            cd Python-3.12.13
+            ./configure --enable-optimizations --prefix=/usr/local/python3.12
+            make -j$(nproc)
+            make install
+            
+            echo "=== 打包 Python 编译结果 ==="
+            cd /usr/local
+            tar -czf /workspace/python-compiled-arm64.tar.gz python3.12
+          '
+      shell: bash
+
+    - name: '13. 安装 Python 依赖 (Linux)'
+      if: matrix.platform == 'linux'
+      run: |
+        docker run --rm \
+          --platform ${{ matrix.platform_name }} \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          debian:10.10 \
+          bash -c '
+            set -e
+            
+            PYTHON_CACHED="${{ steps.cache-python-linux.outputs.cache-hit }}"
+            PYTHON_COMPILED="${{ steps.cache-python-compiled-arm64.outputs.cache-hit }}"
+            
+            if [ "$PYTHON_CACHED" = "true" ]; then
+              echo "=== 解压完整 Python 环境 ==="
+              cd /usr/local
+              tar -xzf /workspace/python-env-${{ matrix.arch }}.tar.gz
+            elif [ "${{ matrix.arch }}" = "arm64" ] && [ "$PYTHON_COMPILED" = "true" ]; then
+              echo "=== 解压 Python 编译结果 ==="
+              cd /usr/local
+              tar -xzf /workspace/python-compiled-arm64.tar.gz
+              
+              echo "=== 安装 PyQt6 (预编译版本) ==="
+              /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
+              /usr/local/python3.12/bin/pip3.12 install PyQt6 PyQt6-Qt6 PyQt6-sip
+              
+              echo "=== 安装项目依赖 ==="
+              /usr/local/python3.12/bin/pip3.12 install -r requirements.txt
+              /usr/local/python3.12/bin/pip3.12 install nuitka ordered-set zstandard
+              
+              echo "=== 打包完整 Python 环境 ==="
+              cd /usr/local
+              tar -czf /workspace/python-env-${{ matrix.arch }}.tar.gz python3.12
+            elif [ "$PYTHON_CACHED" != "true" ]; then
+              echo "=== 编译 Python 3.12 ==="
+              cd /tmp
+              wget -q https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz
+              tar xzf Python-3.12.13.tgz
+              cd Python-3.12.13
+              ./configure --enable-optimizations --prefix=/usr/local/python3.12
+              make -j$(nproc)
+              make install
+              cd /workspace
+              /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
+              
+              echo "=== 安装 PyQt6 (预编译版本) ==="
+              /usr/local/python3.12/bin/pip3.12 install PyQt6 PyQt6-Qt6 PyQt6-sip
+              
+              echo "=== 安装项目依赖 ==="
+              /usr/local/python3.12/bin/pip3.12 install -r requirements.txt
+              /usr/local/python3.12/bin/pip3.12 install nuitka ordered-set zstandard
+              
+              echo "=== 打包完整 Python 环境 ==="
+              cd /usr/local
+              tar -czf /workspace/python-env-${{ matrix.arch }}.tar.gz python3.12
+            fi
+            
+            ln -sf /usr/local/python3.12/bin/python3.12 /usr/local/bin/python3
+            ln -sf /usr/local/python3.12/bin/pip3.12 /usr/local/bin/pip3
+            python3 --version
+          '
+      shell: bash
+
+    - name: '14. 使用 Nuitka 构建 (Linux)'
+      if: matrix.platform == 'linux'
+      run: |
+        docker run --rm \
+          --platform ${{ matrix.platform_name }} \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          debian:10.10 \
+          bash -c '
+            set -e
             
             echo "=== 解压 Python 环境 ==="
             cd /usr/local
@@ -184,13 +269,6 @@ jobs:
             ln -sf /usr/local/python3.12/bin/python3.12 /usr/local/bin/python3
             ln -sf /usr/local/python3.12/bin/pip3.12 /usr/local/bin/pip3
             python3 --version
-            
-            echo "=== 安装 PyQt6 (预编译版本) ==="
-            pip3 install PyQt6 PyQt6-Qt6 PyQt6-sip
-            
-            echo "=== 安装项目依赖 ==="
-            pip3 install -r requirements.txt
-            pip3 install nuitka ordered-set zstandard
             
             echo "=== 使用 Nuitka 构建 ==="
             cd /workspace
@@ -209,6 +287,19 @@ jobs:
               --include-package-data=PyQt6 \
               --linux-icon=icons/app.png \
               main.py
+          '
+      shell: bash
+
+    - name: '15. 验证并打包构建产物 (Linux)'
+      if: matrix.platform == 'linux'
+      run: |
+        docker run --rm \
+          --platform ${{ matrix.platform_name }} \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          debian:10.10 \
+          bash -c '
+            set -e
             
             echo "=== 验证并打包构建产物 ==="
             ls -la dist/
@@ -225,7 +316,7 @@ jobs:
           '
       shell: bash
 
-    - name: '12. 使用 Nuitka 构建 (Windows)'
+    - name: '16. 使用 Nuitka 构建 (Windows)'
       if: matrix.platform == 'windows'
       run: |
         $jobs = [Environment]::ProcessorCount
@@ -247,7 +338,7 @@ jobs:
           main.py
       shell: powershell
 
-    - name: '13. 验证并打包构建产物 (Windows)'
+    - name: '17. 验证并打包构建产物 (Windows)'
       if: matrix.platform == 'windows'
       run: |
         if (Test-Path "dist\main.dist") {
@@ -260,7 +351,7 @@ jobs:
         }
       shell: powershell
 
-    - name: '14. 上传构建产物'
+    - name: '18. 上传构建产物'
       uses: actions/upload-artifact@v7
       with:
         name: ${{ matrix.output_name }}
@@ -270,7 +361,7 @@ jobs:
         retention-days: 30
         if-no-files-found: ignore
 
-    - name: '15. 上传到发布'
+    - name: '19. 上传到发布'
       if: github.event_name == 'release' && github.event.release.tag_name != ''
       uses: softprops/action-gh-release@v3
       with:
