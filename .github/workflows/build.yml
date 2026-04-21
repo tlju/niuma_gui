@@ -186,11 +186,11 @@ jobs:
             python3 --version
             
             echo "=== 安装 PyQt6 (预编译版本) ==="
-            pip3.12 install PyQt6 PyQt6-Qt6 PyQt6-sip
+            pip3 install PyQt6 PyQt6-Qt6 PyQt6-sip
             
             echo "=== 安装项目依赖 ==="
-            pip3.12 install -r requirements.txt
-            pip3.12 install nuitka ordered-set zstandard
+            pip3 install -r requirements.txt
+            pip3 install nuitka ordered-set zstandard
             
             echo "=== 使用 Nuitka 构建 ==="
             cd /workspace
