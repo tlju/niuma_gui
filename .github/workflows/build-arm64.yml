@@ -8,7 +8,7 @@ permissions:
 
 env:
   PYTHON_VERSION: '3.12'
-  CACHE_VERSION: v3
+  CACHE_VERSION: v4
 
 jobs:
   build-arm64:
@@ -37,16 +37,11 @@ jobs:
           --platform linux/arm64 \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
-          debian:10.10 \
+          debian:11 \
           bash -c '
             set -e
             
             PYTHON_CACHED="${{ steps.cache-python.outputs.cache-hit }}"
-            
-            echo "=== 配置 apt 源 (Debian 10 已归档) ==="
-            echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
-            echo "deb http://archive.debian.org/debian buster-updates main" >> /etc/apt/sources.list
-            echo "Acquire::Check-Valid-Until false;" > /etc/apt/apt.conf.d/99no-check-valid-until
             
             echo "=== 安装系统依赖 ==="
             apt-get update
@@ -58,7 +53,7 @@ jobs:
               libxkbcommon-x11-0 \
               libssl1.1 \
               bzip2 libbz2-1.0 \
-              libffi6 \
+              libffi7 \
               zlib1g \
               liblzma5 \
               libsqlite3-0 \
@@ -77,8 +72,9 @@ jobs:
               libjpeg62-turbo \
               libpng16-16 \
               libpcre2-16-0 \
-              libicu63 \
-              libb2-1
+              libicu67 \
+              libb2-1 \
+              qt6-base-dev
             
             if [ "$PYTHON_CACHED" != "true" ]; then
               echo "=== 编译 Python 3.12 ==="
@@ -106,7 +102,16 @@ jobs:
               echo "=== 安装 Python 依赖 ==="
               /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
               /usr/local/python3.12/bin/pip3.12 install --only-binary=:all: PyQt6 PyQt6-Qt6 PyQt6-sip
-              /usr/local/python3.12/bin/pip3.12 install -r requirements.txt
+              
+              echo "=== 配置 Qt6 环境变量 (使用系统 Qt6 构建) ==="
+              export QT6DIR=/usr/lib/aarch64-linux-gnu/qt6
+              export PATH="/usr/lib/qt6/bin:$PATH"
+              qmake --version
+              
+              echo "=== 安装 PyQt6-QScintilla ==="
+              /usr/local/python3.12/bin/pip3.12 install PyQt6-QScintilla
+              
+              /usr/local/python3.12/bin/pip3.12 install -r requirements.txt || true
               /usr/local/python3.12/bin/pip3.12 install nuitka ordered-set zstandard
               
               echo "=== 打包 Python 环境 ==="
