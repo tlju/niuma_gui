@@ -223,7 +223,7 @@ jobs:
           pip3 install --only-binary=:all: nuitka ordered-set zstandard
           
           echo "=== 验证 PyQt6 安装 ==="
-          python3 -c "import PyQt6; print(\"PyQt6 version:\", PyQt6.QtCore.PYQT_VERSION_STR)"
+          python3 -c "from PyQt6.QtCore import PYQT_VERSION_STR; print(\"PyQt6 version:\", PYQT_VERSION_STR)"
         '
         
         echo "=== 更新镜像 (包含项目依赖) ==="
