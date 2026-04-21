@@ -437,6 +437,14 @@ QTextEdit:focus, QPlainTextEdit:focus {
     border-color: #3498db;
 }
 
+QPlainTextEdit#codeEditor {
+    background-color: #ffffff;
+    color: #000000;
+    selection-background-color: #b4d5fe;
+    selection-color: #000000;
+    font-size: 15px;
+}
+
 QSpinBox, QDoubleSpinBox {
     background-color: #ffffff;
     border: 1px solid #ced4da;
@@ -517,4 +525,72 @@ QDateEdit:focus {
 QDateEdit::drop-down {
     border: none;
     width: 28px;
+}
+
+QMenu#bastionMenu {
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+QMenu#bastionMenu::item {
+    padding: 8px 24px;
+    border-radius: 4px;
+}
+
+QMenu#bastionMenu::item:selected {
+    background-color: #d6eaf8;
+}
+
+QLabel#bastionStatusIndicator {
+    border-radius: 5px;
+}
+
+QLabel#bastionStatusIndicator[status="disconnected"] {
+    background-color: #95a5a6;
+}
+
+QLabel#bastionStatusIndicator[status="connecting"] {
+    background-color: #f39c12;
+}
+
+QLabel#bastionStatusIndicator[status="connected"] {
+    background-color: #3498db;
+}
+
+QLabel#bastionStatusIndicator[status="authenticating"] {
+    background-color: #f39c12;
+}
+
+QLabel#bastionStatusIndicator[status="authenticated"] {
+    background-color: #27ae60;
+}
+
+QLabel#bastionStatusIndicator[status="failed"] {
+    background-color: #e74c3c;
+}
+
+QLabel#bastionStatusLabel[status="disconnected"] {
+    color: #95a5a6;
+}
+
+QLabel#bastionStatusLabel[status="connecting"] {
+    color: #f39c12;
+}
+
+QLabel#bastionStatusLabel[status="connected"] {
+    color: #3498db;
+}
+
+QLabel#bastionStatusLabel[status="authenticating"] {
+    color: #f39c12;
+}
+
+QLabel#bastionStatusLabel[status="authenticated"] {
+    color: #27ae60;
+}
+
+QLabel#bastionStatusLabel[status="failed"] {
+    color: #e74c3c;
 }

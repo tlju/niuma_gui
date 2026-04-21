@@ -14,3 +14,28 @@ ScriptsPage QTableWidget {
     border: 1px solid #dee2e6;
     border-radius: 6px;
 }
+
+QPlainTextEdit#logOutput,
+QPlainTextEdit#execOutput {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 12px;
+}
+
+QPlainTextEdit#errorOutput {
+    background-color: #1e1e1e;
+    color: #EF5350;
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 12px;
+}
+
+QLabel#logLabel {
+    font-weight: bold;
+}
+
+QLabel#nodeTypeTitle {
+    font-weight: bold;
+    font-size: 14px;
+    padding: 5px;
+}

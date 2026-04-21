@@ -1,0 +1,72 @@
+QFrame#richTextToolbar {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 6px;
+}
+
+QLabel#toolbarLabel {
+    color: #495057;
+    font-size: 12px;
+}
+
+QLabel#toolbarLabelSize {
+    color: #495057;
+    font-size: 12px;
+    margin-left: 8px;
+}
+
+QToolButton#toolbarBtn,
+QToolButton#toolbarBtnBold,
+QToolButton#toolbarBtnItalic,
+QToolButton#toolbarBtnUnderline,
+QToolButton#toolbarBtnStrike {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 4px;
+    min-width: 28px;
+    min-height: 24px;
+}
+
+QToolButton#toolbarBtn:hover,
+QToolButton#toolbarBtnBold:hover,
+QToolButton#toolbarBtnItalic:hover,
+QToolButton#toolbarBtnUnderline:hover,
+QToolButton#toolbarBtnStrike:hover {
+    background-color: #e9ecef;
+    border-color: #adb5bd;
+}
+
+QToolButton#toolbarBtn:pressed,
+QToolButton#toolbarBtnBold:pressed,
+QToolButton#toolbarBtnItalic:pressed,
+QToolButton#toolbarBtnUnderline:pressed,
+QToolButton#toolbarBtnStrike:pressed {
+    background-color: #dee2e6;
+}
+
+QToolButton#toolbarBtn:checked,
+QToolButton#toolbarBtnBold:checked,
+QToolButton#toolbarBtnItalic:checked,
+QToolButton#toolbarBtnUnderline:checked,
+QToolButton#toolbarBtnStrike:checked {
+    background-color: #d0ebff;
+    border-color: #339af0;
+}
+
+QToolButton#toolbarBtnBold {
+    font-weight: bold;
+}
+
+QToolButton#toolbarBtnItalic {
+    font-style: italic;
+}
+
+QToolButton#toolbarBtnUnderline {
+    text-decoration: underline;
+}
+
+QToolButton#toolbarBtnStrike {
+    text-decoration: line-through;
+}

@@ -250,7 +250,7 @@ class NodePaletteWidget(QWidget):
         layout.setContentsMargins(5, 5, 5, 5)
 
         title = QLabel("节点类型")
-        title.setStyleSheet("font-weight: bold; font-size: 14px; padding: 5px;")
+        title.setObjectName("nodeTypeTitle")
         layout.addWidget(title)
 
         self.node_list = QListWidget()

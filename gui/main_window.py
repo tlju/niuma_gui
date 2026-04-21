@@ -29,17 +29,7 @@ class BastionStatusWidget(QFrame):
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setStyleSheet("""
-            QFrame {
-                background-color: transparent;
-                border: 1px solid #dee2e6;
-                border-radius: 4px;
-                padding: 2px 8px;
-            }
-            QFrame:hover {
-                background-color: #f8f9fa;
-            }
-        """)
+        self.setObjectName("bastionStatusWidget")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         
         layout = QHBoxLayout(self)
@@ -47,35 +37,37 @@ class BastionStatusWidget(QFrame):
         layout.setSpacing(6)
         
         self.status_indicator = QLabel()
+        self.status_indicator.setObjectName("bastionStatusIndicator")
         self.status_indicator.setFixedSize(10, 10)
         layout.addWidget(self.status_indicator)
         
         self.status_label = QLabel("堡垒机: 未配置")
-        self.status_label.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        self.status_label.setObjectName("bastionStatusLabel")
         layout.addWidget(self.status_label)
         
         self.set_status(ConnectionStatus.DISCONNECTED.value, "未配置")
     
     def set_status(self, status: str, message: str = ""):
-        colors = {
-            ConnectionStatus.DISCONNECTED.value: ("#95a5a6", "断开"),
-            ConnectionStatus.CONNECTING.value: ("#f39c12", "连接中"),
-            ConnectionStatus.CONNECTED.value: ("#3498db", "已连接"),
-            ConnectionStatus.AUTHENTICATING.value: ("#f39c12", "认证中"),
-            ConnectionStatus.AUTHENTICATED.value: ("#27ae60", "已连接"),
-            ConnectionStatus.FAILED.value: ("#e74c3c", "失败"),
+        status_map = {
+            ConnectionStatus.DISCONNECTED.value: ("disconnected", "断开"),
+            ConnectionStatus.CONNECTING.value: ("connecting", "连接中"),
+            ConnectionStatus.CONNECTED.value: ("connected", "已连接"),
+            ConnectionStatus.AUTHENTICATING.value: ("authenticating", "认证中"),
+            ConnectionStatus.AUTHENTICATED.value: ("authenticated", "已连接"),
+            ConnectionStatus.FAILED.value: ("failed", "失败"),
         }
         
-        color, default_text = colors.get(status, ("#95a5a6", status))
+        status_key, default_text = status_map.get(status, ("disconnected", status))
         
-        self.status_indicator.setStyleSheet(f"""
-            background-color: {color};
-            border-radius: 5px;
-        """)
+        self.status_indicator.setProperty("status", status_key)
+        self.status_indicator.style().unpolish(self.status_indicator)
+        self.status_indicator.style().polish(self.status_indicator)
         
         display_text = f"堡垒机: {message}" if message else f"堡垒机: {default_text}"
         self.status_label.setText(display_text)
-        self.status_label.setStyleSheet(f"color: {color}; font-size: 12px;")
+        self.status_label.setProperty("status", status_key)
+        self.status_label.style().unpolish(self.status_label)
+        self.status_label.style().polish(self.status_label)
     
     def mousePressEvent(self, event):
         self.clicked.emit()
@@ -150,21 +142,7 @@ class MainWindow(QMainWindow):
 
     def _show_bastion_menu(self):
         menu = QMenu(self)
-        menu.setStyleSheet("""
-            QMenu {
-                background-color: #ffffff;
-                border: 1px solid #dee2e6;
-                border-radius: 4px;
-                padding: 4px;
-            }
-            QMenu::item {
-                padding: 8px 24px;
-                border-radius: 4px;
-            }
-            QMenu::item:selected {
-                background-color: #d6eaf8;
-            }
-        """)
+        menu.setObjectName("bastionMenu")
         
         status = self.bastion_manager.get_status()
         

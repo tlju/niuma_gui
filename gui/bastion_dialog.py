@@ -24,7 +24,7 @@ class SecondaryAuthDialog(QDialog):
         self.init_ui()
         
     def init_ui(self):
-        load_combined_stylesheet(QApplication.instance(), ["common"])
+        load_combined_stylesheet(QApplication.instance(), ["common", "bastion_dialog"])
         
         self.setWindowTitle("堡垒机二次认证")
         self.setFixedSize(420, 280)
@@ -35,42 +35,35 @@ class SecondaryAuthDialog(QDialog):
         main_layout.setContentsMargins(0, 0, 0, 0)
         
         header = QFrame()
-        header.setObjectName("header")
-        header.setStyleSheet("""
-            QFrame#header {
-                background-color: #34495e;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
-            }
-        """)
+        header.setObjectName("authHeader")
         header.setFixedHeight(80)
         header_layout = QVBoxLayout(header)
         header_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         title_label = QLabel("堡垒机二次认证")
-        title_label.setStyleSheet("color: #ecf0f1; font-size: 18px; font-weight: bold;")
+        title_label.setObjectName("authTitle")
         header_layout.addWidget(title_label)
         
         subtitle_label = QLabel("请输入6位数字动态口令")
-        subtitle_label.setStyleSheet("color: #bdc3c7; font-size: 12px;")
+        subtitle_label.setObjectName("authSubtitle")
         header_layout.addWidget(subtitle_label)
         
         main_layout.addWidget(header)
         
         form_frame = QFrame()
-        form_frame.setStyleSheet("background-color: #ffffff;")
+        form_frame.setObjectName("authFormFrame")
         form_layout = QVBoxLayout(form_frame)
         form_layout.setSpacing(12)
         form_layout.setContentsMargins(30, 25, 30, 25)
         
         if self.retry_count > 0:
             error_label = QLabel(f"动态口令验证失败，请重新输入")
-            error_label.setStyleSheet("color: #e74c3c; font-size: 12px; font-weight: bold;")
+            error_label.setObjectName("authError")
             error_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             form_layout.addWidget(error_label)
         
         retry_info = QLabel(f"剩余尝试次数: {self.max_retries - self.retry_count} 次")
-        retry_info.setStyleSheet("color: #7f8c8d; font-size: 11px;")
+        retry_info.setObjectName("authRetryInfo")
         retry_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
         form_layout.addWidget(retry_info)
         
@@ -146,7 +139,7 @@ class BastionConnectingDialog(QDialog):
         self.init_ui()
         
     def init_ui(self):
-        load_combined_stylesheet(QApplication.instance(), ["common"])
+        load_combined_stylesheet(QApplication.instance(), ["common", "bastion_dialog"])
         
         self.setWindowTitle("连接堡垒机")
         self.setFixedSize(380, 180)
@@ -157,17 +150,17 @@ class BastionConnectingDialog(QDialog):
         main_layout.setContentsMargins(30, 30, 30, 30)
         
         title_label = QLabel("正在连接堡垒机...")
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50;")
+        title_label.setObjectName("connectingTitle")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(title_label)
         
         self.status_label = QLabel("初始化连接...")
-        self.status_label.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        self.status_label.setObjectName("connectingStatus")
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(self.status_label)
         
         self.retry_label = QLabel("")
-        self.retry_label.setStyleSheet("color: #e74c3c; font-size: 11px;")
+        self.retry_label.setObjectName("connectingRetry")
         self.retry_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(self.retry_label)
         

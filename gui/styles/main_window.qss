@@ -78,3 +78,22 @@ QStatusBar QLabel {
     color: #bdc3c7;
     padding: 0 8px;
 }
+
+QFrame#bastionStatusWidget {
+    background-color: transparent;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 2px 8px;
+}
+
+QFrame#bastionStatusWidget:hover {
+    background-color: #f8f9fa;
+}
+
+QLabel#bastionStatusLabel {
+    font-size: 12px;
+}
+
+QLabel#bastionStatusIndicator {
+    border-radius: 5px;
+}

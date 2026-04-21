@@ -1,12 +1,16 @@
 import sys
 import re
 import json
+import traceback
 from PyQt6.QtWidgets import QPlainTextEdit, QCompleter, QWidget
 from PyQt6.QtGui import (
     QFont, QColor, QSyntaxHighlighter, QTextCharFormat, 
     QTextCursor, QPainter, QTextBlock, QKeySequence
 )
 from PyQt6.QtCore import Qt, QRegularExpression, QRect, QEvent
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class BaseHighlighter(QSyntaxHighlighter):
@@ -192,6 +196,7 @@ class VariableCompleter(QCompleter):
         super().__init__([], parent)
         self.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self._completion_words = []
 
     def update_completions(self, words):
@@ -273,7 +278,8 @@ class CodeEditor(QPlainTextEdit):
         self._current_highlighter = None
         self._current_language = None
         self._completion_words = []
-        self._completer = VariableCompleter(self)
+        self._completer = VariableCompleter()
+        self._completer.setWidget(self)
         self._completer.activated.connect(self._insert_completion)
         
         self._line_number_area = LineNumberArea(self)
@@ -290,20 +296,11 @@ class CodeEditor(QPlainTextEdit):
         self.updateRequest.connect(self._update_folding_area)
 
     def _setup_editor(self):
-        font = self._get_monospace_font(12)
+        self.setObjectName("codeEditor")
+        font = self._get_monospace_font(15)
         self.setFont(font)
 
         self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
-
-        self.setStyleSheet("""
-            QPlainTextEdit {
-                background-color: #ffffff;
-                color: #000000;
-                selection-background-color: #b4d5fe;
-                selection-color: #000000;
-            }
-        """)
-
         self.setTabStopDistance(self.fontMetrics().horizontalAdvance(' ') * 4)
         
         self._update_viewport_margins()
@@ -505,18 +502,21 @@ class CodeEditor(QPlainTextEdit):
         self.document().markContentsDirty(start_block.position(), block.position() - start_block.position())
 
     def _load_completion_words(self):
+        logger.info(f"_load_completion_words called, param_service={self._param_service}, dict_service={self._dict_service}")
         self._completion_words = []
         if self._param_service:
             try:
                 params = self._param_service.get_params()
+                logger.info(f"Loaded {len(params) if params else 0} params")
                 for param in params:
                     if param.status == 1:
                         self._completion_words.append(f"@param.{param.param_code}")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"Error loading params: {e}\n{traceback.format_exc()}")
         if self._dict_service:
             try:
                 dicts = self._dict_service.get_dicts()
+                logger.info(f"Loaded {len(dicts) if dicts else 0} dicts")
                 for d in dicts:
                     if d.is_active == "Y":
                         self._completion_words.append(f"@dict.{d.code}")
@@ -524,8 +524,9 @@ class CodeEditor(QPlainTextEdit):
                         for item in items:
                             if item.is_active == "Y":
                                 self._completion_words.append(f"@dict.{d.code}.{item.item_name}")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"Error loading dicts: {e}\n{traceback.format_exc()}")
+        logger.info(f"Total completion words: {len(self._completion_words)}")
         self._completer.update_completions(self._completion_words)
 
     def _get_word_before_cursor(self):
@@ -538,20 +539,27 @@ class CodeEditor(QPlainTextEdit):
         return text[start:pos_in_block], start, pos_in_block
 
     def _show_completion(self, word):
+        logger.info(f"_show_completion called with word='{word}', completion_words_count={len(self._completion_words)}")
         if not self._completion_words:
+            logger.info("No completion words available, returning")
             return
         if word.startswith("@"):
-            filtered = [w for w in self._completion_words if w.startswith(word)] if word != "@" else self._completion_words
-            if filtered:
-                self._completer.update_completions(filtered)
-                try:
-                    rect = self.cursorRect()
-                    popup = self._completer.popup()
-                    if popup:
-                        self._completer.complete()
-                        popup.move(self.viewport().mapToGlobal(rect.bottomLeft()))
-                except Exception:
-                    pass
+            self._completer.setCompletionPrefix(word)
+            logger.info(f"Set completion prefix to: '{word}'")
+            try:
+                cursor_rect = self.cursorRect()
+                popup = self._completer.popup()
+                popup.setFixedWidth(300)
+                popup.setFixedHeight(200)
+                point = self.viewport().mapToGlobal(cursor_rect.bottomLeft())
+                logger.info(f"Popup position: {point}")
+                logger.info("Calling completer.complete()")
+                self._completer.complete()
+                popup.move(point)
+                popup.show()
+                logger.info("Popup shown successfully")
+            except Exception as e:
+                logger.error(f"Error showing completion: {e}\n{traceback.format_exc()}")
 
     def _insert_completion(self, completion):
         cursor = self.textCursor()
@@ -563,34 +571,41 @@ class CodeEditor(QPlainTextEdit):
         self.setTextCursor(cursor)
 
     def keyPressEvent(self, e):
-        if self._completer.popup().isVisible():
-            if e.key() in (Qt.Key.Key_Up, Qt.Key.Key_Down, Qt.Key.Key_Enter,
-                          Qt.Key.Key_Return, Qt.Key.Key_Escape, Qt.Key.Key_Tab):
-                self._completer.popup().keyPressEvent(e)
+        logger.info(f"keyPressEvent: key={e.key()}, text='{e.text()}'")
+        try:
+            if self._completer.popup().isVisible():
+                if e.key() in (Qt.Key.Key_Up, Qt.Key.Key_Down, Qt.Key.Key_Enter,
+                              Qt.Key.Key_Return, Qt.Key.Key_Escape, Qt.Key.Key_Tab):
+                    logger.info(f"Forwarding key {e.key()} to completer popup")
+                    self._completer.popup().keyPressEvent(e)
+                    return
+                if e.key() == Qt.Key.Key_Escape:
+                    logger.info("Hiding completer popup via Escape")
+                    self._completer.popup().hide()
+                    return
+
+            if e.key() == Qt.Key.Key_Tab:
+                self._handle_tab_key()
                 return
-            if e.key() == Qt.Key.Key_Escape:
-                self._completer.popup().hide()
+            
+            if e.key() == Qt.Key.Key_Backtab:
+                self._handle_backtab_key()
+                return
+            
+            if e.key() == Qt.Key.Key_Return:
+                self._handle_return_key()
                 return
 
-        if e.key() == Qt.Key.Key_Tab:
-            self._handle_tab_key()
-            return
-        
-        if e.key() == Qt.Key.Key_Backtab:
-            self._handle_backtab_key()
-            return
-        
-        if e.key() == Qt.Key.Key_Return:
-            self._handle_return_key()
-            return
+            super().keyPressEvent(e)
 
-        super().keyPressEvent(e)
-
-        text = e.text()
-        if text and (text == "@" or text.isalnum() or text in "._"):
-            word, start, end = self._get_word_before_cursor()
-            if word.startswith("@"):
-                self._show_completion(word)
+            text = e.text()
+            if text and (text == "@" or text.isalnum() or text in "._"):
+                word, start, end = self._get_word_before_cursor()
+                logger.info(f"Word before cursor: '{word}'")
+                if word.startswith("@"):
+                    self._show_completion(word)
+        except Exception as e:
+            logger.error(f"Error in keyPressEvent: {e}\n{traceback.format_exc()}")
 
     def _handle_tab_key(self):
         cursor = self.textCursor()

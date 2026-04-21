@@ -24,3 +24,70 @@ AssetsPage QLabel[class="count"] {
     font-size: 12px;
     font-weight: 500;
 }
+
+QLabel#dialogTitle {
+    font-size: 16px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+QLabel#dialogInfo {
+    color: #7f8c8d;
+    font-size: 12px;
+}
+
+QLabel#dialogWarning {
+    color: #e74c3c;
+    font-size: 11px;
+}
+
+QLabel#dialogFormat {
+    color: #7f8c8d;
+    font-size: 12px;
+}
+
+QLabel#dialogRequired {
+    color: #3498db;
+    font-size: 12px;
+}
+
+QLabel#dialogNote {
+    color: #95a5a6;
+    font-size: 11px;
+}
+
+QFrame#infoFrame {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 12px;
+}
+
+QLabel#detailLabel {
+    color: #7f8c8d;
+    font-size: 12px;
+    min-width: 70px;
+}
+
+QLabel#detailValue {
+    color: #2c3e50;
+    font-size: 13px;
+}
+
+QLabel#notesTitle {
+    color: #7f8c8d;
+    font-size: 12px;
+}
+
+QTextEdit#notesText {
+    color: #2c3e50;
+    font-size: 13px;
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 8px;
+}
+
+QLineEdit#passwordDisplay {
+    font-size: 14px;
+}

@@ -134,15 +134,8 @@ class ExecutionDetailDialog(QDialog):
         logs_layout = QVBoxLayout(logs_tab)
         
         self.log_text = QPlainTextEdit()
+        self.log_text.setObjectName("logOutput")
         self.log_text.setReadOnly(True)
-        self.log_text.setStyleSheet("""
-            QPlainTextEdit {
-                background-color: #1e1e1e;
-                color: #d4d4d4;
-                font-family: Consolas, 'Courier New', monospace;
-                font-size: 12px;
-            }
-        """)
         logs_layout.addWidget(self.log_text)
         
         if self.execution.logs:
@@ -244,15 +237,8 @@ class ExecutionDetailDialog(QDialog):
         output_layout = QVBoxLayout(output_tab)
         
         output_text = QPlainTextEdit()
+        output_text.setObjectName("execOutput")
         output_text.setReadOnly(True)
-        output_text.setStyleSheet("""
-            QPlainTextEdit {
-                background-color: #1e1e1e;
-                color: #d4d4d4;
-                font-family: Consolas, 'Courier New', monospace;
-                font-size: 12px;
-            }
-        """)
         
         if node_executions:
             for node_exec in node_executions:
@@ -271,15 +257,8 @@ class ExecutionDetailDialog(QDialog):
             error_layout = QVBoxLayout(error_tab)
             
             error_text = QPlainTextEdit()
+            error_text.setObjectName("errorOutput")
             error_text.setReadOnly(True)
-            error_text.setStyleSheet("""
-                QPlainTextEdit {
-                    background-color: #1e1e1e;
-                    color: #EF5350;
-                    font-family: Consolas, 'Courier New', monospace;
-                    font-size: 12px;
-                }
-            """)
             error_text.setPlainText(self.execution.error_message)
             error_layout.addWidget(error_text)
             
@@ -374,20 +353,13 @@ class WorkflowEditDialog(QDialog):
         log_layout.setContentsMargins(5, 5, 5, 5)
 
         log_label = QLabel("执行日志")
-        log_label.setStyleSheet("font-weight: bold;")
+        log_label.setObjectName("logLabel")
         log_layout.addWidget(log_label)
 
         self.log_text = QPlainTextEdit()
+        self.log_text.setObjectName("logOutput")
         self.log_text.setReadOnly(True)
         self.log_text.setMaximumBlockCount(500)
-        self.log_text.setStyleSheet("""
-            QPlainTextEdit {
-                background-color: #1e1e1e;
-                color: #d4d4d4;
-                font-family: Consolas, 'Courier New', monospace;
-                font-size: 12px;
-            }
-        """)
         log_layout.addWidget(self.log_text)
 
         splitter.addWidget(self.log_panel)

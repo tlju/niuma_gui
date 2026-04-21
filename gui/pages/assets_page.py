@@ -448,7 +448,7 @@ class AssetDialog(QDialog):
         layout.setContentsMargins(24, 20, 24, 20)
 
         title_label = QLabel("编辑资产信息" if self.asset else "添加新资产")
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50;")
+        title_label.setObjectName("dialogTitle")
         layout.addWidget(title_label)
 
         form_layout = QFormLayout()
@@ -640,11 +640,11 @@ class ExportDialog(QDialog):
         layout.setContentsMargins(24, 20, 24, 20)
 
         title_label = QLabel("导出资产设置")
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50;")
+        title_label.setObjectName("dialogTitle")
         layout.addWidget(title_label)
 
         info_label = QLabel(f"当前共有 {self.total_count} 个资产")
-        info_label.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        info_label.setObjectName("dialogInfo")
         layout.addWidget(info_label)
 
         self.export_all_radio = QCheckBox("导出所有资产")
@@ -656,7 +656,7 @@ class ExportDialog(QDialog):
         layout.addWidget(self.include_password_check)
 
         warning_label = QLabel("⚠️ 注意: 包含密码字段会导出解密后的密码,请注意文件安全!")
-        warning_label.setStyleSheet("color: #e74c3c; font-size: 11px;")
+        warning_label.setObjectName("dialogWarning")
         warning_label.setWordWrap(True)
         layout.addWidget(warning_label)
 
@@ -703,15 +703,15 @@ class ImportDialog(QDialog):
         layout.setContentsMargins(24, 20, 24, 20)
 
         title_label = QLabel("导入资产设置")
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50;")
+        title_label.setObjectName("dialogTitle")
         layout.addWidget(title_label)
 
         format_label = QLabel("支持格式: Excel (.xlsx, .xls)")
-        format_label.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        format_label.setObjectName("dialogFormat")
         layout.addWidget(format_label)
 
         required_label = QLabel("必填字段: 单位名称*、系统名称*、用户名*、IP地址或IPv6地址*")
-        required_label.setStyleSheet("color: #3498db; font-size: 12px;")
+        required_label.setObjectName("dialogRequired")
         layout.addWidget(required_label)
 
         self.update_existing_check = QCheckBox("更新已存在的资产 (根据单位名称+系统名称+IP地址+IPv6地址+用户名匹配)")
@@ -723,7 +723,7 @@ class ImportDialog(QDialog):
         layout.addWidget(self.skip_errors_check)
 
         note_label = QLabel("💡 提示: 可以先导出资产作为模板,然后填写数据后导入")
-        note_label.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        note_label.setObjectName("dialogNote")
         note_label.setWordWrap(True)
         layout.addWidget(note_label)
 
@@ -784,21 +784,11 @@ class AssetDetailDialog(QDialog):
         layout.setContentsMargins(24, 20, 24, 20)
 
         title_label = QLabel("资产详情")
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50;")
+        title_label.setObjectName("dialogTitle")
         layout.addWidget(title_label)
 
         info_frame = QFrame()
-        info_frame.setStyleSheet("""
-            QFrame {
-                background-color: #f8f9fa;
-                border: 1px solid #e9ecef;
-                border-radius: 6px;
-                padding: 10px;
-            }
-            QLabel {
-                background-color: transparent;
-            }
-        """)
+        info_frame.setObjectName("infoFrame")
         info_layout = QVBoxLayout(info_frame)
         info_layout.setSpacing(8)
 
@@ -834,10 +824,10 @@ class AssetDetailDialog(QDialog):
         notes_layout = QVBoxLayout()
         notes_layout.setSpacing(4)
         notes_title = QLabel("备注:")
-        notes_title.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        notes_title.setObjectName("notesTitle")
         self.notes_text = QTextEdit()
+        self.notes_text.setObjectName("notesText")
         self.notes_text.setReadOnly(True)
-        self.notes_text.setStyleSheet("color: #2c3e50; font-size: 13px; background-color: #ffffff; border: 1px solid #dee2e6; border-radius: 4px; padding: 8px;")
         self.notes_text.setMinimumHeight(80)
         self.notes_text.setMaximumHeight(120)
         notes_layout.addWidget(notes_title)
@@ -868,11 +858,11 @@ class AssetDetailDialog(QDialog):
         row_layout.setSpacing(10)
 
         label = QLabel(label_text)
-        label.setStyleSheet("color: #7f8c8d; font-size: 12px; min-width: 70px;")
+        label.setObjectName("detailLabel")
         label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
 
         value_label = QLabel("-")
-        value_label.setStyleSheet("color: #2c3e50; font-size: 13px;")
+        value_label.setObjectName("detailValue")
         value_label.setWordWrap(True)
         setattr(self, attr_name, value_label)
 
@@ -889,7 +879,7 @@ class AssetDetailDialog(QDialog):
         row_layout.setSpacing(10)
 
         label = QLabel("密码:")
-        label.setStyleSheet("color: #7f8c8d; font-size: 12px; min-width: 70px;")
+        label.setObjectName("detailLabel")
         label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
 
         self.password_btn = QPushButton("点击查看密码")
@@ -947,14 +937,14 @@ class PasswordDialog(QDialog):
         layout.setContentsMargins(24, 20, 24, 20)
 
         title_label = QLabel("解密后的密码")
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50;")
+        title_label.setObjectName("dialogTitle")
         layout.addWidget(title_label)
 
         self.password_input = QLineEdit()
+        self.password_input.setObjectName("passwordDisplay")
         self.password_input.setText(self.password)
         self.password_input.setReadOnly(True)
         self.password_input.setMinimumHeight(36)
-        self.password_input.setStyleSheet("font-size: 14px;")
         layout.addWidget(self.password_input)
 
         btn_layout = QHBoxLayout()
