@@ -45,20 +45,7 @@ jobs:
       if: matrix.arch == 'arm64'
       uses: docker/setup-qemu-action@v4
 
-    - name: '3. 恢复 Python 环境缓存 (Linux)'
-      if: matrix.platform == 'linux'
-      uses: actions/cache@v5
-      id: cache-python-linux
-      with:
-        path: python-env-${{ matrix.arch }}.tar.gz
-        key: ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
-        restore-keys: |
-          ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-
-          ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-
-
-
-
-    - name: '4. 恢复 Python 环境缓存 (Windows)'
+    - name: '3. 恢复 Python 环境缓存 (Windows)'
       if: matrix.platform == 'windows'
       uses: actions/cache@v5
       id: cache-python-windows
@@ -69,13 +56,13 @@ jobs:
           ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-
           ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-
 
-    - name: '5. 设置 Python (Windows)'
+    - name: '4. 设置 Python (Windows)'
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       uses: actions/setup-python@v6
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: '6. 安装依赖 (Windows)'
+    - name: '5. 安装依赖 (Windows)'
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       run: |
         python -m pip install --upgrade pip setuptools wheel
@@ -83,18 +70,18 @@ jobs:
         pip install nuitka ordered-set zstandard
       shell: powershell
 
-    - name: '7. 安装构建依赖 (Windows)'
+    - name: '6. 安装构建依赖 (Windows)'
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       run: choco install ccache -y
 
-    - name: '8. 打包 Python 环境 (Windows)'
+    - name: '7. 打包 Python 环境 (Windows)'
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
       run: |
         $pythonPath = python -c "import sys; print(sys.prefix)"
         7z a -t7z -mx=9 python-env-${{ matrix.arch }}.7z "$pythonPath\*"
       shell: powershell
 
-    - name: '9. 恢复 Python 环境 (Windows)'
+    - name: '8. 恢复 Python 环境 (Windows)'
       if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit == 'true'
       run: |
         $destPath = "$env:LOCALAPPDATA\python-cache"
@@ -104,219 +91,238 @@ jobs:
         Add-Content -Path $env:GITHUB_PATH -Value "$destPath"
       shell: powershell
 
-    - name: '10. 恢复 Python 编译缓存 (Linux arm64)'
-      if: matrix.platform == 'linux' && matrix.arch == 'arm64'
+    - name: '9. 恢复 Docker 镜像缓存 (Linux)'
+      if: matrix.platform == 'linux'
       uses: actions/cache@v5
-      id: cache-python-compiled-arm64
+      id: cache-docker-image
       with:
-        path: python-compiled-arm64.tar.gz
-        key: ${{ env.CACHE_VERSION }}-python-compiled-arm64-${{ env.PYTHON_VERSION }}
+        path: docker-image-${{ matrix.arch }}.tar
+        key: ${{ env.CACHE_VERSION }}-docker-image-${{ matrix.arch }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
         restore-keys: |
-          ${{ env.CACHE_VERSION }}-python-compiled-arm64-
+          ${{ env.CACHE_VERSION }}-docker-image-${{ matrix.arch }}-${{ env.PYTHON_VERSION }}-
+          ${{ env.CACHE_VERSION }}-docker-image-${{ matrix.arch }}-
 
-    - name: '11. 安装系统依赖 (Linux)'
+    - name: '10. 创建基础 Docker 镜像 (Linux)'
+      if: matrix.platform == 'linux' && steps.cache-docker-image.outputs.cache-hit != 'true'
+      run: |
+        CONTAINER_ID=$(docker run -d \
+          --platform ${{ matrix.platform_name }} \
+          debian:10.10 \
+          tail -f /dev/null)
+        
+        docker exec $CONTAINER_ID bash -c '
+          set -e
+          
+          echo "=== 配置 apt 源 (Debian 10 已归档) ==="
+          echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
+          echo "deb http://archive.debian.org/debian buster-updates main" >> /etc/apt/sources.list
+          echo "Acquire::Check-Valid-Until false;" > /etc/apt/apt.conf.d/99no-check-valid-until
+          
+          echo "=== 安装系统依赖 ==="
+          apt-get update
+          apt-get install -y \
+            gcc g++ make wget patchelf \
+            libxrender-dev libxext-dev libx11-dev \
+            libxcb1-dev libxkbcommon-dev \
+            libxcb-* \
+            libgl1-mesa-dev libegl1-mesa-dev \
+            libxkbcommon-x11-dev \
+            libssl-dev \
+            bzip2 libbz2-dev \
+            libffi-dev \
+            zlib1g-dev \
+            liblzma-dev \
+            libsqlite3-dev \
+            libreadline-dev \
+            tk-dev \
+            libgdbm-dev \
+            libxkbcommon-x11-0 \
+            libxcb-cursor0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render-util0 \
+            libxcb-shape0 \
+            libxcb-xfixes0 \
+            libxcb-xinerama0 \
+            libxcb-xkb1
+          
+          echo "=== 编译 Python 3.12 (架构优化) ==="
+          cd /tmp
+          wget -q https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz
+          tar xzf Python-3.12.13.tgz
+          cd Python-3.12.13
+          
+          ARCH_FLAGS=""
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            ARCH_FLAGS="--with-arch=armv8-a --with-fpu=crypto"
+          elif [ "${{ matrix.arch }}" = "x64" ]; then
+            ARCH_FLAGS="--with-arch=x86-64-v3 --enable-optimizations"
+          fi
+          
+          ./configure \
+            --enable-optimizations \
+            --prefix=/usr/local/python3.12 \
+            $ARCH_FLAGS
+          
+          make -j$(nproc)
+          make install
+          
+          echo "=== 安装 Python 包管理工具 ==="
+          /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
+          
+          echo "=== 安装 PyQt6 (预编译版本) ==="
+          /usr/local/python3.12/bin/pip3.12 install PyQt6 PyQt6-Qt6 PyQt6-sip
+          
+          echo "=== 创建符号链接 ==="
+          ln -sf /usr/local/python3.12/bin/python3.12 /usr/local/bin/python3
+          ln -sf /usr/local/python3.12/bin/pip3.12 /usr/local/bin/pip3
+          
+          echo "=== 清理临时文件 ==="
+          cd /
+          rm -rf /tmp/Python-3.12.13*
+          apt-get clean
+          rm -rf /var/lib/apt/lists/*
+        '
+        
+        echo "=== 提交容器为镜像 ==="
+        docker commit $CONTAINER_ID niuma-build-${{ matrix.arch }}:latest
+        
+        echo "=== 导出镜像为 tar 文件 ==="
+        docker save -o docker-image-${{ matrix.arch }}.tar niuma-build-${{ matrix.arch }}:latest
+        
+        echo "=== 清理容器 ==="
+        docker rm -f $CONTAINER_ID
+      shell: bash
+
+    - name: '11. 加载 Docker 镜像并安装项目依赖 (Linux)'
       if: matrix.platform == 'linux'
       run: |
-        docker run --rm \
+        if [ "${{ steps.cache-docker-image.outputs.cache-hit }}" = "true" ]; then
+          echo "=== 从缓存加载 Docker 镜像 ==="
+          docker load -i docker-image-${{ matrix.arch }}.tar
+        fi
+        
+        CONTAINER_ID=$(docker run -d \
           --platform ${{ matrix.platform_name }} \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
-          debian:10.10 \
-          bash -c '
-            set -e
-            
-            echo "=== 配置 apt 源 (Debian 10 已归档) ==="
-            echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
-            echo "deb http://archive.debian.org/debian buster-updates main" >> /etc/apt/sources.list
-            echo "Acquire::Check-Valid-Until false;" > /etc/apt/apt.conf.d/99no-check-valid-until
-            
-            echo "=== 安装系统依赖 ==="
-            apt-get update
-            apt-get install -y \
-              gcc g++ make wget patchelf \
-              libxrender-dev libxext-dev libx11-dev \
-              libxcb1-dev libxkbcommon-dev \
-              libxcb-* \
-              libgl1-mesa-dev libegl1-mesa-dev \
-              libxkbcommon-x11-dev \
-              libssl-dev \
-              bzip2 libbz2-dev \
-              libffi-dev \
-              zlib1g-dev \
-              liblzma-dev \
-              libsqlite3-dev \
-              libreadline-dev \
-              tk-dev \
-              libgdbm-dev \
-              libxkbcommon-x11-0 \
-              libxcb-cursor0 \
-              libxcb-icccm4 \
-              libxcb-image0 \
-              libxcb-keysyms1 \
-              libxcb-randr0 \
-              libxcb-render-util0 \
-              libxcb-shape0 \
-              libxcb-xfixes0 \
-              libxcb-xinerama0 \
-              libxcb-xkb1
-          '
+          niuma-build-${{ matrix.arch }}:latest \
+          tail -f /dev/null)
+        
+        docker exec $CONTAINER_ID bash -c '
+          set -e
+          
+          echo "=== 验证 Python 环境 ==="
+          python3 --version
+          pip3 --version
+          
+          echo "=== 安装项目依赖 ==="
+          pip3 install -r requirements.txt
+          pip3 install nuitka ordered-set zstandard
+          
+          echo "=== 验证 PyQt6 安装 ==="
+          python3 -c "import PyQt6; print(\"PyQt6 version:\", PyQt6.QtCore.PYQT_VERSION_STR)"
+        '
+        
+        echo "=== 更新镜像 (包含项目依赖) ==="
+        docker commit $CONTAINER_ID niuma-build-${{ matrix.arch }}:latest
+        
+        echo "=== 导出更新后的镜像 ==="
+        docker save -o docker-image-${{ matrix.arch }}.tar niuma-build-${{ matrix.arch }}:latest
+        
+        echo "=== 清理容器 ==="
+        docker rm -f $CONTAINER_ID
       shell: bash
 
-    - name: '12. 编译 Python (Linux arm64)'
-      if: matrix.platform == 'linux' && matrix.arch == 'arm64' && steps.cache-python-compiled-arm64.outputs.cache-hit != 'true'
-      run: |
-        docker run --rm \
-          --platform ${{ matrix.platform_name }} \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace \
-          debian:10.10 \
-          bash -c '
-            set -e
-            
-            echo "=== 编译 Python 3.12 ==="
-            cd /tmp
-            wget -q https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz
-            tar xzf Python-3.12.13.tgz
-            cd Python-3.12.13
-            ./configure --enable-optimizations --prefix=/usr/local/python3.12
-            make -j$(nproc)
-            make install
-            
-            echo "=== 打包 Python 编译结果 ==="
-            cd /usr/local
-            tar -czf /workspace/python-compiled-arm64.tar.gz python3.12
-          '
-      shell: bash
-
-    - name: '13. 安装 Python 依赖 (Linux)'
+    - name: '12. 使用 Nuitka 构建 (Linux)'
       if: matrix.platform == 'linux'
       run: |
-        docker run --rm \
+        echo "=== 加载 Docker 镜像 ==="
+        docker load -i docker-image-${{ matrix.arch }}.tar
+        
+        CONTAINER_ID=$(docker run -d \
           --platform ${{ matrix.platform_name }} \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
-          debian:10.10 \
-          bash -c '
-            set -e
-            
-            PYTHON_CACHED="${{ steps.cache-python-linux.outputs.cache-hit }}"
-            PYTHON_COMPILED="${{ steps.cache-python-compiled-arm64.outputs.cache-hit }}"
-            
-            if [ "$PYTHON_CACHED" = "true" ]; then
-              echo "=== 解压完整 Python 环境 ==="
-              cd /usr/local
-              tar -xzf /workspace/python-env-${{ matrix.arch }}.tar.gz
-            elif [ "${{ matrix.arch }}" = "arm64" ] && [ "$PYTHON_COMPILED" = "true" ]; then
-              echo "=== 解压 Python 编译结果 ==="
-              cd /usr/local
-              tar -xzf /workspace/python-compiled-arm64.tar.gz
-              
-              echo "=== 安装 PyQt6 (预编译版本) ==="
-              /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
-              /usr/local/python3.12/bin/pip3.12 install PyQt6 PyQt6-Qt6 PyQt6-sip
-              
-              echo "=== 安装项目依赖 ==="
-              /usr/local/python3.12/bin/pip3.12 install -r requirements.txt
-              /usr/local/python3.12/bin/pip3.12 install nuitka ordered-set zstandard
-              
-              echo "=== 打包完整 Python 环境 ==="
-              cd /usr/local
-              tar -czf /workspace/python-env-${{ matrix.arch }}.tar.gz python3.12
-            elif [ "$PYTHON_CACHED" != "true" ]; then
-              echo "=== 编译 Python 3.12 ==="
-              cd /tmp
-              wget -q https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz
-              tar xzf Python-3.12.13.tgz
-              cd Python-3.12.13
-              ./configure --enable-optimizations --prefix=/usr/local/python3.12
-              make -j$(nproc)
-              make install
-              cd /workspace
-              /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
-              
-              echo "=== 安装 PyQt6 (预编译版本) ==="
-              /usr/local/python3.12/bin/pip3.12 install PyQt6 PyQt6-Qt6 PyQt6-sip
-              
-              echo "=== 安装项目依赖 ==="
-              /usr/local/python3.12/bin/pip3.12 install -r requirements.txt
-              /usr/local/python3.12/bin/pip3.12 install nuitka ordered-set zstandard
-              
-              echo "=== 打包完整 Python 环境 ==="
-              cd /usr/local
-              tar -czf /workspace/python-env-${{ matrix.arch }}.tar.gz python3.12
-            fi
-            
-            ln -sf /usr/local/python3.12/bin/python3.12 /usr/local/bin/python3
-            ln -sf /usr/local/python3.12/bin/pip3.12 /usr/local/bin/pip3
-            python3 --version
-          '
+          niuma-build-${{ matrix.arch }}:latest \
+          tail -f /dev/null)
+        
+        docker exec $CONTAINER_ID bash -c '
+          set -e
+          
+          echo "=== 验证环境 ==="
+          python3 --version
+          pip3 --version
+          
+          echo "=== 使用 Nuitka 构建 (架构优化) ==="
+          cd /workspace
+          
+          OPT_FLAGS=""
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            OPT_FLAGS="--clang --lto=yes"
+          elif [ "${{ matrix.arch }}" = "x64" ]; then
+            OPT_FLAGS="--clang --lto=yes --windows-uac-admin"
+          fi
+          
+          python3 -m nuitka --standalone \
+            --enable-plugins=pyqt6 \
+            --include-qt-plugins=qml,platforms,imageformats,iconengines \
+            --follow-imports \
+            --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest \
+            --nofollow-import-to=tests \
+            --include-data-dir=gui/styles=gui/styles \
+            --output-dir=dist \
+            --output-filename=${{ matrix.output_name }} \
+            --assume-yes-for-downloads \
+            --jobs=$(nproc) \
+            --file-reference-choice=runtime \
+            --include-package-data=PyQt6 \
+            --linux-icon=icons/app.png \
+            $OPT_FLAGS \
+            main.py
+        '
+        
+        echo "=== 清理容器 ==="
+        docker rm -f $CONTAINER_ID
       shell: bash
 
-    - name: '14. 使用 Nuitka 构建 (Linux)'
+    - name: '13. 验证并打包构建产物 (Linux)'
       if: matrix.platform == 'linux'
       run: |
-        docker run --rm \
+        echo "=== 加载 Docker 镜像 ==="
+        docker load -i docker-image-${{ matrix.arch }}.tar
+        
+        CONTAINER_ID=$(docker run -d \
           --platform ${{ matrix.platform_name }} \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
-          debian:10.10 \
-          bash -c '
-            set -e
-            
-            echo "=== 解压 Python 环境 ==="
-            cd /usr/local
-            tar -xzf /workspace/python-env-${{ matrix.arch }}.tar.gz
-            ln -sf /usr/local/python3.12/bin/python3.12 /usr/local/bin/python3
-            ln -sf /usr/local/python3.12/bin/pip3.12 /usr/local/bin/pip3
-            python3 --version
-            
-            echo "=== 使用 Nuitka 构建 ==="
-            cd /workspace
-            python3 -m nuitka --standalone \
-              --enable-plugins=pyqt6 \
-              --include-qt-plugins=qml,platforms,imageformats,iconengines \
-              --follow-imports \
-              --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest \
-              --nofollow-import-to=tests \
-              --include-data-dir=gui/styles=gui/styles \
-              --output-dir=dist \
-              --output-filename=${{ matrix.output_name }} \
-              --assume-yes-for-downloads \
-              --jobs=$(nproc) \
-              --file-reference-choice=runtime \
-              --include-package-data=PyQt6 \
-              --linux-icon=icons/app.png \
-              main.py
-          '
+          niuma-build-${{ matrix.arch }}:latest \
+          tail -f /dev/null)
+        
+        docker exec $CONTAINER_ID bash -c '
+          set -e
+          
+          echo "=== 验证并打包构建产物 ==="
+          ls -la dist/
+          if [ -d "dist/main.dist" ]; then
+            mv dist/main.dist dist/${{ matrix.output_name }}
+            cd dist
+            tar -I "gzip -9" -cvf ${{ matrix.output_name }}.tar.gz -C ${{ matrix.output_name }} .
+            chown -R 1001:1001 /workspace/dist
+            chmod -R 755 /workspace/dist
+          else
+            echo "构建失败: 输出目录未找到"
+            exit 1
+          fi
+        '
+        
+        echo "=== 清理容器 ==="
+        docker rm -f $CONTAINER_ID
       shell: bash
 
-    - name: '15. 验证并打包构建产物 (Linux)'
-      if: matrix.platform == 'linux'
-      run: |
-        docker run --rm \
-          --platform ${{ matrix.platform_name }} \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace \
-          debian:10.10 \
-          bash -c '
-            set -e
-            
-            echo "=== 验证并打包构建产物 ==="
-            ls -la dist/
-            if [ -d "dist/main.dist" ]; then
-              mv dist/main.dist dist/${{ matrix.output_name }}
-              cd dist
-              tar -I "gzip -9" -cvf ${{ matrix.output_name }}.tar.gz -C ${{ matrix.output_name }} .
-              chown -R 1001:1001 /workspace/dist
-              chmod -R 755 /workspace/dist
-            else
-              echo "构建失败: 输出目录未找到"
-              exit 1
-            fi
-          '
-      shell: bash
-
-    - name: '16. 使用 Nuitka 构建 (Windows)'
+    - name: '14. 使用 Nuitka 构建 (Windows)'
       if: matrix.platform == 'windows'
       run: |
         $jobs = [Environment]::ProcessorCount
@@ -338,7 +344,7 @@ jobs:
           main.py
       shell: powershell
 
-    - name: '17. 验证并打包构建产物 (Windows)'
+    - name: '15. 验证并打包构建产物 (Windows)'
       if: matrix.platform == 'windows'
       run: |
         if (Test-Path "dist\main.dist") {
@@ -351,7 +357,7 @@ jobs:
         }
       shell: powershell
 
-    - name: '18. 上传构建产物'
+    - name: '16. 上传构建产物'
       uses: actions/upload-artifact@v7
       with:
         name: ${{ matrix.output_name }}
@@ -361,7 +367,7 @@ jobs:
         retention-days: 30
         if-no-files-found: ignore
 
-    - name: '19. 上传到发布'
+    - name: '17. 上传到发布'
       if: github.event_name == 'release' && github.event.release.tag_name != ''
       uses: softprops/action-gh-release@v3
       with:
@@ -369,7 +375,5 @@ jobs:
         files: |
           dist/${{ matrix.output_name }}.tar.gz
           dist/${{ matrix.output_name }}.7z
-          python-env-${{ matrix.arch }}.tar.gz
-          python-env-${{ matrix.arch }}.7z
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
