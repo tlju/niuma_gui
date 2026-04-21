@@ -214,7 +214,7 @@ jobs:
                 -G "Unix Makefiles" \
                 -DCMAKE_BUILD_TYPE=Release \
                 -DCMAKE_INSTALL_PREFIX=/opt/qt6 \
-                -DCMAKE_CXX_FLAGS="-std=c++17" \
+                -DCMAKE_CXX_FLAGS="-std=c++17 -lstdc++fs" \
                 -DCMAKE_EXE_LINKER_FLAGS="-lstdc++fs" \
                 -DCMAKE_SHARED_LINKER_FLAGS="-lstdc++fs" \
                 -DCMAKE_MODULE_LINKER_FLAGS="-lstdc++fs" \
@@ -229,6 +229,7 @@ jobs:
                 -DQT_FEATURE_xcb_xlib=ON \
                 -DQT_FEATURE_xlib=ON
               
+              export LDFLAGS="-lstdc++fs"
               make -j$(nproc)
               cmake --install .
               
