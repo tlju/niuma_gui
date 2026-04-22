@@ -1,4 +1,6 @@
 # Project Rules
+- 思考过程使用中文
+- 代码注释使用中文
 
 ## Testing and Development
 

@@ -173,17 +173,29 @@ jobs:
           /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
           
           if [ "${{ matrix.arch }}" = "arm64" ]; then
-            echo "=== 安装 Qt5 开发包 (arm64 源码编译依赖) ==="
+            echo "=== 安装 Qt5 预编译包 (arm64) ==="
             apt-get install -y \
               qtbase5-dev qt5-qmake qtchooser \
               qtbase5-dev-tools qtbase5-private-dev \
-              libqt5svg5-dev libqt5opengl5-dev
+              libqt5svg5-dev libqt5opengl5-dev \
+              libqt5xml5 libqt5xmlpatterns5-dev \
+              libqt5dbus5 libqt5network5 \
+              qt5-default 2>/dev/null || true
             
-            echo "=== 从源码构建安装 sip 和 PyQt5-sip ==="
-            /usr/local/python3.12/bin/pip3.12 install sip PyQt5-sip
+            echo "=== 配置 qmake 路径 ==="
+            QMAKE_PATH=$(which qmake 2>/dev/null || echo "/usr/lib/qt5/bin/qmake")
+            echo "qmake 路径: $QMAKE_PATH"
+            $QMAKE_PATH -query
             
-            echo "=== 从源码构建安装 PyQt5 (arm64) ==="
-            /usr/local/python3.12/bin/pip3.12 install --no-binary=PyQt5 PyQt5
+            echo "=== 安装 PyQt5 构建依赖 ==="
+            /usr/local/python3.12/bin/pip3.12 install sip PyQt5-sip PyQt-builder sipbuild pyqtbuild
+            
+            echo "=== 从源码构建安装 PyQt5 (arm64, 使用系统 Qt5) ==="
+            /usr/local/python3.12/bin/pip3.12 install \
+              --no-binary=PyQt5 \
+              --config-settings --confirm-license \
+              --config-settings QMAKE_QT5_PATH="$QMAKE_PATH" \
+              PyQt5
           else
             echo "=== 安装 PyQt5 (预编译版本) ==="
             /usr/local/python3.12/bin/pip3.12 install --only-binary=:all: PyQt5 PyQt5-Qt5 PyQt5-sip
@@ -399,31 +411,50 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: '18. 创建远程目录 (Linux)'
+      if: matrix.platform == 'linux'
+      uses: appleboy/ssh-action@v1.2.5
+      with:
+        host: ${{ secrets.GITEE_HOST }}
+        username: ${{ secrets.GITEE_USER }}
+        key: ${{ secrets.GITEE_SSH_KEY }}
+        script: mkdir -p ~/niuma-builds/${{ matrix.arch }}
+
+    - name: '18. 上传 Docker 镜像到 Gitee (Linux)'
+      if: matrix.platform == 'linux'
+      uses: appleboy/scp-action@v1.0.0
+      with:
+        host: ${{ secrets.GITEE_HOST }}
+        username: ${{ secrets.GITEE_USER }}
+        key: ${{ secrets.GITEE_SSH_KEY }}
+        source: docker-image-${{ matrix.arch }}.tar
+        target: ~/niuma-builds/${{ matrix.arch }}/
+
     - name: '18. 上传构建产物到 Gitee (Linux)'
       if: matrix.platform == 'linux'
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.GITEE_SSH_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -t rsa ${{ secrets.GITEE_HOST }} >> ~/.ssh/known_hosts
-        
-        echo "=== 上传 Docker 镜像到 Gitee ==="
-        ssh ${{ secrets.GITEE_USER }}@${{ secrets.GITEE_HOST }} "mkdir -p ~/niuma-builds/${{ matrix.arch }}"
-        scp docker-image-${{ matrix.arch }}.tar ${{ secrets.GITEE_USER }}@${{ secrets.GITEE_HOST }}:~/niuma-builds/${{ matrix.arch }}/
-        
-        echo "=== 上传构建产物到 Gitee ==="
-        scp dist/${{ matrix.output_name }}.tar.gz ${{ secrets.GITEE_USER }}@${{ secrets.GITEE_HOST }}:~/niuma-builds/${{ matrix.arch }}/
-      shell: bash
+      uses: appleboy/scp-action@v1.0.0
+      with:
+        host: ${{ secrets.GITEE_HOST }}
+        username: ${{ secrets.GITEE_USER }}
+        key: ${{ secrets.GITEE_SSH_KEY }}
+        source: dist/${{ matrix.output_name }}.tar.gz
+        target: ~/niuma-builds/${{ matrix.arch }}/
+
+    - name: '18. 创建远程目录 (Windows)'
+      if: matrix.platform == 'windows'
+      uses: appleboy/ssh-action@v1.2.5
+      with:
+        host: ${{ secrets.GITEE_HOST }}
+        username: ${{ secrets.GITEE_USER }}
+        key: ${{ secrets.GITEE_SSH_KEY }}
+        script: mkdir -p ~/niuma-builds/windows
 
     - name: '18. 上传构建产物到 Gitee (Windows)'
       if: matrix.platform == 'windows'
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.GITEE_SSH_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -t rsa ${{ secrets.GITEE_HOST }} >> ~/.ssh/known_hosts
-        
-        echo "=== 上传构建产物到 Gitee ==="
-        ssh ${{ secrets.GITEE_USER }}@${{ secrets.GITEE_HOST }} "mkdir -p ~/niuma-builds/windows"
-        scp dist/${{ matrix.output_name }}.7z ${{ secrets.GITEE_USER }}@${{ secrets.GITEE_HOST }}:~/niuma-builds/windows/
-      shell: bash
+      uses: appleboy/scp-action@v1.0.0
+      with:
+        host: ${{ secrets.GITEE_HOST }}
+        username: ${{ secrets.GITEE_USER }}
+        key: ${{ secrets.GITEE_SSH_KEY }}
+        source: dist/${{ matrix.output_name }}.7z
+        target: ~/niuma-builds/windows/
