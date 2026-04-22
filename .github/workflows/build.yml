@@ -172,33 +172,8 @@ jobs:
           echo "=== 安装 Python 包管理工具 ==="
           /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
           
-          if [ "${{ matrix.arch }}" = "arm64" ]; then
-            echo "=== 安装 Qt5 预编译包 (arm64) ==="
-            apt-get install -y \
-              qtbase5-dev qt5-qmake qtchooser \
-              qtbase5-dev-tools qtbase5-private-dev \
-              libqt5svg5-dev libqt5opengl5-dev \
-              libqt5xml5 libqt5xmlpatterns5-dev \
-              libqt5dbus5 libqt5network5 \
-              qt5-default 2>/dev/null || true
-            
-            echo "=== 配置 qmake 路径 ==="
-            QMAKE_PATH=$(which qmake 2>/dev/null || echo "/usr/lib/qt5/bin/qmake")
-            echo "qmake 路径: $QMAKE_PATH"
-            $QMAKE_PATH -query
-            
-            echo "=== 安装 PyQt5 构建依赖 ==="
-            /usr/local/python3.12/bin/pip3.12 install sip PyQt5-sip PyQt-builder
-            
-            echo "=== 从源码构建安装 PyQt5 (arm64, 使用系统 Qt5) ==="
-            QT_QMAKE_EXECUTABLE="$QMAKE_PATH" /usr/local/python3.12/bin/pip3.12 install \
-              --no-binary=PyQt5 \
-              PyQt5 \
-              --confirm-license
-          else
-            echo "=== 安装 PyQt5 (预编译版本) ==="
-            /usr/local/python3.12/bin/pip3.12 install --only-binary=:all: PyQt5 PyQt5-Qt5 PyQt5-sip
-          fi
+          echo "=== 安装 PyQt5 (预编译版本) ==="
+          /usr/local/python3.12/bin/pip3.12 install --only-binary=:all: PyQt5 PyQt5-Qt5 PyQt5-sip
           
           echo "=== 创建符号链接 ==="
           ln -sf /usr/local/python3.12/bin/python3.12 /usr/local/bin/python3
@@ -414,7 +389,7 @@ jobs:
       if: matrix.platform == 'linux' && github.event_name == 'release' && github.event.release.tag_name != ''
       uses: nicennnnnnnlee/action-gitee-release@v2.0.0
       with:
-        gitee_action: upload_asset
+        gitee_action: create_release
         gitee_owner: ${{ secrets.GITEE_USER }}
         gitee_repo: niuma_gui
         gitee_token: ${{ secrets.GITEE_TOKEN }}
@@ -428,7 +403,7 @@ jobs:
       if: matrix.platform == 'windows' && github.event_name == 'release' && github.event.release.tag_name != ''
       uses: nicennnnnnnlee/action-gitee-release@v2.0.0
       with:
-        gitee_action: upload_asset
+        gitee_action: create_release
         gitee_owner: ${{ secrets.GITEE_USER }}
         gitee_repo: niuma_gui
         gitee_token: ${{ secrets.GITEE_TOKEN }}
