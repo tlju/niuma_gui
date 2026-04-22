@@ -411,34 +411,29 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: '18. 上传 Docker 镜像到 Gitee (Linux)'
-      if: matrix.platform == 'linux'
-      uses: easingthemes/ssh-deploy@v5.1.0
+    - name: '18. 上传到 Gitee Release (Linux)'
+      if: matrix.platform == 'linux' && github.event_name == 'release' && github.event.release.tag_name != ''
+      uses: nicennnnnnnlee/action-gitee-release@v2.0.0
       with:
-        SSH_PRIVATE_KEY: ${{ secrets.GITEE_SSH_KEY }}
-        REMOTE_HOST: ${{ secrets.GITEE_HOST }}
-        REMOTE_USER: ${{ secrets.GITEE_USER }}
-        SOURCE: "docker-image-${{ matrix.arch }}.tar"
-        TARGET: "~/niuma-builds/${{ matrix.arch }}/"
-        SCRIPT_BEFORE: mkdir -p ~/niuma-builds/${{ matrix.arch }}
+        gitee_action: upload_asset
+        gitee_owner: ${{ secrets.GITEE_USER }}
+        gitee_repo: niuma_gui
+        gitee_token: ${{ secrets.GITEE_TOKEN }}
+        gitee_tag_name: ${{ github.event.release.tag_name }}
+        gitee_upload_retry_times: 3
+        gitee_files: |
+          docker-image-${{ matrix.arch }}.tar
+          dist/${{ matrix.output_name }}.tar.gz
 
-    - name: '18. 上传构建产物到 Gitee (Linux)'
-      if: matrix.platform == 'linux'
-      uses: easingthemes/ssh-deploy@v5.1.0
+    - name: '18. 上传到 Gitee Release (Windows)'
+      if: matrix.platform == 'windows' && github.event_name == 'release' && github.event.release.tag_name != ''
+      uses: nicennnnnnnlee/action-gitee-release@v2.0.0
       with:
-        SSH_PRIVATE_KEY: ${{ secrets.GITEE_SSH_KEY }}
-        REMOTE_HOST: ${{ secrets.GITEE_HOST }}
-        REMOTE_USER: ${{ secrets.GITEE_USER }}
-        SOURCE: "dist/${{ matrix.output_name }}.tar.gz"
-        TARGET: "~/niuma-builds/${{ matrix.arch }}/"
-
-    - name: '18. 上传构建产物到 Gitee (Windows)'
-      if: matrix.platform == 'windows'
-      uses: easingthemes/ssh-deploy@v5.1.0
-      with:
-        SSH_PRIVATE_KEY: ${{ secrets.GITEE_SSH_KEY }}
-        REMOTE_HOST: ${{ secrets.GITEE_HOST }}
-        REMOTE_USER: ${{ secrets.GITEE_USER }}
-        SOURCE: "dist/${{ matrix.output_name }}.7z"
-        TARGET: "~/niuma-builds/windows/"
-        SCRIPT_BEFORE: mkdir -p ~/niuma-builds/windows
+        gitee_action: upload_asset
+        gitee_owner: ${{ secrets.GITEE_USER }}
+        gitee_repo: niuma_gui
+        gitee_token: ${{ secrets.GITEE_TOKEN }}
+        gitee_tag_name: ${{ github.event.release.tag_name }}
+        gitee_upload_retry_times: 3
+        gitee_files: |
+          dist/${{ matrix.output_name }}.7z
