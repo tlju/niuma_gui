@@ -2,12 +2,12 @@ import sys
 import re
 import json
 import traceback
-from PyQt6.QtWidgets import QPlainTextEdit, QCompleter, QWidget
-from PyQt6.QtGui import (
+from PyQt5.QtWidgets import QPlainTextEdit, QCompleter, QWidget
+from PyQt5.QtGui import (
     QFont, QColor, QSyntaxHighlighter, QTextCharFormat, 
     QTextCursor, QPainter, QTextBlock, QKeySequence
 )
-from PyQt6.QtCore import Qt, QRegularExpression, QRect, QEvent
+from PyQt5.QtCore import Qt, QRegExp, QRect, QEvent
 from core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -23,17 +23,18 @@ class BaseHighlighter(QSyntaxHighlighter):
         fmt = QTextCharFormat()
         fmt.setForeground(QColor(color))
         if "bold" in style:
-            fmt.setFontWeight(QFont.Weight.Bold)
+            fmt.setFontWeight(QFont.Bold)
         if "italic" in style:
             fmt.setFontItalic(True)
         return fmt
 
     def highlightBlock(self, text):
         for pattern, fmt in self._rules:
-            match_iter = pattern.globalMatch(text)
-            while match_iter.hasNext():
-                match = match_iter.next()
-                self.setFormat(match.capturedStart(), match.capturedLength(), fmt)
+            index = pattern.indexIn(text)
+            while index >= 0:
+                length = pattern.matchedLength()
+                self.setFormat(index, length, fmt)
+                index = pattern.indexIn(text, index + length)
 
 
 class PythonHighlighter(BaseHighlighter):
@@ -77,18 +78,18 @@ class PythonHighlighter(BaseHighlighter):
 
     def _init_rules(self):
         keyword_pattern = r"\b(" + "|".join(self.KEYWORDS) + r")\b"
-        self._rules.append((QRegularExpression(keyword_pattern), self._formats["keyword"]))
+        self._rules.append((QRegExp(keyword_pattern), self._formats["keyword"]))
 
         builtin_pattern = r"\b(" + "|".join(self.BUILTINS) + r")\b"
-        self._rules.append((QRegularExpression(builtin_pattern), self._formats["builtin"]))
+        self._rules.append((QRegExp(builtin_pattern), self._formats["builtin"]))
 
-        self._rules.append((QRegularExpression(r"#[^\n]*"), self._formats["comment"]))
-        self._rules.append((QRegularExpression(r'"[^"\\]*(\\.[^"\\]*)*"'), self._formats["string"]))
-        self._rules.append((QRegularExpression(r"'[^'\\]*(\\.[^'\\]*)*'"), self._formats["string"]))
-        self._rules.append((QRegularExpression(r'\b[0-9]+\.?[0-9]*\b'), self._formats["number"]))
-        self._rules.append((QRegularExpression(r"\bclass\s+(\w+)"), self._formats["class"]))
-        self._rules.append((QRegularExpression(r"\bdef\s+(\w+)"), self._formats["function"]))
-        self._rules.append((QRegularExpression(r"@\w+"), self._formats["decorator"]))
+        self._rules.append((QRegExp(r"#[^\n]*"), self._formats["comment"]))
+        self._rules.append((QRegExp(r'"[^"\\]*(\\.[^"\\]*)*"'), self._formats["string"]))
+        self._rules.append((QRegExp(r"'[^'\\]*(\\.[^'\\]*)*'"), self._formats["string"]))
+        self._rules.append((QRegExp(r'\b[0-9]+\.?[0-9]*\b'), self._formats["number"]))
+        self._rules.append((QRegExp(r"\bclass\s+(\w+)"), self._formats["class"]))
+        self._rules.append((QRegExp(r"\bdef\s+(\w+)"), self._formats["function"]))
+        self._rules.append((QRegExp(r"@\w+"), self._formats["decorator"]))
 
 
 class BashHighlighter(BaseHighlighter):
@@ -127,17 +128,17 @@ class BashHighlighter(BaseHighlighter):
 
     def _init_rules(self):
         keyword_pattern = r"\b(" + "|".join(self.KEYWORDS) + r")\b"
-        self._rules.append((QRegularExpression(keyword_pattern), self._formats["keyword"]))
+        self._rules.append((QRegExp(keyword_pattern), self._formats["keyword"]))
 
         builtin_pattern = r"\b(" + "|".join(self.BUILTINS) + r")\b"
-        self._rules.append((QRegularExpression(builtin_pattern), self._formats["builtin"]))
+        self._rules.append((QRegExp(builtin_pattern), self._formats["builtin"]))
 
-        self._rules.append((QRegularExpression(r"#[^\n]*"), self._formats["comment"]))
-        self._rules.append((QRegularExpression(r'"[^"\\]*(\\.[^"\\]*)*"'), self._formats["string"]))
-        self._rules.append((QRegularExpression(r"'[^']*'"), self._formats["string"]))
-        self._rules.append((QRegularExpression(r'\b[0-9]+\.?[0-9]*\b'), self._formats["number"]))
-        self._rules.append((QRegularExpression(r"\$\{?[a-zA-Z_][a-zA-Z0-9_]*\}?"), self._formats["variable"]))
-        self._rules.append((QRegularExpression(r"\$\([^\)]*\)"), self._formats["variable"]))
+        self._rules.append((QRegExp(r"#[^\n]*"), self._formats["comment"]))
+        self._rules.append((QRegExp(r'"[^"\\]*(\\.[^"\\]*)*"'), self._formats["string"]))
+        self._rules.append((QRegExp(r"'[^']*'"), self._formats["string"]))
+        self._rules.append((QRegExp(r'\b[0-9]+\.?[0-9]*\b'), self._formats["number"]))
+        self._rules.append((QRegExp(r"\$\{?[a-zA-Z_][a-zA-Z0-9_]*\}?"), self._formats["variable"]))
+        self._rules.append((QRegExp(r"\$\([^\)]*\)"), self._formats["variable"]))
 
 
 class SQLHighlighter(BaseHighlighter):
@@ -178,30 +179,30 @@ class SQLHighlighter(BaseHighlighter):
 
     def _init_rules(self):
         keyword_pattern = r"\b(" + "|".join(self.KEYWORDS) + r")\b"
-        self._rules.append((QRegularExpression(keyword_pattern, QRegularExpression.PatternOption.CaseInsensitiveOption), self._formats["keyword"]))
+        self._rules.append((QRegExp(keyword_pattern, Qt.CaseInsensitive), self._formats["keyword"]))
 
         type_pattern = r"\b(" + "|".join(self.TYPES) + r")\b"
-        self._rules.append((QRegularExpression(type_pattern, QRegularExpression.PatternOption.CaseInsensitiveOption), self._formats["type"]))
+        self._rules.append((QRegExp(type_pattern, Qt.CaseInsensitive), self._formats["type"]))
 
-        self._rules.append((QRegularExpression(r"--[^\n]*"), self._formats["comment"]))
-        self._rules.append((QRegularExpression(r"/\*[^*]*\*+(?:[^/*][^*]*\*+)*/"), self._formats["comment"]))
-        self._rules.append((QRegularExpression(r"'[^']*'"), self._formats["string"]))
-        self._rules.append((QRegularExpression(r'"[^"]*"'), self._formats["string"]))
-        self._rules.append((QRegularExpression(r'\b[0-9]+\.?[0-9]*\b'), self._formats["number"]))
-        self._rules.append((QRegularExpression(r"\b\w+(?=\s*\()"), self._formats["function"]))
+        self._rules.append((QRegExp(r"--[^\n]*"), self._formats["comment"]))
+        self._rules.append((QRegExp(r"/\*[^*]*\*+(?:[^/*][^*]*\*+)*/"), self._formats["comment"]))
+        self._rules.append((QRegExp(r"'[^']*'"), self._formats["string"]))
+        self._rules.append((QRegExp(r'"[^"]*"'), self._formats["string"]))
+        self._rules.append((QRegExp(r'\b[0-9]+\.?[0-9]*\b'), self._formats["number"]))
+        self._rules.append((QRegExp(r"\b\w+(?=\s*\()"), self._formats["function"]))
 
 
 class VariableCompleter(QCompleter):
     def __init__(self, parent=None):
         super().__init__([], parent)
-        self.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        self.setFilterMode(Qt.MatchFlag.MatchContains)
-        self.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.setCaseSensitivity(Qt.CaseInsensitive)
+        self.setFilterMode(Qt.MatchContains)
+        self.setCompletionMode(QCompleter.PopupCompletion)
         self._completion_words = []
 
     def update_completions(self, words):
         self._completion_words = words
-        from PyQt6.QtCore import QStringListModel
+        from PyQt5.QtCore import QStringListModel
         model = QStringListModel(words, self)
         self.setModel(model)
 
@@ -267,7 +268,7 @@ class CodeEditor(QPlainTextEdit):
                 font = QFont("Ubuntu Mono", size)
             if not font.exactMatch():
                 font = QFont("Monospace", size)
-        font.setStyleHint(QFont.StyleHint.Monospace)
+        font.setStyleHint(QFont.Monospace)
         font.setFixedPitch(True)
         return font
 
@@ -300,7 +301,7 @@ class CodeEditor(QPlainTextEdit):
         font = self._get_monospace_font(15)
         self.setFont(font)
 
-        self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.setLineWrapMode(QPlainTextEdit.NoWrap)
         self.setTabStopDistance(self.fontMetrics().horizontalAdvance(' ') * 4)
         
         self._update_viewport_margins()
@@ -367,7 +368,7 @@ class CodeEditor(QPlainTextEdit):
                 painter.drawText(
                     0, int(top), self._line_number_area.width() - 5, 
                     self.fontMetrics().height(),
-                    Qt.AlignmentFlag.AlignRight, number
+                    Qt.AlignRight, number
                 )
             
             block = block.next()
@@ -398,7 +399,7 @@ class CodeEditor(QPlainTextEdit):
                     painter.drawText(
                         2, int(top), self._folding_area.width() - 2,
                         self.fontMetrics().height(),
-                        Qt.AlignmentFlag.AlignLeft, indicator
+                        Qt.AlignLeft, indicator
                     )
             
             block = block.next()
@@ -412,7 +413,7 @@ class CodeEditor(QPlainTextEdit):
         
         while block.isValid():
             if block.isVisible():
-                if top <= event.position().y() <= bottom:
+                if top <= event.y() <= bottom:
                     if self._can_fold_block(block):
                         self._toggle_fold(block)
                     break
@@ -512,7 +513,8 @@ class CodeEditor(QPlainTextEdit):
                     if param.status == 1:
                         self._completion_words.append(f"@param.{param.param_code}")
             except Exception as e:
-                logger.error(f"Error loading params: {e}\n{traceback.format_exc()}")
+                logger.warning(f"Failed to load params for completion: {e}")
+        
         if self._dict_service:
             try:
                 dicts = self._dict_service.get_dicts()
@@ -525,87 +527,95 @@ class CodeEditor(QPlainTextEdit):
                             if item.is_active == "Y":
                                 self._completion_words.append(f"@dict.{d.code}.{item.item_name}")
             except Exception as e:
-                logger.error(f"Error loading dicts: {e}\n{traceback.format_exc()}")
-        logger.debug(f"Total completion words: {len(self._completion_words)}")
+                logger.warning(f"Failed to load dicts for completion: {e}")
+        
         self._completer.update_completions(self._completion_words)
+        logger.debug(f"Total completion words: {len(self._completion_words)}")
 
     def _get_word_before_cursor(self):
         cursor = self.textCursor()
         text = cursor.block().text()
         pos_in_block = cursor.positionInBlock()
         start = pos_in_block
-        while start > 0 and (text[start - 1].isalnum() or text[start - 1] in "._@"):
+        while start > 0 and (text[start - 1].isalnum() or text[start - 1] in "._"):
+            start -= 1
+        if start > 0 and text[start - 1] == '@':
             start -= 1
         return text[start:pos_in_block], start, pos_in_block
 
     def _show_completion(self, word):
-        logger.debug(f"_show_completion called with word='{word}', completion_words_count={len(self._completion_words)}")
+        logger.debug(f"_show_completion called with word='{word}'")
         if not self._completion_words:
-            logger.debug("No completion words available, returning")
             return
         if word.startswith("@"):
             self._completer.setCompletionPrefix(word)
-            logger.debug(f"Set completion prefix to: '{word}'")
-            try:
-                cursor_rect = self.cursorRect()
-                popup = self._completer.popup()
-                popup.setFixedWidth(300)
-                popup.setFixedHeight(200)
-                point = self.viewport().mapToGlobal(cursor_rect.bottomLeft())
-                logger.debug(f"Popup position: {point}")
-                logger.debug("Calling completer.complete()")
-                self._completer.complete()
-                popup.move(point)
-                popup.show()
-                logger.debug("Popup shown successfully")
-            except Exception as e:
-                logger.error(f"Error showing completion: {e}\n{traceback.format_exc()}")
+            cursor_rect = self.cursorRect()
+            popup = self._completer.popup()
+            popup.setFixedWidth(300)
+            popup.setFixedHeight(200)
+            point = self.viewport().mapToGlobal(cursor_rect.bottomLeft())
+            self._completer.complete()
+            popup.move(point)
+            popup.show()
+
+    def set_language(self, language: str):
+        if self._current_language == language:
+            return
+        
+        self._current_language = language
+        
+        if self._current_highlighter:
+            self._current_highlighter.setDocument(None)
+        
+        highlighter_class = self.LEXER_MAP.get(language)
+        if highlighter_class:
+            self._current_highlighter = highlighter_class(self.document())
+        else:
+            self._current_highlighter = None
 
     def _insert_completion(self, completion):
         cursor = self.textCursor()
         word, start, end = self._get_word_before_cursor()
-        cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock)
-        cursor.movePosition(QTextCursor.MoveOperation.Right, QTextCursor.MoveMode.MoveAnchor, start)
-        cursor.movePosition(QTextCursor.MoveOperation.Right, QTextCursor.MoveMode.KeepAnchor, end - start)
+        cursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, len(word))
         cursor.insertText(completion)
         self.setTextCursor(cursor)
 
-    def keyPressEvent(self, e):
-        logger.debug(f"keyPressEvent: key={e.key()}, text='{e.text()}'")
-        try:
+    def keyPressEvent(self, event):
+        if self._completer.popup().isVisible():
+            if event.key() == Qt.Key_Escape:
+                self._completer.popup().hide()
+                return
+            if event.key() in (Qt.Key_Up, Qt.Key_Down, Qt.Key_Enter, Qt.Key_Return, Qt.Key_Tab):
+                event.ignore()
+                self._completer.popup().hide()
+                if event.key() in (Qt.Key_Enter, Qt.Key_Return, Qt.Key_Tab):
+                    return
+            elif event.key() == Qt.Key_Backtab:
+                self._completer.popup().hide()
+
+        if event.key() == Qt.Key_Tab:
+            self._handle_tab_key()
+            return
+        
+        if event.key() == Qt.Key_Backtab:
+            self._handle_backtab_key()
+            return
+        
+        if event.key() == Qt.Key_Return:
+            self._handle_return_key()
+            return
+
+        super().keyPressEvent(event)
+
+        text = event.text()
+        if text == "@":
+            word, start, end = self._get_word_before_cursor()
+            self._show_completion(word)
+        elif text and (text.isalnum() or text in "._"):
             if self._completer.popup().isVisible():
-                if e.key() in (Qt.Key.Key_Up, Qt.Key.Key_Down, Qt.Key.Key_Enter,
-                              Qt.Key.Key_Return, Qt.Key.Key_Escape, Qt.Key.Key_Tab):
-                    logger.debug(f"Forwarding key {e.key()} to completer popup")
-                    self._completer.popup().keyPressEvent(e)
-                    return
-                if e.key() == Qt.Key.Key_Escape:
-                    logger.debug("Hiding completer popup via Escape")
-                    self._completer.popup().hide()
-                    return
-
-            if e.key() == Qt.Key.Key_Tab:
-                self._handle_tab_key()
-                return
-            
-            if e.key() == Qt.Key.Key_Backtab:
-                self._handle_backtab_key()
-                return
-            
-            if e.key() == Qt.Key.Key_Return:
-                self._handle_return_key()
-                return
-
-            super().keyPressEvent(e)
-
-            text = e.text()
-            if text and (text == "@" or text.isalnum() or text in "._"):
                 word, start, end = self._get_word_before_cursor()
-                logger.debug(f"Word before cursor: '{word}'")
                 if word.startswith("@"):
                     self._show_completion(word)
-        except Exception as e:
-            logger.error(f"Error in keyPressEvent: {e}\n{traceback.format_exc()}")
 
     def _handle_tab_key(self):
         cursor = self.textCursor()
@@ -651,9 +661,9 @@ class CodeEditor(QPlainTextEdit):
         cursor.beginEditBlock()
         
         while cursor.position() <= end:
-            cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+            cursor.movePosition(QTextCursor.StartOfBlock)
             cursor.insertText("    ")
-            cursor.movePosition(QTextCursor.MoveOperation.NextBlock)
+            cursor.movePosition(QTextCursor.NextBlock)
             if cursor.atEnd():
                 break
         
@@ -668,61 +678,34 @@ class CodeEditor(QPlainTextEdit):
         cursor.beginEditBlock()
         
         while cursor.position() <= end:
-            cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+            cursor.movePosition(QTextCursor.StartOfBlock)
             line = cursor.block().text()
             if line.startswith("    "):
                 for _ in range(4):
                     cursor.deleteChar()
-            cursor.movePosition(QTextCursor.MoveOperation.NextBlock)
+            cursor.movePosition(QTextCursor.NextBlock)
             if cursor.atEnd():
                 break
         
         cursor.endEditBlock()
 
-    def resolve_variables(self, content: str) -> str:
-        if not content:
-            return content
-        pattern = r'@(param|dict)\.([a-zA-Z0-9_]+)(?:\.([a-zA-Z0-9_\u4e00-\u9fa5]+))?'
-        def replace_var(match):
-            var_type = match.group(1)
-            if var_type == "param":
-                param_code = match.group(2)
-                if self._param_service:
-                    param = self._param_service.get_param_by_code(param_code)
-                    if param and param.status == 1:
-                        return param.param_value or ""
-            elif var_type == "dict":
-                dict_code = match.group(2)
-                item_name = match.group(3)
-                if self._dict_service and dict_code:
-                    if item_name:
-                        item_code = self._dict_service.get_item_code_by_name(dict_code, item_name)
-                        if item_code:
-                            return item_code
-                    else:
-                        items = self._dict_service.get_dict_items(dict_code)
-                        result = [{"code": item.item_code, "name": item.item_name} for item in items if item.is_active == "Y"]
-                        return json.dumps(result, ensure_ascii=False)
-            return match.group(0)
-        return re.sub(pattern, replace_var, content)
+    def get_content(self) -> str:
+        return self.toPlainText()
 
-    def set_language(self, language: str):
-        self._current_language = language
-        highlighter_class = self.LEXER_MAP.get(language)
-        if highlighter_class:
-            self._current_highlighter = highlighter_class(self.document())
-        else:
-            self._current_highlighter = None
-
-    def set_read_only(self, read_only: bool):
-        self.setReadOnly(read_only)
+    def set_content(self, content: str):
+        self.setPlainText(content)
 
     def set_text(self, text: str):
         self.setPlainText(text)
 
-    def text(self):
+    def get_text(self) -> str:
         return self.toPlainText()
 
-    def show_completion_list(self, words, replace_len=0):
-        if words:
-            self._completer.update_completions(words)
+    def set_read_only(self, read_only: bool):
+        self.setReadOnly(read_only)
+
+    def get_language(self) -> str:
+        return self._current_language
+
+    def refresh_completions(self):
+        self._load_completion_words()

@@ -1,9 +1,9 @@
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
     QTableWidgetItem, QPushButton, QHeaderView, QComboBox, QLabel,
     QMessageBox, QFrame, QApplication
 )
-from PyQt6.QtCore import Qt
+from PyQt5.QtCore import Qt
 from core.workers import AuditLogLoadWorker
 from core.logger import get_logger
 from gui.icons import icons
@@ -57,7 +57,7 @@ class AuditPage(QWidget):
         self.refresh_btn = QPushButton("刷新")
         self.refresh_btn.setIcon(icons.refresh_icon())
         self.refresh_btn.setMinimumHeight(34)
-        self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.refresh_btn.setCursor(Qt.PointingHandCursor)
         self.refresh_btn.clicked.connect(self.load_logs)
         toolbar_layout.addWidget(self.refresh_btn)
 

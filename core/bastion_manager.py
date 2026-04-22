@@ -1,6 +1,6 @@
 import threading
 from typing import Optional, Callable, Dict, Any
-from PyQt6.QtCore import QObject, pyqtSignal, QThread, QTimer
+from PyQt5.QtCore import QObject, pyqtSignal, QThread, QTimer
 from sqlalchemy.orm import Session
 from services.bastion_service import BastionService, ConnectionStatus
 from core.logger import get_logger

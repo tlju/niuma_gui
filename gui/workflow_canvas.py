@@ -1,16 +1,16 @@
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QGraphicsView, QGraphicsScene, QWidget, QVBoxLayout,
     QHBoxLayout, QPushButton, QLabel, QComboBox, QSpinBox,
     QScrollArea, QFrame, QDialog, QLineEdit, QTextEdit,
     QFormLayout, QDialogButtonBox, QMessageBox, QSplitter,
     QListWidget, QListWidgetItem, QGroupBox, QCheckBox,
     QTableWidget, QTableWidgetItem, QHeaderView, QApplication,
-    QGraphicsItem
+    QGraphicsItem, QShortcut
 )
-from PyQt6.QtCore import Qt, QPointF, pyqtSignal, QRectF, QTimer
-from PyQt6.QtGui import (
+from PyQt5.QtCore import Qt, QPointF, pyqtSignal, QRectF, QTimer
+from PyQt5.QtGui import (
     QPainter, QPen, QBrush, QColor, QFont, QIcon,
-    QKeySequence, QShortcut, QStandardItemModel, QStandardItem
+    QKeySequence, QStandardItemModel, QStandardItem
 )
 import pyqtgraph as pg
 from pyqtgraph import GraphicsLayoutWidget, PlotItem
@@ -86,26 +86,26 @@ class NodeConfigDialog(QDialog):
                     }
                     
                     please_select_item = QStandardItem("请选择脚本...")
-                    please_select_item.setData(None, Qt.ItemDataRole.UserRole)
-                    please_select_item.setData(None, Qt.ItemDataRole.UserRole + 1)
-                    please_select_item.setData(None, Qt.ItemDataRole.UserRole + 2)
-                    please_select_item.setFlags(please_select_item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+                    please_select_item.setData(None, Qt.UserRole)
+                    please_select_item.setData(None, Qt.UserRole + 1)
+                    please_select_item.setData(None, Qt.UserRole + 2)
+                    please_select_item.setFlags(please_select_item.flags() & ~Qt.ItemIsEnabled)
                     root_item.appendRow(please_select_item)
                     
                     for lang in ["bash", "python", "sql"]:
                         if lang in scripts_by_lang:
                             lang_item = QStandardItem(f"── {lang_names.get(lang, lang)} ──")
-                            lang_item.setFlags(lang_item.flags() & ~Qt.ItemFlag.ItemIsSelectable & ~Qt.ItemFlag.ItemIsEnabled)
-                            lang_item.setData(None, Qt.ItemDataRole.UserRole)
-                            lang_item.setData(None, Qt.ItemDataRole.UserRole + 1)
-                            lang_item.setData(None, Qt.ItemDataRole.UserRole + 2)
+                            lang_item.setFlags(lang_item.flags() & ~Qt.ItemIsSelectable & ~Qt.ItemIsEnabled)
+                            lang_item.setData(None, Qt.UserRole)
+                            lang_item.setData(None, Qt.UserRole + 1)
+                            lang_item.setData(None, Qt.UserRole + 2)
                             root_item.appendRow(lang_item)
                             
                             for script in scripts_by_lang[lang]:
                                 script_item = QStandardItem(f"  {script.id} - {script.name}")
-                                script_item.setData(script.id, Qt.ItemDataRole.UserRole)
-                                script_item.setData(lang, Qt.ItemDataRole.UserRole + 1)
-                                script_item.setData(script.name, Qt.ItemDataRole.UserRole + 2)
+                                script_item.setData(script.id, Qt.UserRole)
+                                script_item.setData(lang, Qt.UserRole + 1)
+                                script_item.setData(script.name, Qt.UserRole + 2)
                                 root_item.appendRow(script_item)
                     
                     widget.setModel(model)
@@ -171,7 +171,7 @@ class NodeConfigDialog(QDialog):
             layout.addWidget(config_group)
 
         buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
         )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
@@ -189,9 +189,9 @@ class NodeConfigDialog(QDialog):
         model = widget.model()
         item = model.itemFromIndex(model.index(current_index, 0))
         
-        script_id = item.data(Qt.ItemDataRole.UserRole)
-        script_lang = item.data(Qt.ItemDataRole.UserRole + 1)
-        script_name = item.data(Qt.ItemDataRole.UserRole + 2)
+        script_id = item.data(Qt.UserRole)
+        script_lang = item.data(Qt.UserRole + 1)
+        script_name = item.data(Qt.UserRole + 2)
         
         if script_id and self.scripts:
             for script in self.scripts:
@@ -206,7 +206,7 @@ class NodeConfigDialog(QDialog):
         for i in range(model.rowCount()):
             index = model.index(i, 0)
             item = model.itemFromIndex(index)
-            if item and item.data(Qt.ItemDataRole.UserRole) == script_id:
+            if item and item.data(Qt.UserRole) == script_id:
                 combobox.setCurrentIndex(i)
                 return
 
@@ -219,7 +219,7 @@ class NodeConfigDialog(QDialog):
                     current_index = widget.currentIndex()
                     if current_index >= 0:
                         item = model.itemFromIndex(model.index(current_index, 0))
-                        config[key] = item.data(Qt.ItemDataRole.UserRole)
+                        config[key] = item.data(Qt.UserRole)
                     else:
                         config[key] = None
                 else:
@@ -273,13 +273,13 @@ class NodePaletteWidget(QWidget):
 
         for category, nodes in categories.items():
             category_item = QListWidgetItem(category_names.get(category, category))
-            category_item.setFlags(category_item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+            category_item.setFlags(category_item.flags() & ~Qt.ItemIsSelectable)
             category_item.setBackground(QColor(240, 240, 240))
             self.node_list.addItem(category_item)
 
             for node_type, info in nodes:
                 item = QListWidgetItem(f"  {info['display_name']}")
-                item.setData(Qt.ItemDataRole.UserRole, node_type)
+                item.setData(Qt.UserRole, node_type)
                 item.setToolTip(info['description'])
                 self.node_list.addItem(item)
 
@@ -287,7 +287,7 @@ class NodePaletteWidget(QWidget):
         layout.addWidget(self.node_list)
 
     def _on_item_double_clicked(self, item: QListWidgetItem):
-        node_type = item.data(Qt.ItemDataRole.UserRole)
+        node_type = item.data(Qt.UserRole)
         if node_type:
             self.node_selected.emit(node_type)
 
@@ -307,15 +307,15 @@ class WorkflowCanvas(QGraphicsView):
         self.mode = mode
         self._read_only = (mode == "execute")
         
-        self.setRenderHint(QPainter.RenderHint.Antialiasing)
-        self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-        self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
-        self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
-        self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
-        self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.FullViewportUpdate)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.setTransformationAnchor(QGraphicsView.ViewportAnchor.NoAnchor)
+        self.setRenderHint(QPainter.Antialiasing)
+        self.setRenderHint(QPainter.SmoothPixmapTransform)
+        self.setDragMode(QGraphicsView.RubberBandDrag)
+        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+        self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
+        self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setTransformationAnchor(QGraphicsView.NoAnchor)
 
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
@@ -341,21 +341,21 @@ class WorkflowCanvas(QGraphicsView):
             self._set_read_only_mode()
 
     def _init_shortcuts(self):
-        delete_shortcut = QShortcut(QKeySequence.StandardKey.Delete, self)
+        delete_shortcut = QShortcut(QKeySequence.Delete, self)
         delete_shortcut.activated.connect(self.delete_selected)
 
-        copy_shortcut = QShortcut(QKeySequence.StandardKey.Copy, self)
+        copy_shortcut = QShortcut(QKeySequence.Copy, self)
         copy_shortcut.activated.connect(self.copy_selected)
 
-        paste_shortcut = QShortcut(QKeySequence.StandardKey.Paste, self)
+        paste_shortcut = QShortcut(QKeySequence.Paste, self)
         paste_shortcut.activated.connect(self.paste)
 
     def _set_read_only_mode(self):
         for node in self.nodes.values():
-            node.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
+            node.setFlag(QGraphicsItem.ItemIsMovable, False)
         
         for conn in self.connections:
-            conn.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
+            conn.setFlag(QGraphicsItem.ItemIsSelectable, False)
 
     def _draw_grid(self):
         grid_pen = QPen(QColor(220, 220, 220), 1)
@@ -386,7 +386,7 @@ class WorkflowCanvas(QGraphicsView):
         self.nodes[node_id] = node
         
         if self._read_only:
-            node.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
+            node.setFlag(QGraphicsItem.ItemIsMovable, False)
 
         self.node_added.emit(node)
         return node
@@ -427,7 +427,7 @@ class WorkflowCanvas(QGraphicsView):
         self.connections.append(connection)
         
         if self._read_only:
-            connection.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
+            connection.setFlag(QGraphicsItem.ItemIsSelectable, False)
 
         self.connection_added.emit(connection)
         return connection
@@ -544,14 +544,14 @@ class WorkflowCanvas(QGraphicsView):
                 self.node_config_changed.emit(node_id, new_name, new_config)
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.MiddleButton:
+        if event.button() == Qt.MiddleButton:
             self._pan_mode = True
             self._last_mouse_pos = event.pos()
-            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+            self.setCursor(Qt.ClosedHandCursor)
             event.accept()
             return
 
-        if event.button() == Qt.MouseButton.LeftButton and not self._read_only:
+        if event.button() == Qt.LeftButton and not self._read_only:
             item = self.itemAt(event.pos())
             if isinstance(item, WorkflowNodeItem):
                 port_pos = self._get_port_at_position(item, event.pos())
@@ -588,13 +588,13 @@ class WorkflowCanvas(QGraphicsView):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        if event.button() == Qt.MouseButton.MiddleButton:
+        if event.button() == Qt.MiddleButton:
             self._pan_mode = False
-            self.setCursor(Qt.CursorShape.ArrowCursor)
+            self.setCursor(Qt.ArrowCursor)
             event.accept()
             return
 
-        if event.button() == Qt.MouseButton.LeftButton and self._is_connecting:
+        if event.button() == Qt.LeftButton and self._is_connecting:
             self._is_connecting = False
 
             if self._temp_connection:
@@ -653,4 +653,4 @@ class WorkflowCanvas(QGraphicsView):
             rect = rect.united(node.boundingRect().translated(node.pos()))
 
         rect.adjust(-50, -50, 50, 50)
-        self.fitInView(rect, Qt.AspectRatioMode.KeepAspectRatio)
+        self.fitInView(rect, Qt.KeepAspectRatio)

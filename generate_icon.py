@@ -2,9 +2,9 @@
 
 import os
 import sys
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtGui import QPixmap, QPainter, QColor, QIcon
-from PyQt6.QtCore import Qt, QRectF
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtGui import QPixmap, QPainter, QColor, QIcon
+from PyQt5.QtCore import Qt, QRectF
 
 
 def create_app_icon():
@@ -14,13 +14,13 @@ def create_app_icon():
 
     for size in sizes:
         pixmap = QPixmap(size, size)
-        pixmap.fill(Qt.GlobalColor.transparent)
+        pixmap.fill(Qt.transparent)
         painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
 
         color = QColor("#2c3e50")
-        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setPen(Qt.NoPen)
         painter.setBrush(color)
 
         screen_rect = QRectF(size * 0.1, size * 0.08, size * 0.8, size * 0.55)

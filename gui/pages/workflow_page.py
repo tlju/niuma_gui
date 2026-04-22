@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
     QTableWidgetItem, QPushButton, QDialog, QLabel,
     QLineEdit, QTextEdit, QMessageBox, QHeaderView,
@@ -7,8 +7,8 @@ from PyQt6.QtWidgets import (
     QPlainTextEdit, QProgressBar, QSpinBox, QCheckBox,
     QFileDialog
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QThread, QDateTime
-from PyQt6.QtGui import QColor, QFont, QIcon
+from PyQt5.QtCore import Qt, pyqtSignal, QThread, QDateTime
+from PyQt5.QtGui import QColor, QFont, QIcon
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 from collections import deque
@@ -340,7 +340,7 @@ class WorkflowEditDialog(QDialog):
 
         layout.addLayout(toolbar)
 
-        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter = QSplitter(Qt.Horizontal)
 
         self.node_palette = NodePaletteWidget()
         self.node_palette.node_selected.connect(self._on_node_type_selected)
@@ -470,21 +470,21 @@ class WorkflowPage(QWidget):
         self.add_btn.setIcon(icons.add_icon())
         self.add_btn.setProperty("class", "success")
         self.add_btn.setMinimumHeight(34)
-        self.add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.add_btn.setCursor(Qt.PointingHandCursor)
         self.add_btn.clicked.connect(self.show_create_dialog)
         toolbar_layout.addWidget(self.add_btn)
 
         self.refresh_btn = QPushButton("刷新")
         self.refresh_btn.setIcon(icons.refresh_icon())
         self.refresh_btn.setMinimumHeight(34)
-        self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.refresh_btn.setCursor(Qt.PointingHandCursor)
         self.refresh_btn.clicked.connect(self.load_workflows)
         toolbar_layout.addWidget(self.refresh_btn)
 
         self.import_btn = QPushButton("导入")
         self.import_btn.setIcon(icons.import_icon())
         self.import_btn.setMinimumHeight(34)
-        self.import_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.import_btn.setCursor(Qt.PointingHandCursor)
         self.import_btn.clicked.connect(self.import_workflow)
         toolbar_layout.addWidget(self.import_btn)
 
@@ -528,7 +528,7 @@ class WorkflowPage(QWidget):
         
         self.batch_delete_btn = QPushButton("批量删除")
         self.batch_delete_btn.setProperty("class", "table-delete")
-        self.batch_delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.batch_delete_btn.setCursor(Qt.PointingHandCursor)
         self.batch_delete_btn.clicked.connect(self.batch_delete_executions)
         exec_toolbar.addWidget(self.batch_delete_btn)
         
@@ -587,29 +587,29 @@ class WorkflowPage(QWidget):
             btn_layout = QHBoxLayout(btn_widget)
             btn_layout.setContentsMargins(4, 2, 4, 2)
             btn_layout.setSpacing(4)
-            btn_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            btn_layout.setAlignment(Qt.AlignCenter)
 
             edit_btn = QPushButton("编辑")
             edit_btn.setProperty("class", "table-edit")
-            edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            edit_btn.setCursor(Qt.PointingHandCursor)
             edit_btn.clicked.connect(lambda checked, w=workflow: self.show_edit_dialog(w))
             btn_layout.addWidget(edit_btn)
 
             run_btn = QPushButton("执行")
             run_btn.setProperty("class", "table-run")
-            run_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            run_btn.setCursor(Qt.PointingHandCursor)
             run_btn.clicked.connect(lambda checked, w=workflow: self.execute_workflow(w))
             btn_layout.addWidget(run_btn)
 
             export_btn = QPushButton("导出")
             export_btn.setProperty("class", "table-view")
-            export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            export_btn.setCursor(Qt.PointingHandCursor)
             export_btn.clicked.connect(lambda checked, w=workflow: self.export_workflow(w))
             btn_layout.addWidget(export_btn)
 
             delete_btn = QPushButton("删除")
             delete_btn.setProperty("class", "table-delete")
-            delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            delete_btn.setCursor(Qt.PointingHandCursor)
             delete_btn.clicked.connect(lambda checked, w=workflow: self.delete_workflow(w))
             btn_layout.addWidget(delete_btn)
 
@@ -625,7 +625,7 @@ class WorkflowPage(QWidget):
             self.load_workflows()
 
     def show_edit_dialog(self, workflow=None):
-        from PyQt6.QtCore import QModelIndex
+        from PyQt5.QtCore import QModelIndex
 
         if workflow is None or isinstance(workflow, QModelIndex):
             row = self.table.currentRow()
@@ -742,8 +742,8 @@ class WorkflowPage(QWidget):
 
         for row, execution in enumerate(executions):
             checkbox_item = QTableWidgetItem()
-            checkbox_item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
-            checkbox_item.setCheckState(Qt.CheckState.Unchecked)
+            checkbox_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+            checkbox_item.setCheckState(Qt.Unchecked)
             self.exec_table.setItem(row, 0, checkbox_item)
 
             self.exec_table.setItem(row, 1, QTableWidgetItem(str(execution.id)))
@@ -767,17 +767,17 @@ class WorkflowPage(QWidget):
             btn_layout = QHBoxLayout(btn_widget)
             btn_layout.setContentsMargins(4, 2, 4, 2)
             btn_layout.setSpacing(4)
-            btn_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            btn_layout.setAlignment(Qt.AlignCenter)
 
             view_btn = QPushButton("查看")
             view_btn.setProperty("class", "table-view")
-            view_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            view_btn.setCursor(Qt.PointingHandCursor)
             view_btn.clicked.connect(lambda checked, e=execution: self.show_execution_detail(e))
             btn_layout.addWidget(view_btn)
 
             delete_btn = QPushButton("删除")
             delete_btn.setProperty("class", "table-delete")
-            delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            delete_btn.setCursor(Qt.PointingHandCursor)
             delete_btn.clicked.connect(lambda checked, e=execution: self.delete_execution(e))
             btn_layout.addWidget(delete_btn)
 
@@ -788,7 +788,7 @@ class WorkflowPage(QWidget):
         dialog.exec()
 
     def _on_select_all_executions(self, state):
-        check_state = Qt.CheckState.Checked if state == Qt.CheckState.Checked.value else Qt.CheckState.Unchecked
+        check_state = Qt.Checked if state == Qt.Checked else Qt.Unchecked
         for row in range(self.exec_table.rowCount()):
             item = self.exec_table.item(row, 0)
             if item:
@@ -809,7 +809,7 @@ class WorkflowPage(QWidget):
         selected_ids = []
         for row in range(self.exec_table.rowCount()):
             item = self.exec_table.item(row, 0)
-            if item and item.checkState() == Qt.CheckState.Checked:
+            if item and item.checkState() == Qt.Checked:
                 id_item = self.exec_table.item(row, 1)
                 if id_item:
                     selected_ids.append(int(id_item.text()))

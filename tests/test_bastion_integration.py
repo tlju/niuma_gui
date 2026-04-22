@@ -150,7 +150,7 @@ class TestSecondaryAuthDialog(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         import sys
-        from PyQt6.QtWidgets import QApplication
+        from PyQt5.QtWidgets import QApplication
         if not QApplication.instance():
             cls.app = QApplication(sys.argv)
         else:

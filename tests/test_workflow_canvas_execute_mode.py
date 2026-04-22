@@ -1,5 +1,5 @@
 import pytest
-from PyQt6.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication
 from gui.workflow_canvas import WorkflowCanvas
 from unittest.mock import Mock
 
@@ -40,9 +40,9 @@ class TestWorkflowCanvasExecuteMode:
         
         node = canvas.add_node("start", 100, 100, name="开始节点", node_id=1)
         
-        from PyQt6.QtWidgets import QGraphicsItem
+        from PyQt5.QtWidgets import QGraphicsItem
         flags = node.flags()
-        movable_flag = QGraphicsItem.GraphicsItemFlag.ItemIsMovable
+        movable_flag = QGraphicsItem.ItemIsMovable
         
         assert not (flags & movable_flag)
         
@@ -51,8 +51,8 @@ class TestWorkflowCanvasExecuteMode:
         
         node = canvas.add_node("start", 100, 100, name="开始节点", node_id=1)
         
-        from PyQt6.QtWidgets import QGraphicsItem
-        movable_flag = node.flags() & QGraphicsItem.GraphicsItemFlag.ItemIsMovable
+        from PyQt5.QtWidgets import QGraphicsItem
+        movable_flag = node.flags() & QGraphicsItem.ItemIsMovable
         
         assert movable_flag != 0
         

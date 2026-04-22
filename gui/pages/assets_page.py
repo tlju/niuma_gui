@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
     QTableWidgetItem, QPushButton, QDialog, QLabel,
     QLineEdit, QComboBox, QMessageBox, QHeaderView,
@@ -6,8 +6,8 @@ from PyQt6.QtWidgets import (
     QFormLayout, QSpinBox, QApplication, QFileDialog,
     QCheckBox, QTextEdit
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QFont
 from core.workers import AssetLoadWorker
 from core.logger import get_logger
 from gui.icons import icons
@@ -75,13 +75,13 @@ class AssetsPage(QWidget):
         self.add_btn.setIcon(icons.add_icon())
         self.add_btn.setProperty("class", "success")
         self.add_btn.setMinimumHeight(34)
-        self.add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.add_btn.setCursor(Qt.PointingHandCursor)
         toolbar_layout.addWidget(self.add_btn)
 
         self.refresh_btn = QPushButton("刷新")
         self.refresh_btn.setIcon(icons.refresh_icon())
         self.refresh_btn.setMinimumHeight(34)
-        self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.refresh_btn.setCursor(Qt.PointingHandCursor)
         toolbar_layout.addWidget(self.refresh_btn)
 
         toolbar_layout.addSpacing(10)
@@ -89,13 +89,13 @@ class AssetsPage(QWidget):
         self.export_btn = QPushButton("导出")
         self.export_btn.setIcon(icons.download_icon())
         self.export_btn.setMinimumHeight(34)
-        self.export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.export_btn.setCursor(Qt.PointingHandCursor)
         toolbar_layout.addWidget(self.export_btn)
 
         self.import_btn = QPushButton("导入")
         self.import_btn.setIcon(icons.upload_icon())
         self.import_btn.setMinimumHeight(34)
-        self.import_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.import_btn.setCursor(Qt.PointingHandCursor)
         toolbar_layout.addWidget(self.import_btn)
 
         toolbar_layout.addSpacing(20)
@@ -251,7 +251,7 @@ class AssetsPage(QWidget):
             self.table.setItem(row, 3, QTableWidgetItem(asset.ipv6 or ""))
 
             port_item = QTableWidgetItem(str(asset.port or ""))
-            port_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            port_item.setTextAlignment(Qt.AlignCenter)
             self.table.setItem(row, 4, port_item)
 
             self.table.setItem(row, 5, QTableWidgetItem(asset.host_name or ""))
@@ -264,17 +264,17 @@ class AssetsPage(QWidget):
             btn_layout = QHBoxLayout(btn_widget)
             btn_layout.setContentsMargins(4, 2, 4, 2)
             btn_layout.setSpacing(4)
-            btn_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            btn_layout.setAlignment(Qt.AlignCenter)
 
             edit_btn = QPushButton("编辑")
             edit_btn.setProperty("class", "table-edit")
-            edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            edit_btn.setCursor(Qt.PointingHandCursor)
             edit_btn.clicked.connect(lambda checked, a=asset: self.show_edit_dialog(a))
             btn_layout.addWidget(edit_btn)
 
             delete_btn = QPushButton("删除")
             delete_btn.setProperty("class", "table-delete")
-            delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            delete_btn.setCursor(Qt.PointingHandCursor)
             delete_btn.clicked.connect(lambda checked, a=asset.id: self.delete_asset(a))
             btn_layout.addWidget(delete_btn)
 
@@ -406,7 +406,7 @@ class AssetDialog(QDialog):
         self.dict_service = dict_service
         self.setWindowTitle("编辑资产" if asset else "添加资产")
         self.setMinimumSize(800, 520)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.init_ui()
         self._load_dict_data()
         if asset:
@@ -552,14 +552,14 @@ class AssetDialog(QDialog):
         self.cancel_btn = QPushButton("取消")
         self.cancel_btn.setProperty("class", "secondary")
         self.cancel_btn.setMinimumHeight(40)
-        self.cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.cancel_btn.setCursor(Qt.PointingHandCursor)
         self.cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(self.cancel_btn)
 
         self.ok_btn = QPushButton("确定")
         self.ok_btn.setProperty("class", "success")
         self.ok_btn.setMinimumHeight(40)
-        self.ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.ok_btn.setCursor(Qt.PointingHandCursor)
         self.ok_btn.clicked.connect(self._validate_and_accept)
         btn_layout.addWidget(self.ok_btn)
 
@@ -631,7 +631,7 @@ class ExportDialog(QDialog):
         self.total_count = total_count
         self.setWindowTitle("导出资产")
         self.setMinimumSize(400, 250)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.init_ui()
 
     def init_ui(self):
@@ -668,14 +668,14 @@ class ExportDialog(QDialog):
         self.cancel_btn = QPushButton("取消")
         self.cancel_btn.setProperty("class", "secondary")
         self.cancel_btn.setMinimumHeight(40)
-        self.cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.cancel_btn.setCursor(Qt.PointingHandCursor)
         self.cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(self.cancel_btn)
 
         self.ok_btn = QPushButton("确定")
         self.ok_btn.setProperty("class", "success")
         self.ok_btn.setMinimumHeight(40)
-        self.ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.ok_btn.setCursor(Qt.PointingHandCursor)
         self.ok_btn.clicked.connect(self.accept)
         btn_layout.addWidget(self.ok_btn)
 
@@ -694,7 +694,7 @@ class ImportDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("导入资产")
         self.setMinimumSize(450, 300)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.init_ui()
 
     def init_ui(self):
@@ -735,14 +735,14 @@ class ImportDialog(QDialog):
         self.cancel_btn = QPushButton("取消")
         self.cancel_btn.setProperty("class", "secondary")
         self.cancel_btn.setMinimumHeight(40)
-        self.cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.cancel_btn.setCursor(Qt.PointingHandCursor)
         self.cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(self.cancel_btn)
 
         self.ok_btn = QPushButton("确定")
         self.ok_btn.setProperty("class", "success")
         self.ok_btn.setMinimumHeight(40)
-        self.ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.ok_btn.setCursor(Qt.PointingHandCursor)
         self.ok_btn.clicked.connect(self.accept)
         btn_layout.addWidget(self.ok_btn)
 
@@ -764,7 +764,7 @@ class AssetDetailDialog(QDialog):
         self.asset_service = asset_service
         self.setWindowTitle("资产详情")
         self.setMinimumSize(600, 500)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self._init_ui()
         self._populate_data()
 
@@ -844,7 +844,7 @@ class AssetDetailDialog(QDialog):
         self.close_btn.setProperty("class", "secondary")
         self.close_btn.setMinimumWidth(100)
         self.close_btn.setMinimumHeight(40)
-        self.close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.close_btn.setCursor(Qt.PointingHandCursor)
         self.close_btn.clicked.connect(self.accept)
         btn_layout.addWidget(self.close_btn)
 
@@ -859,7 +859,7 @@ class AssetDetailDialog(QDialog):
 
         label = QLabel(label_text)
         label.setObjectName("detailLabel")
-        label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        label.setAlignment(Qt.AlignRight | Qt.AlignTop)
 
         value_label = QLabel("-")
         value_label.setObjectName("detailValue")
@@ -880,11 +880,11 @@ class AssetDetailDialog(QDialog):
 
         label = QLabel("密码:")
         label.setObjectName("detailLabel")
-        label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        label.setAlignment(Qt.AlignRight | Qt.AlignTop)
 
         self.password_btn = QPushButton("点击查看密码")
         self.password_btn.setProperty("class", "secondary")
-        self.password_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.password_btn.setCursor(Qt.PointingHandCursor)
         self.password_btn.clicked.connect(self._show_password)
 
         row_layout.addWidget(label)
@@ -928,7 +928,7 @@ class PasswordDialog(QDialog):
         self.password = password
         self.setWindowTitle("密码详情")
         self.setMinimumSize(400, 180)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self._init_ui()
 
     def _init_ui(self):
@@ -953,14 +953,14 @@ class PasswordDialog(QDialog):
         self.copy_btn = QPushButton("复制密码")
         self.copy_btn.setProperty("class", "success")
         self.copy_btn.setMinimumHeight(36)
-        self.copy_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.copy_btn.setCursor(Qt.PointingHandCursor)
         self.copy_btn.clicked.connect(self._copy_password)
         btn_layout.addWidget(self.copy_btn)
 
         self.close_btn = QPushButton("关闭")
         self.close_btn.setProperty("class", "secondary")
         self.close_btn.setMinimumHeight(36)
-        self.close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.close_btn.setCursor(Qt.PointingHandCursor)
         self.close_btn.clicked.connect(self.accept)
         btn_layout.addWidget(self.close_btn)
 

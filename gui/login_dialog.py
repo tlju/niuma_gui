@@ -1,9 +1,9 @@
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
     QLineEdit, QPushButton, QMessageBox, QFrame, QSpacerItem, QSizePolicy, QApplication
 )
-from PyQt6.QtCore import pyqtSignal, Qt
-from PyQt6.QtGui import QFont
+from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import QFont
 from gui.icons import icons
 from gui.style_manager import load_combined_stylesheet
 from core.logger import get_logger
@@ -27,7 +27,7 @@ class LoginDialog(QDialog):
         
         self.setWindowTitle("登录 - 运维辅助工具")
         self.setFixedSize(420, 380)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
 
         main_layout = QVBoxLayout()
         main_layout.setSpacing(0)
@@ -37,7 +37,7 @@ class LoginDialog(QDialog):
         header.setObjectName("header")
         header.setFixedHeight(120)
         header_layout = QVBoxLayout(header)
-        header_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        header_layout.setAlignment(Qt.AlignCenter)
 
         title_label = QLabel("运维辅助工具")
         title_label.setObjectName("titleLabel")
@@ -80,7 +80,7 @@ class LoginDialog(QDialog):
         self.login_btn.setObjectName("loginBtn")
         self.login_btn.setProperty("class", "login")
         self.login_btn.setMinimumHeight(48)
-        self.login_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.login_btn.setCursor(Qt.PointingHandCursor)
         self.login_btn.clicked.connect(self.handle_login)
         form_layout.addWidget(self.login_btn)
 

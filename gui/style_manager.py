@@ -1,8 +1,8 @@
 import sys
 from pathlib import Path
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtGui import QFont, QFontDatabase
-from PyQt6.QtCore import QSysInfo
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtGui import QFont, QFontDatabase
+from PyQt5.QtCore import QSysInfo
 
 
 def _get_resource_path(relative_path: str) -> Path:
@@ -33,7 +33,7 @@ def _detect_platform_font() -> list:
             "Microsoft YaHei", "sans-serif"
         ]
 
-    available = QFontDatabase.families()
+    available = QFontDatabase().families()
     for font_name in font_list:
         if font_name in available or font_name == "sans-serif":
             return [font_name]
@@ -93,8 +93,8 @@ def get_font() -> QFont:
     preferred_fonts = _detect_platform_font()
     font.setFamilies(preferred_fonts)
     font.setPointSize(_detect_font_size())
-    font.setStyleHint(QFont.StyleHint.SansSerif)
-    font.setWeight(QFont.Weight.Normal)
+    font.setStyleHint(QFont.SansSerif)
+    font.setWeight(QFont.Normal)
     return font
 
 

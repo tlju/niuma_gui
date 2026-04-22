@@ -1,10 +1,10 @@
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
     QTableWidgetItem, QPushButton, QDialog, QLabel,
     QLineEdit, QMessageBox, QHeaderView,
     QFrame, QApplication, QComboBox
 )
-from PyQt6.QtCore import Qt
+from PyQt5.QtCore import Qt
 from core.workers import ScriptLoadWorker
 from core.logger import get_logger
 from gui.icons import icons
@@ -56,14 +56,14 @@ class ScriptsPage(QWidget):
         self.add_btn.setIcon(icons.add_icon())
         self.add_btn.setProperty("class", "success")
         self.add_btn.setMinimumHeight(34)
-        self.add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.add_btn.setCursor(Qt.PointingHandCursor)
         self.add_btn.clicked.connect(self.show_add_dialog)
         toolbar_layout.addWidget(self.add_btn)
 
         self.refresh_btn = QPushButton("刷新")
         self.refresh_btn.setIcon(icons.refresh_icon())
         self.refresh_btn.setMinimumHeight(34)
-        self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.refresh_btn.setCursor(Qt.PointingHandCursor)
         self.refresh_btn.clicked.connect(self.load_scripts)
         toolbar_layout.addWidget(self.refresh_btn)
 
@@ -125,11 +125,11 @@ class ScriptsPage(QWidget):
             btn_layout = QHBoxLayout(btn_widget)
             btn_layout.setContentsMargins(4, 2, 4, 2)
             btn_layout.setSpacing(4)
-            btn_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            btn_layout.setAlignment(Qt.AlignCenter)
 
             edit_btn = QPushButton("编辑")
             edit_btn.setProperty("class", "table-run")
-            edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            edit_btn.setCursor(Qt.PointingHandCursor)
             edit_btn.clicked.connect(
                 lambda checked, s=script: self.show_edit_dialog(s)
             )
@@ -137,7 +137,7 @@ class ScriptsPage(QWidget):
 
             delete_btn = QPushButton("删除")
             delete_btn.setProperty("class", "table-delete")
-            delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            delete_btn.setCursor(Qt.PointingHandCursor)
             delete_btn.clicked.connect(
                 lambda checked, s=script.id: self.delete_script(s)
             )
@@ -200,7 +200,7 @@ class ScriptDialog(QDialog):
         self.param_service = param_service
         self.setWindowTitle("编辑脚本" if script else "添加脚本")
         self.setMinimumSize(1024, 800)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.init_ui()
         self._load_dict_data()
 
@@ -261,14 +261,14 @@ class ScriptDialog(QDialog):
         ok_btn = QPushButton("确定")
         ok_btn.setProperty("class", "success")
         ok_btn.setMinimumHeight(38)
-        ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        ok_btn.setCursor(Qt.PointingHandCursor)
         ok_btn.clicked.connect(self._on_accept)
         btn_layout.addWidget(ok_btn)
 
         cancel_btn = QPushButton("取消")
         cancel_btn.setProperty("class", "secondary")
         cancel_btn.setMinimumHeight(38)
-        cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        cancel_btn.setCursor(Qt.PointingHandCursor)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
 
@@ -303,7 +303,7 @@ class ScriptDetailDialog(QDialog):
         self.dict_service = dict_service
         self.setWindowTitle(f"脚本详情: {script.name}")
         self.setMinimumSize(1024, 800)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.init_ui()
 
     def _get_language_name(self, language_code):
@@ -325,18 +325,18 @@ class ScriptDetailDialog(QDialog):
         info_layout.setSpacing(6)
 
         name_label = QLabel(f"<b>名称:</b> {self.script.name}")
-        name_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        name_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         info_layout.addWidget(name_label)
 
         desc_text = self.script.description or "无"
         desc_label = QLabel(f"<b>描述:</b> {desc_text}")
-        desc_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        desc_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         desc_label.setWordWrap(True)
         info_layout.addWidget(desc_label)
 
         lang_text = self._get_language_name(self.script.language)
         lang_label = QLabel(f"<b>语言:</b> {lang_text}")
-        lang_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        lang_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         info_layout.addWidget(lang_label)
 
         layout.addLayout(info_layout)
@@ -356,7 +356,7 @@ class ScriptDetailDialog(QDialog):
         close_btn = QPushButton("关闭")
         close_btn.setProperty("class", "secondary")
         close_btn.setMinimumHeight(38)
-        close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        close_btn.setCursor(Qt.PointingHandCursor)
         close_btn.clicked.connect(self.accept)
         btn_layout.addStretch()
         btn_layout.addWidget(close_btn)

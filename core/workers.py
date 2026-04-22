@@ -2,7 +2,7 @@
 后台任务处理模块
 使用QThread处理耗时操作，避免UI卡顿
 """
-from PyQt6.QtCore import QThread, pyqtSignal, QObject
+from PyQt5.QtCore import QThread, pyqtSignal, QObject
 from typing import Callable, Any, Optional
 import traceback
 

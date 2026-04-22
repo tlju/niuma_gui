@@ -32,17 +32,17 @@ def build():
     cmd = [
         sys.executable, '-m', 'nuitka',
         '--standalone',
-        '--enable-plugins=pyqt6',
-        '--include-qt-plugins=qml,platforms,imageformats,iconengines',
+        '--enable-plugins=pyqt5',
+        '--include-qt-plugins=platforms,imageformats,iconengines',
         '--follow-imports',
         '--nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest',
         '--nofollow-import-to=tests',
+        '--nofollow-import-to=PyQt5.QtQuick,PyQt5.QtQuick3D,PyQt5.QtQml,PyQt5.QtQuickWidgets',
         '--include-data-dir=gui/styles=gui/styles',
         '--output-dir=dist',
         f'--output-filename={output_name}',
         '--assume-yes-for-downloads',
         f'--jobs={os.cpu_count()}',
-        '--include-package-data=PyQt6',
         'main.py'
     ]
 

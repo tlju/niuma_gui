@@ -1,14 +1,14 @@
 import sys
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTextEdit,
     QFontComboBox, QComboBox, QToolButton, QColorDialog,
     QFileDialog, QSpinBox, QLabel, QFrame, QMenu, QGridLayout,
-    QApplication
+    QApplication, QAction
 )
-from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import (
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import (
     QTextCharFormat, QTextCursor, QFont, QColor, QIcon,
-    QAction, QTextBlockFormat, QTextListFormat, QPixmap
+    QTextBlockFormat, QTextListFormat, QPixmap
 )
 from core.logger import get_logger
 from gui.style_manager import load_combined_stylesheet
@@ -147,21 +147,21 @@ class RichTextEditor(QWidget):
         align_left_btn = QToolButton()
         align_left_btn.setToolTip("左对齐")
         align_left_btn.setObjectName("toolbarBtn")
-        align_left_btn.clicked.connect(lambda: self._set_alignment(Qt.AlignmentFlag.AlignLeft))
+        align_left_btn.clicked.connect(lambda: self._set_alignment(Qt.AlignLeft))
         align_left_btn.setText("≡")
         row2_layout.addWidget(align_left_btn)
 
         align_center_btn = QToolButton()
         align_center_btn.setToolTip("居中对齐")
         align_center_btn.setObjectName("toolbarBtn")
-        align_center_btn.clicked.connect(lambda: self._set_alignment(Qt.AlignmentFlag.AlignHCenter))
+        align_center_btn.clicked.connect(lambda: self._set_alignment(Qt.AlignHCenter))
         align_center_btn.setText("☰")
         row2_layout.addWidget(align_center_btn)
 
         align_right_btn = QToolButton()
         align_right_btn.setToolTip("右对齐")
         align_right_btn.setObjectName("toolbarBtn")
-        align_right_btn.clicked.connect(lambda: self._set_alignment(Qt.AlignmentFlag.AlignRight))
+        align_right_btn.clicked.connect(lambda: self._set_alignment(Qt.AlignRight))
         align_right_btn.setText("≡")
         row2_layout.addWidget(align_right_btn)
 
@@ -169,10 +169,10 @@ class RichTextEditor(QWidget):
 
         self._list_menu = QMenu(self)
         bullet_action = QAction("无序列表", self)
-        bullet_action.triggered.connect(lambda: self._insert_list(QTextListFormat.Style.ListDisc))
+        bullet_action.triggered.connect(lambda: self._insert_list(QTextListFormat.ListDisc))
         self._list_menu.addAction(bullet_action)
         decimal_action = QAction("有序列表", self)
-        decimal_action.triggered.connect(lambda: self._insert_list(QTextListFormat.Style.ListDecimal))
+        decimal_action.triggered.connect(lambda: self._insert_list(QTextListFormat.ListDecimal))
         self._list_menu.addAction(decimal_action)
 
         list_btn = QToolButton()
@@ -180,7 +180,7 @@ class RichTextEditor(QWidget):
         list_btn.setObjectName("toolbarBtn")
         list_btn.setText("≡≡")
         list_btn.setMenu(self._list_menu)
-        list_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        list_btn.setPopupMode(QToolButton.InstantPopup)
         row2_layout.addWidget(list_btn)
 
         indent_btn = QToolButton()
@@ -245,11 +245,11 @@ class RichTextEditor(QWidget):
 
     def _create_highlight_icon(self):
         pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        from PyQt6.QtGui import QPainter, QBrush
+        pixmap.fill(Qt.transparent)
+        from PyQt5.QtGui import QPainter, QBrush
         painter = QPainter(pixmap)
         painter.setBrush(QBrush(QColor("#ffeb3b")))
-        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setPen(Qt.NoPen)
         painter.drawRect(0, 8, 16, 8)
         painter.end()
         return QIcon(pixmap)
@@ -270,7 +270,7 @@ class RichTextEditor(QWidget):
         self._font_size.blockSignals(False)
 
         self._bold_btn.blockSignals(True)
-        self._bold_btn.setChecked(char_format.fontWeight() == QFont.Weight.Bold)
+        self._bold_btn.setChecked(char_format.fontWeight() == QFont.Bold)
         self._bold_btn.blockSignals(False)
 
         self._italic_btn.blockSignals(True)
@@ -311,9 +311,9 @@ class RichTextEditor(QWidget):
         cursor = self._editor.textCursor()
         char_format = QTextCharFormat()
         if self._bold_btn.isChecked():
-            char_format.setFontWeight(QFont.Weight.Bold)
+            char_format.setFontWeight(QFont.Bold)
         else:
-            char_format.setFontWeight(QFont.Weight.Normal)
+            char_format.setFontWeight(QFont.Normal)
         cursor.mergeCharFormat(char_format)
 
     def _toggle_italic(self):
@@ -335,7 +335,7 @@ class RichTextEditor(QWidget):
         cursor.mergeCharFormat(char_format)
 
     def _choose_color(self):
-        color = QColorDialog.getColor(Qt.GlobalColor.black, self, "选择文字颜色")
+        color = QColorDialog.getColor(Qt.black, self, "选择文字颜色")
         if color.isValid():
             cursor = self._editor.textCursor()
             char_format = QTextCharFormat()
@@ -384,7 +384,7 @@ class RichTextEditor(QWidget):
             if not image.isNull():
                 max_width = self._editor.width() - 40
                 if image.width() > max_width:
-                    image = image.scaledToWidth(max_width, Qt.TransformationMode.SmoothTransformation)
+                    image = image.scaledToWidth(max_width, Qt.SmoothTransformation)
                 cursor.insertImage(image)
 
     def _insert_table(self):

@@ -1,9 +1,9 @@
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QGraphicsItem, QGraphicsEllipseItem, QGraphicsPathItem,
     QGraphicsTextItem, QGraphicsRectItem, QStyleOptionGraphicsItem, QStyle
 )
-from PyQt6.QtCore import Qt, QPointF, QRectF, pyqtSignal, QObject
-from PyQt6.QtGui import (
+from PyQt5.QtCore import Qt, QPointF, QRectF, pyqtSignal, QObject
+from PyQt5.QtGui import (
     QPainter, QPen, QBrush, QColor, QPainterPath, QFont,
     QLinearGradient, QRadialGradient, QPainterPathStroker
 )
@@ -48,8 +48,8 @@ class WorkflowNodeItem(QGraphicsItem):
 
         self.signals = NodeSignals()
 
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
+        self.setFlag(QGraphicsItem.ItemIsMovable, True)
+        self.setFlag(QGraphicsItem.ItemIsSelectable, True)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemClipsToShape, True)
 
@@ -87,11 +87,11 @@ class WorkflowNodeItem(QGraphicsItem):
         gradient.setColorAt(0, base_color.lighter(120))
         gradient.setColorAt(1, base_color)
 
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.Antialiasing)
 
         shadow_rect = QRectF(3, 3, self.NODE_WIDTH, self.NODE_HEIGHT)
         painter.setBrush(QBrush(QColor(0, 0, 0, 30)))
-        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setPen(Qt.NoPen)
         painter.drawRoundedRect(shadow_rect, 8, 8)
 
         node_rect = QRectF(0, 0, self.NODE_WIDTH, self.NODE_HEIGHT)
@@ -107,18 +107,18 @@ class WorkflowNodeItem(QGraphicsItem):
         painter.setPen(QPen(QColor(255, 255, 255, 180), 1))
         painter.drawLine(int(self.NODE_WIDTH * 0.1), 25, int(self.NODE_WIDTH * 0.9), 25)
 
-        painter.setPen(QPen(Qt.GlobalColor.white))
-        font = QFont("Microsoft YaHei", 10, QFont.Weight.Bold)
+        painter.setPen(QPen(Qt.white))
+        font = QFont("Microsoft YaHei", 10, QFont.Bold)
         painter.setFont(font)
 
         text_rect = QRectF(5, 5, self.NODE_WIDTH - 10, 20)
-        painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, self.name)
+        painter.drawText(text_rect, Qt.AlignCenter, self.name)
 
         font.setBold(False)
         font.setPointSize(8)
         painter.setFont(font)
         type_rect = QRectF(5, 28, self.NODE_WIDTH - 10, 20)
-        painter.drawText(type_rect, Qt.AlignmentFlag.AlignCenter, f"[{self.node_type}]")
+        painter.drawText(type_rect, Qt.AlignCenter, f"[{self.node_type}]")
 
         self._draw_ports(painter)
 
@@ -197,9 +197,9 @@ class ConnectionItem(QGraphicsPathItem):
 
         self.setZValue(0)
         self.setPen(QPen(QColor("#666666"), 2))
-        self.setBrush(QBrush(Qt.BrushStyle.NoBrush))
+        self.setBrush(QBrush(Qt.NoBrush))
 
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
+        self.setFlag(QGraphicsItem.ItemIsSelectable, True)
         self.setAcceptHoverEvents(True)
 
         self._update_path()
@@ -242,13 +242,13 @@ class ConnectionItem(QGraphicsPathItem):
         return stroker.createStroke(path)
 
     def paint(self, painter: QPainter, option, widget=None):
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.Antialiasing)
 
         if self.isSelected():
             pen = QPen(QColor("#1976D2"), 3)
         else:
             pen = QPen(QColor("#666666"), 2)
-        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setCapStyle(Qt.RoundCap)
         self.setPen(pen)
 
         option.state = option.state & ~QStyle.StateFlag.State_Selected
@@ -295,8 +295,8 @@ class TempConnectionItem(QGraphicsPathItem):
         self.end_pos = start_pos
 
         self.setZValue(2)
-        self.setPen(QPen(QColor("#1976D2"), 2, Qt.PenStyle.DashLine))
-        self.setBrush(QBrush(Qt.BrushStyle.NoBrush))
+        self.setPen(QPen(QColor("#1976D2"), 2, Qt.DashLine))
+        self.setBrush(QBrush(Qt.NoBrush))
 
         self._update_path()
 

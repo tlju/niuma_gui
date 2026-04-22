@@ -1,12 +1,12 @@
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
     QTableWidgetItem, QPushButton, QDialog, QLabel,
     QLineEdit, QComboBox, QMessageBox, QHeaderView,
     QFrame, QFormLayout, QTextEdit, QDateEdit, QApplication,
     QSpinBox
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QBrush
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor, QBrush
 from datetime import datetime
 from models.todo import TodoStatus, RecurrenceType
 from core.logger import get_logger
@@ -60,14 +60,14 @@ class TodosPage(QWidget):
         self.add_btn.setIcon(icons.add_icon())
         self.add_btn.setProperty("class", "success")
         self.add_btn.setMinimumHeight(34)
-        self.add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.add_btn.setCursor(Qt.PointingHandCursor)
         self.add_btn.clicked.connect(self.show_add_dialog)
         toolbar_layout.addWidget(self.add_btn)
 
         self.refresh_btn = QPushButton("刷新")
         self.refresh_btn.setIcon(icons.refresh_icon())
         self.refresh_btn.setMinimumHeight(34)
-        self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.refresh_btn.setCursor(Qt.PointingHandCursor)
         self.refresh_btn.clicked.connect(self.load_todos)
         toolbar_layout.addWidget(self.refresh_btn)
 
@@ -112,7 +112,7 @@ class TodosPage(QWidget):
         self.all_todos = []
 
     def _get_bold_font(self):
-        from PyQt6.QtGui import QFont
+        from PyQt5.QtGui import QFont
         font = QFont()
         font.setBold(True)
         return font
@@ -158,23 +158,23 @@ class TodosPage(QWidget):
             btn_layout = QHBoxLayout(btn_widget)
             btn_layout.setContentsMargins(4, 2, 4, 2)
             btn_layout.setSpacing(4)
-            btn_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            btn_layout.setAlignment(Qt.AlignCenter)
 
             complete_btn = QPushButton("完成")
             complete_btn.setProperty("class", "table-complete")
-            complete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            complete_btn.setCursor(Qt.PointingHandCursor)
             complete_btn.clicked.connect(lambda checked, tid=todo.id: self.complete_todo(tid))
             btn_layout.addWidget(complete_btn)
 
             edit_btn = QPushButton("编辑")
             edit_btn.setProperty("class", "table-edit")
-            edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            edit_btn.setCursor(Qt.PointingHandCursor)
             edit_btn.clicked.connect(lambda checked, t=todo: self.show_edit_dialog(t))
             btn_layout.addWidget(edit_btn)
 
             delete_btn = QPushButton("删除")
             delete_btn.setProperty("class", "table-delete")
-            delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            delete_btn.setCursor(Qt.PointingHandCursor)
             delete_btn.clicked.connect(lambda checked, tid=todo.id: self.delete_todo(tid))
             btn_layout.addWidget(delete_btn)
 
@@ -224,7 +224,7 @@ class TodoDialog(QDialog):
         self.todo = todo
         self.setWindowTitle("编辑待办" if todo else "添加待办")
         self.setMinimumSize(450, 450)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.init_ui()
         if todo:
             self._populate_data()
@@ -288,12 +288,12 @@ class TodoDialog(QDialog):
         ok_btn = QPushButton("确定")
         ok_btn.setProperty("class", "success")
         ok_btn.setMinimumHeight(38)
-        ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        ok_btn.setCursor(Qt.PointingHandCursor)
         ok_btn.clicked.connect(self.accept)
         cancel_btn = QPushButton("取消")
         cancel_btn.setProperty("class", "secondary")
         cancel_btn.setMinimumHeight(38)
-        cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        cancel_btn.setCursor(Qt.PointingHandCursor)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(ok_btn)
         btn_layout.addWidget(cancel_btn)

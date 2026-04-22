@@ -1,10 +1,10 @@
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QMessageBox, QStatusBar, QFrame, QStackedWidget, QApplication,
-    QPushButton, QMenu
+    QPushButton, QMenu, QAction
 )
-from PyQt6.QtCore import pyqtSignal, Qt, QTimer
-from PyQt6.QtGui import QAction, QColor
+from PyQt5.QtCore import pyqtSignal, Qt, QTimer
+from PyQt5.QtGui import QColor
 from gui.icons import icons
 from gui.style_manager import load_combined_stylesheet
 from gui.bastion_dialog import SecondaryAuthDialog, BastionConnectingDialog
@@ -30,7 +30,7 @@ class BastionStatusWidget(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("bastionStatusWidget")
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setCursor(Qt.PointingHandCursor)
         
         layout = QHBoxLayout(self)
         layout.setContentsMargins(8, 4, 8, 4)
@@ -352,8 +352,8 @@ class MainWindow(QMainWindow):
             self,
             "关于 运维辅助工具",
             "<h3>运维辅助工具 v1.0.0</h3>"
-            "<p>纯 Python GUI 版本，基于 PyQt6</p>"
-            "<p><b>技术栈:</b> PyQt6, SQLAlchemy, Paramiko</p>"
+            "<p>纯 Python GUI 版本，基于 PyQt5</p>"
+            "<p><b>技术栈:</b> PyQt5, SQLAlchemy, Paramiko</p>"
             "<hr>"
             "<p style='color: #7f8c8d;'>© 2026 Niuma Team</p>"
         )

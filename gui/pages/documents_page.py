@@ -1,10 +1,10 @@
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
     QTableWidgetItem, QPushButton, QDialog, QLabel,
     QLineEdit, QComboBox, QMessageBox, QHeaderView,
     QFrame, QFormLayout, QApplication
 )
-from PyQt6.QtCore import Qt
+from PyQt5.QtCore import Qt
 from core.logger import get_logger
 from gui.icons import icons
 from gui.style_manager import load_combined_stylesheet
@@ -38,14 +38,14 @@ class DocumentsPage(QWidget):
         self.add_btn.setIcon(icons.add_icon())
         self.add_btn.setProperty("class", "success")
         self.add_btn.setMinimumHeight(34)
-        self.add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.add_btn.setCursor(Qt.PointingHandCursor)
         self.add_btn.clicked.connect(self.show_add_dialog)
         toolbar_layout.addWidget(self.add_btn)
 
         self.refresh_btn = QPushButton("刷新")
         self.refresh_btn.setIcon(icons.refresh_icon())
         self.refresh_btn.setMinimumHeight(34)
-        self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.refresh_btn.setCursor(Qt.PointingHandCursor)
         self.refresh_btn.clicked.connect(self.load_documents)
         toolbar_layout.addWidget(self.refresh_btn)
 
@@ -146,23 +146,23 @@ class DocumentsPage(QWidget):
             btn_layout = QHBoxLayout(btn_widget)
             btn_layout.setContentsMargins(4, 2, 4, 2)
             btn_layout.setSpacing(4)
-            btn_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            btn_layout.setAlignment(Qt.AlignCenter)
 
             view_btn = QPushButton("查看")
             view_btn.setProperty("class", "table-view")
-            view_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            view_btn.setCursor(Qt.PointingHandCursor)
             view_btn.clicked.connect(lambda checked, d=doc: self.show_view_dialog(d))
             btn_layout.addWidget(view_btn)
 
             edit_btn = QPushButton("编辑")
             edit_btn.setProperty("class", "table-edit")
-            edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            edit_btn.setCursor(Qt.PointingHandCursor)
             edit_btn.clicked.connect(lambda checked, d=doc: self.show_edit_dialog(d))
             btn_layout.addWidget(edit_btn)
 
             delete_btn = QPushButton("删除")
             delete_btn.setProperty("class", "table-delete")
-            delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            delete_btn.setCursor(Qt.PointingHandCursor)
             delete_btn.clicked.connect(lambda checked, did=doc.id: self.delete_document(did))
             btn_layout.addWidget(delete_btn)
 
@@ -220,7 +220,7 @@ class DocumentDialog(QDialog):
         self.setWindowTitle("查看文档" if readonly else ("编辑文档" if document else "添加文档"))
         self.resize(800, 600)
         self.setMinimumSize(600, 500)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.init_ui()
         if document:
             self._populate_data()
@@ -272,13 +272,13 @@ class DocumentDialog(QDialog):
             ok_btn = QPushButton("确定")
             ok_btn.setProperty("class", "success")
             ok_btn.setMinimumHeight(38)
-            ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            ok_btn.setCursor(Qt.PointingHandCursor)
             ok_btn.clicked.connect(self.accept)
             btn_layout.addWidget(ok_btn)
         cancel_btn = QPushButton("关闭" if self.readonly else "取消")
         cancel_btn.setProperty("class", "secondary")
         cancel_btn.setMinimumHeight(38)
-        cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        cancel_btn.setCursor(Qt.PointingHandCursor)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
         main_layout.addLayout(btn_layout)
