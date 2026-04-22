@@ -121,7 +121,7 @@ jobs:
           echo "=== 安装系统依赖 ==="
           apt-get update
           apt-get install -y \
-            gcc g++ clang make wget patchelf \
+            gcc g++ clang make wget patchelf ccache \
             libxrender-dev libxext-dev libx11-dev \
             libxcb1-dev libxkbcommon-dev \
             libxcb-* \
@@ -172,8 +172,22 @@ jobs:
           echo "=== 安装 Python 包管理工具 ==="
           /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
           
-          echo "=== 安装 PyQt5 (预编译版本) ==="
-          /usr/local/python3.12/bin/pip3.12 install --only-binary=:all: PyQt5 PyQt5-Qt5 PyQt5-sip
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            echo "=== 安装 Qt5 开发包 (arm64 源码编译依赖) ==="
+            apt-get install -y \
+              qtbase5-dev qt5-qmake qtchooser \
+              qtbase5-dev-tools qtbase5-private-dev \
+              libqt5svg5-dev libqt5opengl5-dev
+            
+            echo "=== 从源码构建安装 sip 和 PyQt5-sip ==="
+            /usr/local/python3.12/bin/pip3.12 install sip PyQt5-sip
+            
+            echo "=== 从源码构建安装 PyQt5 (arm64) ==="
+            /usr/local/python3.12/bin/pip3.12 install --no-binary=PyQt5 PyQt5
+          else
+            echo "=== 安装 PyQt5 (预编译版本) ==="
+            /usr/local/python3.12/bin/pip3.12 install --only-binary=:all: PyQt5 PyQt5-Qt5 PyQt5-sip
+          fi
           
           echo "=== 创建符号链接 ==="
           ln -sf /usr/local/python3.12/bin/python3.12 /usr/local/bin/python3
@@ -384,3 +398,32 @@ jobs:
           dist/${{ matrix.output_name }}.7z
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: '18. 上传构建产物到 Gitee (Linux)'
+      if: matrix.platform == 'linux'
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.GITEE_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -t rsa ${{ secrets.GITEE_HOST }} >> ~/.ssh/known_hosts
+        
+        echo "=== 上传 Docker 镜像到 Gitee ==="
+        ssh ${{ secrets.GITEE_USER }}@${{ secrets.GITEE_HOST }} "mkdir -p ~/niuma-builds/${{ matrix.arch }}"
+        scp docker-image-${{ matrix.arch }}.tar ${{ secrets.GITEE_USER }}@${{ secrets.GITEE_HOST }}:~/niuma-builds/${{ matrix.arch }}/
+        
+        echo "=== 上传构建产物到 Gitee ==="
+        scp dist/${{ matrix.output_name }}.tar.gz ${{ secrets.GITEE_USER }}@${{ secrets.GITEE_HOST }}:~/niuma-builds/${{ matrix.arch }}/
+      shell: bash
+
+    - name: '18. 上传构建产物到 Gitee (Windows)'
+      if: matrix.platform == 'windows'
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.GITEE_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -t rsa ${{ secrets.GITEE_HOST }} >> ~/.ssh/known_hosts
+        
+        echo "=== 上传构建产物到 Gitee ==="
+        ssh ${{ secrets.GITEE_USER }}@${{ secrets.GITEE_HOST }} "mkdir -p ~/niuma-builds/windows"
+        scp dist/${{ matrix.output_name }}.7z ${{ secrets.GITEE_USER }}@${{ secrets.GITEE_HOST }}:~/niuma-builds/windows/
+      shell: bash
