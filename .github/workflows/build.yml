@@ -188,7 +188,7 @@ jobs:
             $QMAKE_PATH -query
             
             echo "=== 安装 PyQt5 构建依赖 ==="
-            /usr/local/python3.12/bin/pip3.12 install sip PyQt5-sip PyQt-builder sipbuild pyqtbuild
+            /usr/local/python3.12/bin/pip3.12 install sip PyQt5-sip PyQt-builder
             
             echo "=== 从源码构建安装 PyQt5 (arm64, 使用系统 Qt5) ==="
             /usr/local/python3.12/bin/pip3.12 install \
