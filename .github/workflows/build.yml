@@ -411,55 +411,34 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: '18. 创建远程目录 (Linux)'
-      if: matrix.platform == 'linux'
-      uses: appleboy/ssh-action@v1.2.5
-      with:
-        host: ${{ secrets.GITEE_HOST }}
-        username: ${{ secrets.GITEE_USER }}
-        key: ${{ secrets.GITEE_SSH_KEY }}
-        script: mkdir -p ~/niuma-builds/${{ matrix.arch }}
-      shell: bash
-
     - name: '18. 上传 Docker 镜像到 Gitee (Linux)'
       if: matrix.platform == 'linux'
-      uses: appleboy/scp-action@v1.0.0
+      uses: easingthemes/ssh-deploy@v5.1.0
       with:
-        host: ${{ secrets.GITEE_HOST }}
-        username: ${{ secrets.GITEE_USER }}
-        key: ${{ secrets.GITEE_SSH_KEY }}
-        source: docker-image-${{ matrix.arch }}.tar
-        target: ~/niuma-builds/${{ matrix.arch }}/
-      shell: bash
+        SSH_PRIVATE_KEY: ${{ secrets.GITEE_SSH_KEY }}
+        REMOTE_HOST: ${{ secrets.GITEE_HOST }}
+        REMOTE_USER: ${{ secrets.GITEE_USER }}
+        SOURCE: "docker-image-${{ matrix.arch }}.tar"
+        TARGET: "~/niuma-builds/${{ matrix.arch }}/"
+        SCRIPT_BEFORE: mkdir -p ~/niuma-builds/${{ matrix.arch }}
 
     - name: '18. 上传构建产物到 Gitee (Linux)'
       if: matrix.platform == 'linux'
-      uses: appleboy/scp-action@v1.0.0
+      uses: easingthemes/ssh-deploy@v5.1.0
       with:
-        host: ${{ secrets.GITEE_HOST }}
-        username: ${{ secrets.GITEE_USER }}
-        key: ${{ secrets.GITEE_SSH_KEY }}
-        source: dist/${{ matrix.output_name }}.tar.gz
-        target: ~/niuma-builds/${{ matrix.arch }}/
-      shell: bash
-
-    - name: '18. 创建远程目录 (Windows)'
-      if: matrix.platform == 'windows'
-      uses: appleboy/ssh-action@v1.2.5
-      with:
-        host: ${{ secrets.GITEE_HOST }}
-        username: ${{ secrets.GITEE_USER }}
-        key: ${{ secrets.GITEE_SSH_KEY }}
-        script: mkdir -p ~/niuma-builds/windows
-      shell: powershell
+        SSH_PRIVATE_KEY: ${{ secrets.GITEE_SSH_KEY }}
+        REMOTE_HOST: ${{ secrets.GITEE_HOST }}
+        REMOTE_USER: ${{ secrets.GITEE_USER }}
+        SOURCE: "dist/${{ matrix.output_name }}.tar.gz"
+        TARGET: "~/niuma-builds/${{ matrix.arch }}/"
 
     - name: '18. 上传构建产物到 Gitee (Windows)'
       if: matrix.platform == 'windows'
-      uses: appleboy/scp-action@v1.0.0
+      uses: easingthemes/ssh-deploy@v5.1.0
       with:
-        host: ${{ secrets.GITEE_HOST }}
-        username: ${{ secrets.GITEE_USER }}
-        key: ${{ secrets.GITEE_SSH_KEY }}
-        source: dist/${{ matrix.output_name }}.7z
-        target: ~/niuma-builds/windows/
-      shell: powershell
+        SSH_PRIVATE_KEY: ${{ secrets.GITEE_SSH_KEY }}
+        REMOTE_HOST: ${{ secrets.GITEE_HOST }}
+        REMOTE_USER: ${{ secrets.GITEE_USER }}
+        SOURCE: "dist/${{ matrix.output_name }}.7z"
+        TARGET: "~/niuma-builds/windows/"
+        SCRIPT_BEFORE: mkdir -p ~/niuma-builds/windows
