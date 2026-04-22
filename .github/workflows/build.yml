@@ -122,6 +122,7 @@ jobs:
           apt-get update
           apt-get install -y \
             gcc g++ clang make wget patchelf ccache \
+            qtbase5-dev \
             libxrender-dev libxext-dev libx11-dev \
             libxcb1-dev libxkbcommon-dev \
             libxcb-* \
@@ -172,8 +173,33 @@ jobs:
           echo "=== 安装 Python 包管理工具 ==="
           /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
           
-          echo "=== 安装 PyQt5 (预编译版本) ==="
-          /usr/local/python3.12/bin/pip3.12 install --only-binary=:all: PyQt5 PyQt5-Qt5 PyQt5-sip
+          echo "=== 安装 PyQt5 ==="
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            echo "=== ARM64: 从源码编译安装 SIP ==="
+            cd /tmp
+            wget -q https://www.riverbankcomputing.com/static/Downloads/sip/4.19.25/sip-4.19.25.tar.gz
+            tar xzf sip-4.19.25.tar.gz
+            cd sip-4.19.25
+            /usr/local/python3.12/bin/python3.12 configure.py --sip-module PyQt5.sip
+            make -j$(nproc)
+            make install
+            cd /tmp
+            rm -rf sip-4.19.25*
+
+            echo "=== ARM64: 从源码编译安装 PyQt5 ==="
+            cd /tmp
+            wget -q https://pypi.tuna.tsinghua.edu.cn/packages/28/6c/640e3f5c734c296a7193079a86842a789edb7988dca39eab44579088a1d1/PyQt5-5.15.2.tar.gz
+            tar xzf PyQt5-5.15.2.tar.gz
+            cd PyQt5-5.15.2
+            /usr/local/python3.12/bin/python3.12 configure.py --confirm-license
+            make -j$(nproc)
+            make install
+            cd /tmp
+            rm -rf PyQt5-5.15.2*
+          else
+            echo "=== x64: 安装预编译版本 ==="
+            /usr/local/python3.12/bin/pip3.12 install --only-binary=:all: PyQt5 PyQt5-Qt5 PyQt5-sip
+          fi
           
           echo "=== 创建符号链接 ==="
           ln -sf /usr/local/python3.12/bin/python3.12 /usr/local/bin/python3
