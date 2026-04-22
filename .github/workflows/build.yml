@@ -191,11 +191,10 @@ jobs:
             /usr/local/python3.12/bin/pip3.12 install sip PyQt5-sip PyQt-builder
             
             echo "=== 从源码构建安装 PyQt5 (arm64, 使用系统 Qt5) ==="
-            /usr/local/python3.12/bin/pip3.12 install \
+            QT_QMAKE_EXECUTABLE="$QMAKE_PATH" /usr/local/python3.12/bin/pip3.12 install \
               --no-binary=PyQt5 \
-              --config-settings=--confirm-license \
-              --config-settings=QMAKE_QT5_PATH="$QMAKE_PATH" \
-              PyQt5
+              PyQt5 \
+              --confirm-license
           else
             echo "=== 安装 PyQt5 (预编译版本) ==="
             /usr/local/python3.12/bin/pip3.12 install --only-binary=:all: PyQt5 PyQt5-Qt5 PyQt5-sip
