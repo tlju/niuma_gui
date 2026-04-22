@@ -193,8 +193,8 @@ jobs:
             echo "=== 从源码构建安装 PyQt5 (arm64, 使用系统 Qt5) ==="
             /usr/local/python3.12/bin/pip3.12 install \
               --no-binary=PyQt5 \
-              --config-settings --confirm-license \
-              --config-settings QMAKE_QT5_PATH="$QMAKE_PATH" \
+              --config-settings=--confirm-license \
+              --config-settings=QMAKE_QT5_PATH="$QMAKE_PATH" \
               PyQt5
           else
             echo "=== 安装 PyQt5 (预编译版本) ==="
