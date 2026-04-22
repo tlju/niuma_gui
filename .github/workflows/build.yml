@@ -419,6 +419,7 @@ jobs:
         username: ${{ secrets.GITEE_USER }}
         key: ${{ secrets.GITEE_SSH_KEY }}
         script: mkdir -p ~/niuma-builds/${{ matrix.arch }}
+      shell: bash
 
     - name: '18. 上传 Docker 镜像到 Gitee (Linux)'
       if: matrix.platform == 'linux'
@@ -429,6 +430,7 @@ jobs:
         key: ${{ secrets.GITEE_SSH_KEY }}
         source: docker-image-${{ matrix.arch }}.tar
         target: ~/niuma-builds/${{ matrix.arch }}/
+      shell: bash
 
     - name: '18. 上传构建产物到 Gitee (Linux)'
       if: matrix.platform == 'linux'
@@ -439,6 +441,7 @@ jobs:
         key: ${{ secrets.GITEE_SSH_KEY }}
         source: dist/${{ matrix.output_name }}.tar.gz
         target: ~/niuma-builds/${{ matrix.arch }}/
+      shell: bash
 
     - name: '18. 创建远程目录 (Windows)'
       if: matrix.platform == 'windows'
@@ -448,6 +451,7 @@ jobs:
         username: ${{ secrets.GITEE_USER }}
         key: ${{ secrets.GITEE_SSH_KEY }}
         script: mkdir -p ~/niuma-builds/windows
+      shell: powershell
 
     - name: '18. 上传构建产物到 Gitee (Windows)'
       if: matrix.platform == 'windows'
@@ -458,3 +462,4 @@ jobs:
         key: ${{ secrets.GITEE_SSH_KEY }}
         source: dist/${{ matrix.output_name }}.7z
         target: ~/niuma-builds/windows/
+      shell: powershell
