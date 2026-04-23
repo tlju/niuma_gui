@@ -124,6 +124,7 @@ jobs:
             gcc g++ clang make wget patchelf ccache \
             build-essential cmake \
             qt5-default qtbase5-dev qtchooser qttools5-dev-tools \
+            libqt5gui5 libqt5core5a libqt5dbus5 \
             libxrender-dev libxext-dev libx11-dev libx11-xcb-dev \
             libxcb1-dev libxkbcommon-dev \
             libxcb-* \
@@ -176,7 +177,7 @@ jobs:
             /usr/local/python3.11/bin/pip3.11 install --no-binary=:all: sip
             /usr/local/python3.11/bin/pip3.11 install --no-binary=:all: PyQt5-sip
             /usr/local/python3.11/bin/pip3.11 install PyQt-builder
-            /usr/local/python3.11/bin/pip3.11 install --no-binary=:all: --no-build-isolation PyQt5
+            /usr/local/python3.11/bin/pip3.11 install pyqt5 --config-settings --confirm-license= --verbose
           else
             echo "=== x64: 安装预编译版本 ==="
             /usr/local/python3.11/bin/pip3.11 install --only-binary=:all: PyQt5 PyQt5-Qt5 PyQt5-sip
