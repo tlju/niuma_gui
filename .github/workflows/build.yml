@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 env:
-  PYTHON_VERSION: '3.12'
+  PYTHON_VERSION: '3.11'
   CACHE_VERSION: v2
 
 jobs:
@@ -122,8 +122,9 @@ jobs:
           apt-get update
           apt-get install -y \
             gcc g++ clang make wget patchelf ccache \
-            qtbase5-dev \
-            libxrender-dev libxext-dev libx11-dev \
+            build-essential cmake \
+            qt5-default qtbase5-dev qtchooser qttools5-dev-tools \
+            libxrender-dev libxext-dev libx11-dev libx11-xcb-dev \
             libxcb1-dev libxkbcommon-dev \
             libxcb-* \
             libgl1-mesa-dev libegl1-mesa-dev \
@@ -149,65 +150,41 @@ jobs:
             libxcb-xinerama0 \
             libxcb-xkb1
           
-          echo "=== 编译 Python 3.12 (架构优化) ==="
+          echo "=== 编译 Python 3.11 (架构优化) ==="
           cd /tmp
-          wget -q https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz
-          tar xzf Python-3.12.13.tgz
-          cd Python-3.12.13
-          
-          ARCH_FLAGS=""
-          if [ "${{ matrix.arch }}" = "arm64" ]; then
-            ARCH_FLAGS="--with-arch=armv8-a --with-fpu=crypto"
-          elif [ "${{ matrix.arch }}" = "x64" ]; then
-            ARCH_FLAGS="--with-arch=x86-64-v3 --enable-optimizations"
-          fi
+          wget -q https://www.python.org/ftp/python/3.11.15/Python-3.11.15.tgz
+          tar xzf Python-3.11.15.tgz
+          cd Python-3.11.15
           
           ./configure \
             --enable-optimizations \
-            --prefix=/usr/local/python3.12 \
-            $ARCH_FLAGS
+            --prefix=/usr/local/python3.11
           
           make -j$(nproc)
           make install
           
           echo "=== 安装 Python 包管理工具 ==="
-          /usr/local/python3.12/bin/python3.12 -m pip install --upgrade pip setuptools wheel
+          /usr/local/python3.11/bin/python3.11 -m pip install --upgrade pip setuptools wheel
+          
+          echo "=== 创建符号链接 ==="
+          ln -sf /usr/local/python3.11/bin/python3.11 /usr/local/bin/python3
+          ln -sf /usr/local/python3.11/bin/pip3.11 /usr/local/bin/pip3
           
           echo "=== 安装 PyQt5 ==="
           if [ "${{ matrix.arch }}" = "arm64" ]; then
-            echo "=== ARM64: 从源码编译安装 SIP ==="
-            cd /tmp
-            wget -q https://www.riverbankcomputing.com/static/Downloads/sip/4.19.25/sip-4.19.25.tar.gz
-            tar xzf sip-4.19.25.tar.gz
-            cd sip-4.19.25
-            /usr/local/python3.12/bin/python3.12 configure.py --sip-module PyQt5.sip
-            make -j$(nproc)
-            make install
-            cd /tmp
-            rm -rf sip-4.19.25*
-
-            echo "=== ARM64: 从源码编译安装 PyQt5 ==="
-            cd /tmp
-            wget -q https://pypi.tuna.tsinghua.edu.cn/packages/28/6c/640e3f5c734c296a7193079a86842a789edb7988dca39eab44579088a1d1/PyQt5-5.15.2.tar.gz
-            tar xzf PyQt5-5.15.2.tar.gz
-            cd PyQt5-5.15.2
-            /usr/local/python3.12/bin/python3.12 configure.py --confirm-license
-            make -j$(nproc)
-            make install
-            cd /tmp
-            rm -rf PyQt5-5.15.2*
+            echo "=== ARM64: 编译安装 PyQt5 ==="
+            /usr/local/python3.11/bin/pip3.11 install --no-binary=:all: sip
+            /usr/local/python3.11/bin/pip3.11 install --no-binary=:all: PyQt5-sip
+            /usr/local/python3.11/bin/pip3.11 install PyQt-builder
+            /usr/local/python3.11/bin/pip3.11 install --no-binary=:all: --no-build-isolation PyQt5
           else
             echo "=== x64: 安装预编译版本 ==="
-            /usr/local/python3.12/bin/pip3.12 install --only-binary=:all: PyQt5 PyQt5-Qt5 PyQt5-sip
+            /usr/local/python3.11/bin/pip3.11 install --only-binary=:all: PyQt5 PyQt5-Qt5 PyQt5-sip
           fi
-          
-          echo "=== 创建符号链接 ==="
-          ln -sf /usr/local/python3.12/bin/python3.12 /usr/local/bin/python3
-          ln -sf /usr/local/python3.12/bin/pip3.12 /usr/local/bin/pip3
           
           echo "=== 清理临时文件 ==="
           cd /
-          rm -rf /tmp/Python-3.12.13*
+          rm -rf /tmp/Python-3.11.15*
           apt-get clean
           rm -rf /var/lib/apt/lists/*
         '
