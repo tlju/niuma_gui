@@ -24,76 +24,28 @@ jobs:
             platform: linux
             platform_name: linux/amd64
             output_name: niuma-linux-x64
-            python_cache_name: python-env-linux-x64
           - os: ubuntu-22.04
             arch: arm64
             platform: linux
             platform_name: linux/arm64
             output_name: niuma-linux-arm64
-            python_cache_name: python-env-linux-arm64
           - os: windows-2022
             arch: x64
             platform: windows
             output_name: niuma-windows-x64
-            python_cache_name: python-env-windows-x64
 
     steps:
     - name: '1. 检出代码'
-      uses: actions/checkout@v6
+      uses: actions/checkout@v4
 
     - name: '2. 设置 QEMU (arm64)'
       if: matrix.arch == 'arm64'
-      uses: docker/setup-qemu-action@v4
+      uses: docker/setup-qemu-action@v3
 
-    - name: '3. 恢复 Python 环境缓存 (Windows)'
-      if: matrix.platform == 'windows'
-      uses: actions/cache@v5
-      id: cache-python-windows
-      with:
-        path: python-env-${{ matrix.arch }}.7z
-        key: ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
-        restore-keys: |
-          ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-${{ env.PYTHON_VERSION }}-
-          ${{ env.CACHE_VERSION }}-${{ matrix.python_cache_name }}-
-
-    - name: '4. 设置 Python (Windows)'
-      if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
-      uses: actions/setup-python@v6
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-
-    - name: '5. 安装依赖 (Windows)'
-      if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
-      run: |
-        python -m pip install --upgrade pip setuptools wheel
-        pip install -r requirements.txt
-        pip install nuitka ordered-set zstandard
-      shell: powershell
-
-    - name: '6. 安装构建依赖 (Windows)'
-      if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
-      run: choco install ccache -y
-
-    - name: '7. 打包 Python 环境 (Windows)'
-      if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit != 'true'
-      run: |
-        $pythonPath = python -c "import sys; print(sys.prefix)"
-        7z a -t7z -mx=9 python-env-${{ matrix.arch }}.7z "$pythonPath\*"
-      shell: powershell
-
-    - name: '8. 恢复 Python 环境 (Windows)'
-      if: matrix.platform == 'windows' && steps.cache-python-windows.outputs.cache-hit == 'true'
-      run: |
-        $destPath = "$env:LOCALAPPDATA\python-cache"
-        New-Item -ItemType Directory -Force -Path $destPath
-        7z x python-env-${{ matrix.arch }}.7z -o"$destPath" -y
-        Add-Content -Path $env:GITHUB_PATH -Value "$destPath\Scripts"
-        Add-Content -Path $env:GITHUB_PATH -Value "$destPath"
-      shell: powershell
-
-    - name: '9. 恢复 Docker 镜像缓存 (Linux)'
+    # ==================== Linux: 使用 Debian 10.10 Docker 容器构建 ====================
+    - name: '3. 恢复 Docker 镜像缓存 (Linux)'
       if: matrix.platform == 'linux'
-      uses: actions/cache@v5
+      uses: actions/cache@v4
       id: cache-docker-image
       with:
         path: docker-image-${{ matrix.arch }}.tar
@@ -102,27 +54,26 @@ jobs:
           ${{ env.CACHE_VERSION }}-docker-image-${{ matrix.arch }}-${{ env.PYTHON_VERSION }}-
           ${{ env.CACHE_VERSION }}-docker-image-${{ matrix.arch }}-
 
-    - name: '10. 创建基础 Docker 镜像 (Linux)'
+    - name: '4. 创建 Docker 镜像 (Linux)'
       if: matrix.platform == 'linux' && steps.cache-docker-image.outputs.cache-hit != 'true'
       run: |
         CONTAINER_ID=$(docker run -d \
           --platform ${{ matrix.platform_name }} \
           debian:10.10 \
           tail -f /dev/null)
-        
+
         docker exec $CONTAINER_ID bash -c '
           set -e
-          
+
           echo "=== 配置 apt 源 (Debian 10 已归档) ==="
           echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
           echo "deb http://archive.debian.org/debian buster-updates main" >> /etc/apt/sources.list
           echo "Acquire::Check-Valid-Until false;" > /etc/apt/apt.conf.d/99no-check-valid-until
-          
+
           echo "=== 安装系统依赖 ==="
           apt-get update
           apt-get install -y \
-            gcc g++ clang make wget patchelf ccache \
-            build-essential cmake \
+            gcc g++ make wget \
             qt5-default qtbase5-dev qtchooser qttools5-dev-tools \
             libqt5gui5 libqt5core5a libqt5dbus5 \
             libxrender-dev libxext-dev libx11-dev libx11-xcb-dev \
@@ -150,194 +101,129 @@ jobs:
             libxcb-xfixes0 \
             libxcb-xinerama0 \
             libxcb-xkb1
-          
-          echo "=== 编译 Python 3.11 (架构优化) ==="
+
+          echo "=== 编译 Python 3.11 ==="
           cd /tmp
           wget -q https://www.python.org/ftp/python/3.11.15/Python-3.11.15.tgz
           tar xzf Python-3.11.15.tgz
           cd Python-3.11.15
-          
+
           ./configure \
             --enable-optimizations \
             --prefix=/usr/local/python3.11
-          
+
           make -j$(nproc)
           make install
-          
-          echo "=== 安装 Python 包管理工具 ==="
-          /usr/local/python3.11/bin/python3.11 -m pip install --upgrade pip setuptools wheel
-          
-          echo "=== 创建符号链接 ==="
+
           ln -sf /usr/local/python3.11/bin/python3.11 /usr/local/bin/python3
           ln -sf /usr/local/python3.11/bin/pip3.11 /usr/local/bin/pip3
-          
+
+          echo "=== 安装 Python 包管理工具 ==="
+          python3 -m pip install --upgrade pip setuptools wheel
+
           echo "=== 安装 PyQt5 ==="
           if [ "${{ matrix.arch }}" = "arm64" ]; then
             echo "=== ARM64: 编译安装 PyQt5 ==="
-            /usr/local/python3.11/bin/pip3.11 install --no-binary=:all: sip
-            /usr/local/python3.11/bin/pip3.11 install --no-binary=:all: PyQt5-sip
-            /usr/local/python3.11/bin/pip3.11 install PyQt-builder
-            /usr/local/python3.11/bin/pip3.11 install pyqt5 --config-settings --confirm-license= --verbose
+            pip3 install --no-binary=:all: sip
+            pip3 install --no-binary=:all: PyQt5-sip
+            pip3 install PyQt-builder
+            pip3 install pyqt5 --config-settings --confirm-license= --verbose
           else
             echo "=== x64: 安装预编译版本 ==="
-            /usr/local/python3.11/bin/pip3.11 install --only-binary=:all: PyQt5 PyQt5-Qt5 PyQt5-sip
+            pip3 install --only-binary=:all: PyQt5 PyQt5-Qt5 PyQt5-sip
           fi
-          
+
           echo "=== 清理临时文件 ==="
           cd /
           rm -rf /tmp/Python-3.11.15*
           apt-get clean
           rm -rf /var/lib/apt/lists/*
         '
-        
+
+        echo "=== 安装项目依赖 ==="
+        docker cp requirements.txt $CONTAINER_ID:/tmp/requirements.txt
+        docker exec $CONTAINER_ID pip3 install -r /tmp/requirements.txt
+
         echo "=== 提交容器为镜像 ==="
         docker commit $CONTAINER_ID niuma-build-${{ matrix.arch }}:latest
-        
-        echo "=== 导出镜像为 tar 文件 ==="
         docker save -o docker-image-${{ matrix.arch }}.tar niuma-build-${{ matrix.arch }}:latest
-        
-        echo "=== 清理容器 ==="
         docker rm -f $CONTAINER_ID
       shell: bash
 
-    - name: '10.5. 保存 Docker 镜像缓存 (Linux)'
+    - name: '4.5. 保存 Docker 镜像缓存 (Linux)'
       if: matrix.platform == 'linux' && steps.cache-docker-image.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v5
+      uses: actions/cache/save@v4
       with:
         path: docker-image-${{ matrix.arch }}.tar
         key: ${{ env.CACHE_VERSION }}-docker-image-${{ matrix.arch }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
 
-    - name: '11. 加载 Docker 镜像并安装项目依赖 (Linux)'
-      if: matrix.platform == 'linux'
-      run: |
-        if [ "${{ steps.cache-docker-image.outputs.cache-hit }}" = "true" ]; then
-          echo "=== 从缓存加载 Docker 镜像 ==="
-          docker load -i docker-image-${{ matrix.arch }}.tar
-        fi
-        
-        CONTAINER_ID=$(docker run -d \
-          --platform ${{ matrix.platform_name }} \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace \
-          niuma-build-${{ matrix.arch }}:latest \
-          tail -f /dev/null)
-        
-        docker exec $CONTAINER_ID bash -c '
-          set -e
-          
-          echo "=== 验证 Python 环境 ==="
-          python3 --version
-          pip3 --version
-          
-          echo "=== 安装项目依赖 ==="
-          pip3 install -r requirements.txt
-          pip3 install nuitka ordered-set zstandard
-          
-          echo "=== 验证 PyQt5 安装 ==="
-          python3 -c "from PyQt5.QtCore import PYQT_VERSION_STR; print(\"PyQt5 version:\", PYQT_VERSION_STR)"
-        '
-        
-        echo "=== 更新镜像 (包含项目依赖) ==="
-        docker commit $CONTAINER_ID niuma-build-${{ matrix.arch }}:latest
-        
-        echo "=== 导出更新后的镜像 ==="
-        docker save -o docker-image-${{ matrix.arch }}.tar niuma-build-${{ matrix.arch }}:latest
-        
-        echo "=== 清理容器 ==="
-        docker rm -f $CONTAINER_ID
-      shell: bash
-
-    - name: '11.5. 推送 Docker 镜像到 DockerHub (Linux)'
-      if: matrix.platform == 'linux'
-      run: |
-        echo "=== 登录 DockerHub ==="
-        echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
-        
-        IMAGE_NAME="niuma-build-${{ matrix.arch }}"
-        DOCKERHUB_TAG="${{ secrets.DOCKERHUB_USER }}/${IMAGE_NAME}:latest"
-        
-        echo "=== 标记镜像 ==="
-        docker tag ${IMAGE_NAME}:latest ${DOCKERHUB_TAG}
-        
-        echo "=== 推送镜像 ==="
-        docker push ${DOCKERHUB_TAG}
-        
-        echo "=== 登出 DockerHub ==="
-        docker logout
-      shell: bash
-
-    - name: '12. 使用 Nuitka 构建 (Linux)'
+    - name: '5. 使用 PyInstaller 构建 (Linux)'
       if: matrix.platform == 'linux'
       run: |
         echo "=== 加载 Docker 镜像 ==="
         docker load -i docker-image-${{ matrix.arch }}.tar
-        
+
         CONTAINER_ID=$(docker run -d \
           --platform ${{ matrix.platform_name }} \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
           niuma-build-${{ matrix.arch }}:latest \
           tail -f /dev/null)
-        
+
         docker exec $CONTAINER_ID bash -c '
           set -e
-          
+
           echo "=== 验证环境 ==="
           python3 --version
           pip3 --version
-          
-          echo "=== 使用 Nuitka 构建 (架构优化) ==="
+
+          echo "=== 使用 PyInstaller 构建 ==="
           cd /workspace
-          
-          OPT_FLAGS=""
-          if [ "${{ matrix.arch }}" = "arm64" ]; then
-            OPT_FLAGS="--clang --lto=yes"
-          elif [ "${{ matrix.arch }}" = "x64" ]; then
-            OPT_FLAGS="--clang --lto=yes"
-          fi
-          
-          python3 -m nuitka --standalone \
-            --enable-plugins=pyqt5 \
-            --include-qt-plugins=platforms,imageformats,iconengines \
-            --follow-imports \
-            --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest \
-            --nofollow-import-to=tests \
-            --nofollow-import-to=PyQt5.QtQuick,PyQt5.QtQuick3D,PyQt5.QtQml,PyQt5.QtQuickWidgets \
-            --include-data-dir=gui/styles=gui/styles \
-            --output-dir=dist \
-            --output-filename=${{ matrix.output_name }} \
-            --assume-yes-for-downloads \
-            --jobs=$(nproc) \
-            --file-reference-choice=runtime \
-            --linux-icon=icons/app.png \
-            $OPT_FLAGS \
+
+          python3 -m PyInstaller \
+            --noconfirm \
+            --clean \
+            --distpath dist \
+            --workpath build \
+            --name ${{ matrix.output_name }} \
+            --noconsole \
+            --add-data "gui/styles:gui/styles" \
+            --exclude-module tkinter \
+            --exclude-module matplotlib \
+            --exclude-module pandas \
+            --exclude-module scipy \
+            --exclude-module pytest \
+            --exclude-module doctest \
+            --exclude-module PyQt5.QtQuick \
+            --exclude-module PyQt5.QtQuick3D \
+            --exclude-module PyQt5.QtQml \
+            --exclude-module PyQt5.QtQuickWidgets \
             main.py
         '
-        
+
         echo "=== 清理容器 ==="
         docker rm -f $CONTAINER_ID
       shell: bash
 
-    - name: '13. 验证并打包构建产物 (Linux)'
+    - name: '6. 验证并打包构建产物 (Linux)'
       if: matrix.platform == 'linux'
       run: |
         echo "=== 加载 Docker 镜像 ==="
         docker load -i docker-image-${{ matrix.arch }}.tar
-        
+
         CONTAINER_ID=$(docker run -d \
           --platform ${{ matrix.platform_name }} \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
           niuma-build-${{ matrix.arch }}:latest \
           tail -f /dev/null)
-        
+
         docker exec $CONTAINER_ID bash -c '
           set -e
-          
+
           echo "=== 验证并打包构建产物 ==="
           ls -la dist/
-          if [ -d "dist/main.dist" ]; then
-            mv dist/main.dist dist/${{ matrix.output_name }}
+          if [ -d "dist/${{ matrix.output_name }}" ]; then
             cd dist
             tar -I "gzip -9" -cvf ${{ matrix.output_name }}.tar.gz -C ${{ matrix.output_name }} .
             chown -R 1001:1001 /workspace/dist
@@ -347,38 +233,75 @@ jobs:
             exit 1
           fi
         '
-        
+
         echo "=== 清理容器 ==="
         docker rm -f $CONTAINER_ID
       shell: bash
 
-    - name: '14. 使用 Nuitka 构建 (Windows)'
+    - name: '6.5. 推送 Docker 镜像到 DockerHub (Linux)'
+      if: matrix.platform == 'linux'
+      run: |
+        echo "=== 登录 DockerHub ==="
+        echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
+
+        IMAGE_NAME="niuma-build-${{ matrix.arch }}"
+        DOCKERHUB_TAG="${{ secrets.DOCKERHUB_USER }}/${IMAGE_NAME}:latest"
+
+        echo "=== 标记镜像 ==="
+        docker tag ${IMAGE_NAME}:latest ${DOCKERHUB_TAG}
+
+        echo "=== 推送镜像 ==="
+        docker push ${DOCKERHUB_TAG}
+
+        echo "=== 登出 DockerHub ==="
+        docker logout
+      shell: bash
+
+    # ==================== Windows x64: 直接在 Runner 上构建 ====================
+    - name: '7. 设置 Python (Windows)'
+      if: matrix.platform == 'windows'
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: '8. 安装依赖 (Windows)'
       if: matrix.platform == 'windows'
       run: |
-        $jobs = [Environment]::ProcessorCount
-        python -m nuitka --standalone `
-          --enable-plugins=pyqt5 `
-          --include-qt-plugins=platforms,imageformats,iconengines `
-          --follow-imports `
-          --nofollow-import-to=tkinter,matplotlib,pandas,scipy,pytest,doctest `
-          --nofollow-import-to=tests `
-          --nofollow-import-to=PyQt5.QtQuick,PyQt5.QtQuick3D,PyQt5.QtQml,PyQt5.QtQuickWidgets `
-          --include-data-dir=gui/styles=gui/styles `
-          --include-data-file=icons/app.ico=icons/app.ico `
-          --windows-console-mode=disable `
-          --output-dir=dist `
-          --output-filename=${{ matrix.output_name }} `
-          --assume-yes-for-downloads `
-          --jobs=$jobs `
-          --windows-icon-from-ico=icons/app.ico `
+        python -m pip install --upgrade pip setuptools wheel
+        pip install -r requirements.txt
+      shell: powershell
+
+    - name: '9. 使用 PyInstaller 构建 (Windows)'
+      if: matrix.platform == 'windows'
+      run: |
+        python -m PyInstaller `
+          --noconfirm `
+          --clean `
+          --distpath dist `
+          --workpath build `
+          --name ${{ matrix.output_name }} `
+          --noconsole `
+          --add-data "gui/styles;gui/styles" `
+          --add-data "icons/app.ico;icons" `
+          --icon icons/app.ico `
+          --exclude-module tkinter `
+          --exclude-module matplotlib `
+          --exclude-module pandas `
+          --exclude-module scipy `
+          --exclude-module pytest `
+          --exclude-module doctest `
+          --exclude-module PyQt5.QtQuick `
+          --exclude-module PyQt5.QtQuick3D `
+          --exclude-module PyQt5.QtQml `
+          --exclude-module PyQt5.QtQuickWidgets `
           main.py
       shell: powershell
 
-    - name: '15. 验证并打包构建产物 (Windows)'
+    - name: '10. 验证并打包构建产物 (Windows)'
       if: matrix.platform == 'windows'
       run: |
-        if (Test-Path "dist\main.dist") {
-          Rename-Item "dist\main.dist" "${{ matrix.output_name }}"
+        if (Test-Path "dist\${{ matrix.output_name }}") {
           cd dist
           7z a -t7z -mx=9 -m0=lzma2 -mfb=64 -md=32m -ms=on ${{ matrix.output_name }}.7z ${{ matrix.output_name }}\*
         } else {
@@ -387,8 +310,9 @@ jobs:
         }
       shell: powershell
 
-    - name: '16. 上传构建产物'
-      uses: actions/upload-artifact@v7
+    # ==================== 上传和发布 ====================
+    - name: '11. 上传构建产物'
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.output_name }}
         path: |
@@ -397,9 +321,9 @@ jobs:
         retention-days: 30
         if-no-files-found: ignore
 
-    - name: '17. 上传到发布'
+    - name: '12. 上传到发布'
       if: github.event_name == 'release' && github.event.release.tag_name != ''
-      uses: softprops/action-gh-release@v3
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ github.event.release.tag_name }}
         files: |
@@ -408,7 +332,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: '18. 上传到 Gitee Release (Linux)'
+    - name: '13. 上传到 Gitee Release (Linux)'
       if: matrix.platform == 'linux' && github.event_name == 'release' && github.event.release.tag_name != ''
       uses: nicennnnnnnlee/action-gitee-release@v2.0.0
       with:
@@ -419,10 +343,9 @@ jobs:
         gitee_tag_name: ${{ github.event.release.tag_name }}
         gitee_upload_retry_times: 3
         gitee_files: |
-          docker-image-${{ matrix.arch }}.tar
           dist/${{ matrix.output_name }}.tar.gz
 
-    - name: '18. 上传到 Gitee Release (Windows)'
+    - name: '13. 上传到 Gitee Release (Windows)'
       if: matrix.platform == 'windows' && github.event_name == 'release' && github.event.release.tag_name != ''
       uses: nicennnnnnnlee/action-gitee-release@v2.0.0
       with:

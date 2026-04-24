@@ -13,9 +13,9 @@ def _get_base_path():
     """
     获取程序的基础路径
     在编译后的程序中使用可执行文件所在目录，否则使用脚本所在目录
-    支持 PyInstaller (sys.frozen) 和 Nuitka (__compiled__)
+    支持 PyInstaller (sys.frozen) 打包后的程序
     """
-    if getattr(sys, 'frozen', False) or globals().get('__compiled__'):
+    if getattr(sys, 'frozen', False):
         return os.path.dirname(os.path.abspath(sys.argv[0]))
     else:
         return os.path.dirname(os.path.dirname(__file__))

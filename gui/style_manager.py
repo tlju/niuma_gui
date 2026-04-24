@@ -6,7 +6,7 @@ from PyQt5.QtCore import QSysInfo
 
 
 def _get_resource_path(relative_path: str) -> Path:
-    if getattr(sys, 'frozen', False) or globals().get('__compiled__'):
+    if getattr(sys, 'frozen', False):
         base_path = Path(sys.executable).parent
         return base_path / relative_path
     else:

@@ -12,5 +12,5 @@ openpyxl>=3.1.0
 xlsxwriter>=3.1.0
 pytest>=7.4.0
 pytest-qt>=4.2.0
-Nuitka[onefile]>=1.8.0
+pyinstaller>=6.0.0
 minio>=7.2.0
