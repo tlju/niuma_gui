@@ -41,6 +41,7 @@ def build():
         '--clean',
         '--distpath', 'dist',
         '--workpath', 'build',
+        '--contents-directory', 'bin',
         '--name', output_name,
         '--noconsole',
         '--add-data', f'gui/styles{data_sep}gui/styles',

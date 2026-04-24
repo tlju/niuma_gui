@@ -185,6 +185,7 @@ jobs:
             --clean \
             --distpath dist \
             --workpath build \
+            --contents-directory bin \
             --name ${{ matrix.output_name }} \
             --noconsole \
             --add-data "gui/styles:gui/styles" \
@@ -280,6 +281,7 @@ jobs:
           --clean `
           --distpath dist `
           --workpath build `
+          --contents-directory bin `
           --name ${{ matrix.output_name }} `
           --noconsole `
           --add-data "gui/styles;gui/styles" `
