@@ -357,6 +357,7 @@ jobs:
           --gitee-owner tlju \
           --gitee-repo niuma_gui \
           --gitee-token ${{ secrets.GITEE_TOKEN }} \
-          --gitee-retain-release-count 1
+          --gitee-retain-release-count 1 \
+          --verbose
 
 
