@@ -539,18 +539,20 @@ class AssetDialog(QDialog):
         right_layout.addWidget(self.notes_input)
 
         columns_layout = QHBoxLayout()
-        columns_layout.addLayout(left_layout)
-        columns_layout.addSpacing(20)
-        columns_layout.addLayout(right_layout)
-        columns_layout.addStretch()
+        columns_layout.addStretch(1)
+        columns_layout.addLayout(left_layout, 3)
+        columns_layout.addSpacing(24)
+        columns_layout.addLayout(right_layout, 3)
+        columns_layout.addStretch(1)
 
         layout.addLayout(columns_layout)
 
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(12)
-
+        btn_layout.addStretch()
         self.cancel_btn = QPushButton("取消")
         self.cancel_btn.setProperty("class", "secondary")
+        self.cancel_btn.setMinimumWidth(100)
         self.cancel_btn.setMinimumHeight(40)
         self.cancel_btn.setCursor(Qt.PointingHandCursor)
         self.cancel_btn.clicked.connect(self.reject)
@@ -558,10 +560,12 @@ class AssetDialog(QDialog):
 
         self.ok_btn = QPushButton("确定")
         self.ok_btn.setProperty("class", "success")
+        self.ok_btn.setMinimumWidth(100)
         self.ok_btn.setMinimumHeight(40)
         self.ok_btn.setCursor(Qt.PointingHandCursor)
         self.ok_btn.clicked.connect(self._validate_and_accept)
         btn_layout.addWidget(self.ok_btn)
+        btn_layout.addStretch()
 
         layout.addLayout(btn_layout)
         self.setLayout(layout)
@@ -763,7 +767,7 @@ class AssetDetailDialog(QDialog):
         self.dict_service = dict_service
         self.asset_service = asset_service
         self.setWindowTitle("资产详情")
-        self.setMinimumSize(600, 500)
+        self.setMinimumSize(800, 520)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self._init_ui()
         self._populate_data()
@@ -790,18 +794,16 @@ class AssetDetailDialog(QDialog):
         info_frame = QFrame()
         info_frame.setObjectName("infoFrame")
         info_layout = QVBoxLayout(info_frame)
-        info_layout.setSpacing(8)
-
-        grid_layout = QHBoxLayout()
-        grid_layout.setSpacing(40)
+        info_layout.setSpacing(10)
+        info_layout.setContentsMargins(12, 12, 12, 12)
 
         left_layout = QVBoxLayout()
         left_layout.setSpacing(8)
 
-        left_layout.addWidget(self._create_field_row("单位:", "unit_label"))
-        left_layout.addWidget(self._create_field_row("系统:", "system_label"))
+        left_layout.addWidget(self._create_field_row("单位名称:", "unit_label"))
+        left_layout.addWidget(self._create_field_row("系统名称:", "system_label"))
         left_layout.addWidget(self._create_field_row("IP地址:", "ip_label"))
-        left_layout.addWidget(self._create_field_row("IPv6:", "ipv6_label"))
+        left_layout.addWidget(self._create_field_row("IPv6地址:", "ipv6_label"))
         left_layout.addWidget(self._create_field_row("端口:", "port_label"))
         left_layout.addWidget(self._create_field_row("主机名:", "host_name_label"))
 
@@ -815,11 +817,14 @@ class AssetDetailDialog(QDialog):
         right_layout.addWidget(self._create_field_row("用户名:", "username_label"))
         right_layout.addWidget(self._create_password_row())
 
-        grid_layout.addLayout(left_layout)
-        grid_layout.addLayout(right_layout)
-        grid_layout.addStretch()
+        columns_layout = QHBoxLayout()
+        columns_layout.addStretch(1)
+        columns_layout.addLayout(left_layout, 3)
+        columns_layout.addSpacing(24)
+        columns_layout.addLayout(right_layout, 3)
+        columns_layout.addStretch(1)
 
-        info_layout.addLayout(grid_layout)
+        info_layout.addLayout(columns_layout)
 
         notes_layout = QVBoxLayout()
         notes_layout.setSpacing(4)
@@ -847,6 +852,7 @@ class AssetDetailDialog(QDialog):
         self.close_btn.setCursor(Qt.PointingHandCursor)
         self.close_btn.clicked.connect(self.accept)
         btn_layout.addWidget(self.close_btn)
+        btn_layout.addStretch()
 
         layout.addLayout(btn_layout)
         self.setLayout(layout)
@@ -859,16 +865,18 @@ class AssetDetailDialog(QDialog):
 
         label = QLabel(label_text)
         label.setObjectName("detailLabel")
-        label.setAlignment(Qt.AlignRight | Qt.AlignTop)
+        label.setFixedWidth(80)
+        label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         value_label = QLabel("-")
         value_label.setObjectName("detailValue")
         value_label.setWordWrap(True)
-        setattr(self, attr_name, value_label)
+        value_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         row_layout.addWidget(label)
-        row_layout.addWidget(value_label)
-        row_layout.addStretch()
+        row_layout.addWidget(value_label, 1)
+
+        setattr(self, attr_name, value_label)
 
         return row_widget
 
@@ -880,7 +888,8 @@ class AssetDetailDialog(QDialog):
 
         label = QLabel("密码:")
         label.setObjectName("detailLabel")
-        label.setAlignment(Qt.AlignRight | Qt.AlignTop)
+        label.setFixedWidth(80)
+        label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         self.password_btn = QPushButton("点击查看密码")
         self.password_btn.setProperty("class", "secondary")
@@ -888,8 +897,7 @@ class AssetDetailDialog(QDialog):
         self.password_btn.clicked.connect(self._show_password)
 
         row_layout.addWidget(label)
-        row_layout.addWidget(self.password_btn)
-        row_layout.addStretch()
+        row_layout.addWidget(self.password_btn, 1)
 
         return row_widget
 
