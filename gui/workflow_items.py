@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import (
     QGraphicsItem, QGraphicsEllipseItem, QGraphicsPathItem,
-    QGraphicsTextItem, QGraphicsRectItem, QStyleOptionGraphicsItem, QStyle
+    QGraphicsTextItem, QGraphicsRectItem, QStyleOptionGraphicsItem, QStyle,
+    QApplication
 )
 from PyQt5.QtCore import Qt, QPointF, QRectF, pyqtSignal, QObject
 from PyQt5.QtGui import (
@@ -56,6 +57,14 @@ class WorkflowNodeItem(QGraphicsItem):
         self.setPos(x, y)
         self.setZValue(1)
 
+        self._title_font = QFont()
+        self._title_font.setBold(True)
+        self._title_font.setPointSize(10)
+        
+        self._type_font = QFont()
+        self._type_font.setBold(False)
+        self._type_font.setPointSize(8)
+
         self._update_port_count()
 
     def _update_port_count(self):
@@ -108,15 +117,12 @@ class WorkflowNodeItem(QGraphicsItem):
         painter.drawLine(int(self.NODE_WIDTH * 0.1), 25, int(self.NODE_WIDTH * 0.9), 25)
 
         painter.setPen(QPen(Qt.white))
-        font = QFont("Microsoft YaHei", 10, QFont.Bold)
-        painter.setFont(font)
+        painter.setFont(self._title_font)
 
         text_rect = QRectF(5, 5, self.NODE_WIDTH - 10, 20)
         painter.drawText(text_rect, Qt.AlignCenter, self.name)
 
-        font.setBold(False)
-        font.setPointSize(8)
-        painter.setFont(font)
+        painter.setFont(self._type_font)
         type_rect = QRectF(5, 28, self.NODE_WIDTH - 10, 20)
         painter.drawText(type_rect, Qt.AlignCenter, f"[{self.node_type}]")
 

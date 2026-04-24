@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import (
     QTextCharFormat, QTextCursor, QFont, QColor, QIcon,
-    QTextBlockFormat, QTextListFormat, QPixmap
+    QTextBlockFormat, QTextListFormat, QPixmap, QPainter, QBrush
 )
 from core.logger import get_logger
 from gui.style_manager import load_combined_stylesheet
@@ -246,7 +246,6 @@ class RichTextEditor(QWidget):
     def _create_highlight_icon(self):
         pixmap = QPixmap(16, 16)
         pixmap.fill(Qt.transparent)
-        from PyQt5.QtGui import QPainter, QBrush
         painter = QPainter(pixmap)
         painter.setBrush(QBrush(QColor("#ffeb3b")))
         painter.setPen(Qt.NoPen)

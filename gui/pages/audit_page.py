@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (
     QMessageBox, QFrame, QApplication
 )
 from PyQt5.QtCore import Qt
+from datetime import datetime
 from core.workers import AuditLogLoadWorker
 from core.logger import get_logger
 from gui.icons import icons
@@ -113,7 +114,6 @@ class AuditPage(QWidget):
             self.table.setItem(row, 0, QTableWidgetItem(action_name))
             self.table.setItem(row, 1, QTableWidgetItem(log.details or ""))
 
-            from datetime import datetime
             dt = log.created_at or datetime.now()
             self.table.setItem(row, 2, QTableWidgetItem(
                 dt.strftime("%Y-%m-%d %H:%M:%S")

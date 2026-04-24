@@ -44,7 +44,7 @@ class LoginDialog(QDialog):
         title_label.setProperty("class", "title")
         header_layout.addWidget(title_label)
 
-        subtitle_label = QLabel("运维辅助工具")
+        subtitle_label = QLabel("自动化运维管理平台")
         subtitle_label.setObjectName("subtitleLabel")
         subtitle_label.setProperty("class", "subtitle")
         header_layout.addWidget(subtitle_label)

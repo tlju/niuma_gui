@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
     QPlainTextEdit, QProgressBar, QSpinBox, QCheckBox,
     QFileDialog
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QThread, QDateTime
+from PyQt5.QtCore import Qt, pyqtSignal, QThread, QDateTime, QModelIndex
 from PyQt5.QtGui import QColor, QFont, QIcon
 from typing import Dict, List, Optional, Any
 from datetime import datetime
@@ -625,8 +625,6 @@ class WorkflowPage(QWidget):
             self.load_workflows()
 
     def show_edit_dialog(self, workflow=None):
-        from PyQt5.QtCore import QModelIndex
-
         if workflow is None or isinstance(workflow, QModelIndex):
             row = self.table.currentRow()
             if row >= 0 and row < len(self.workflows_data):

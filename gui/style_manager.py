@@ -4,6 +4,8 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QFont, QFontDatabase
 from PyQt5.QtCore import QSysInfo
 
+_qss_cache = {}
+
 
 def _get_resource_path(relative_path: str) -> Path:
     if getattr(sys, 'frozen', False):
@@ -59,19 +61,30 @@ def _detect_font_size() -> int:
         return 10
 
 
+def _load_qss(style_path: Path) -> str:
+    path_str = str(style_path)
+    if path_str not in _qss_cache:
+        if style_path.exists():
+            with open(style_path, "r", encoding="utf-8") as f:
+                _qss_cache[path_str] = f.read()
+        else:
+            _qss_cache[path_str] = ""
+    return _qss_cache[path_str]
+
+
 def load_stylesheet(app: QApplication, style_name: str = None) -> None:
     styles_dir = _get_resource_path("gui/styles")
 
     if style_name:
         style_path = styles_dir / f"{style_name}.qss"
-        if style_path.exists():
-            with open(style_path, "r", encoding="utf-8") as f:
-                app.setStyleSheet(f.read())
+        content = _load_qss(style_path)
+        if content:
+            app.setStyleSheet(content)
     else:
         common_path = styles_dir / "common.qss"
-        if common_path.exists():
-            with open(common_path, "r", encoding="utf-8") as f:
-                app.setStyleSheet(f.read())
+        content = _load_qss(common_path)
+        if content:
+            app.setStyleSheet(content)
 
 
 def load_combined_stylesheet(app: QApplication, style_names: list) -> None:
@@ -80,9 +93,9 @@ def load_combined_stylesheet(app: QApplication, style_names: list) -> None:
 
     for style_name in style_names:
         style_path = styles_dir / f"{style_name}.qss"
-        if style_path.exists():
-            with open(style_path, "r", encoding="utf-8") as f:
-                combined_styles += f.read() + "\n"
+        content = _load_qss(style_path)
+        if content:
+            combined_styles += content + "\n"
 
     if combined_styles:
         app.setStyleSheet(combined_styles)

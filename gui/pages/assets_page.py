@@ -766,20 +766,27 @@ class AssetDetailDialog(QDialog):
         self.asset = asset
         self.dict_service = dict_service
         self.asset_service = asset_service
+        self._dict_cache = {}
+        self._load_dict_cache()
         self.setWindowTitle("资产详情")
         self.setMinimumSize(800, 520)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self._init_ui()
         self._populate_data()
 
+    def _load_dict_cache(self):
+        if not self.dict_service:
+            return
+        dict_codes = ["unit", "system", "location", "server_type"]
+        for code in dict_codes:
+            items = self.dict_service.get_dict_items(code)
+            self._dict_cache[code] = {item.item_code: item.item_name for item in items}
+
     def _get_item_name(self, dict_code, item_code):
         if not item_code:
             return "-"
-        if self.dict_service:
-            items = self.dict_service.get_dict_items(dict_code)
-            for item in items:
-                if item.item_code == item_code:
-                    return item.item_name
+        if dict_code in self._dict_cache:
+            return self._dict_cache[dict_code].get(item_code, item_code)
         return item_code
 
     def _init_ui(self):

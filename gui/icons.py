@@ -1,3 +1,4 @@
+import math
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor, QFont, QFontMetrics, QPainterPath, QPen
 from PyQt5.QtCore import Qt, QRect, QSize, QRectF
 from PyQt5.QtWidgets import QStyle, QApplication
@@ -57,7 +58,6 @@ class IconProvider:
         cx = margin + (size - 2 * margin) / 2
         cy = margin + (size - 2 * margin) / 2
         radius = (size - 2 * margin) / 2
-        import math
         ex = cx + radius * math.cos(math.radians(end_angle))
         ey = cy - radius * math.sin(math.radians(end_angle))
         arrow_size = size * 0.15
@@ -280,7 +280,6 @@ class IconProvider:
         tooth_h = size * 0.15
         for i in range(8):
             angle = i * 45
-            import math
             rad = math.radians(angle)
             tx = cx + (outer_r - tooth_h * 0.3) * math.cos(rad)
             ty = cy + (outer_r - tooth_h * 0.3) * math.sin(rad)

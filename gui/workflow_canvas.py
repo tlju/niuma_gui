@@ -333,9 +333,9 @@ class WorkflowCanvas(QGraphicsView):
 
         self._pan_mode = False
         self._last_mouse_pos = QPointF()
+        self._clipboard = []
 
         self._init_shortcuts()
-        self._draw_grid()
         
         if self._read_only:
             self._set_read_only_mode()
@@ -357,14 +357,25 @@ class WorkflowCanvas(QGraphicsView):
         for conn in self.connections:
             conn.setFlag(QGraphicsItem.ItemIsSelectable, False)
 
-    def _draw_grid(self):
+    def drawBackground(self, painter: QPainter, rect: QRectF):
+        painter.fillRect(rect, QColor(245, 245, 245))
+        
         grid_pen = QPen(QColor(220, 220, 220), 1)
+        painter.setPen(grid_pen)
+        
         grid_size = 50
-
-        for x in range(-5000, 5001, grid_size):
-            self.scene.addLine(x, -5000, x, 5000, grid_pen)
-        for y in range(-5000, 5001, grid_size):
-            self.scene.addLine(-5000, y, 5000, y, grid_pen)
+        left = int(rect.left()) - (int(rect.left()) % grid_size)
+        top = int(rect.top()) - (int(rect.top()) % grid_size)
+        
+        x = left
+        while x <= rect.right():
+            painter.drawLine(x, int(rect.top()), x, int(rect.bottom()))
+            x += grid_size
+        
+        y = top
+        while y <= rect.bottom():
+            painter.drawLine(int(rect.left()), y, int(rect.right()), y)
+            y += grid_size
 
     def add_node(self, node_type: str, x: float, y: float,
                  name: str = None, config: Dict = None, node_id: int = None) -> WorkflowNodeItem:
@@ -513,7 +524,7 @@ class WorkflowCanvas(QGraphicsView):
         if self._read_only:
             return
             
-        if hasattr(self, '_clipboard') and self._clipboard:
+        if self._clipboard:
             for node_data in self._clipboard:
                 self.add_node(
                     node_type=node_data["node_type"],

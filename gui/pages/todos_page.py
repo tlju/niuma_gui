@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
     QSpinBox
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QBrush
+from PyQt5.QtGui import QColor, QBrush, QFont
 from datetime import datetime
 from models.todo import TodoStatus, RecurrenceType
 from core.logger import get_logger
@@ -110,12 +110,11 @@ class TodosPage(QWidget):
         self.setLayout(layout)
 
         self.all_todos = []
+        self._bold_font = QFont()
+        self._bold_font.setBold(True)
 
     def _get_bold_font(self):
-        from PyQt5.QtGui import QFont
-        font = QFont()
-        font.setBold(True)
-        return font
+        return self._bold_font
 
     def load_todos(self):
         try:

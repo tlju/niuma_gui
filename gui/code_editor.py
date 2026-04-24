@@ -2,12 +2,13 @@ import sys
 import re
 import json
 import traceback
+import math
 from PyQt5.QtWidgets import QPlainTextEdit, QCompleter, QWidget
 from PyQt5.QtGui import (
     QFont, QColor, QSyntaxHighlighter, QTextCharFormat, 
     QTextCursor, QPainter, QTextBlock, QKeySequence
 )
-from PyQt5.QtCore import Qt, QRegExp, QRect, QEvent
+from PyQt5.QtCore import Qt, QRegExp, QRect, QEvent, QStringListModel
 from core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -202,7 +203,6 @@ class VariableCompleter(QCompleter):
 
     def update_completions(self, words):
         self._completion_words = words
-        from PyQt5.QtCore import QStringListModel
         model = QStringListModel(words, self)
         self.setModel(model)
 
