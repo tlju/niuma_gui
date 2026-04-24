@@ -285,6 +285,14 @@ class MainWindow(QMainWindow):
 
         help_menu = menubar.addMenu("帮助")
 
+        help_action = QAction("功能说明", self)
+        help_action.setIcon(icons.about_icon())
+        help_action.setShortcut("F1")
+        help_action.triggered.connect(self.show_help)
+        help_menu.addAction(help_action)
+
+        help_menu.addSeparator()
+
         about_action = QAction("关于", self)
         about_action.setIcon(icons.about_icon())
         about_action.triggered.connect(self.show_about)
@@ -346,6 +354,11 @@ class MainWindow(QMainWindow):
             page, name = page_map[page_name]
             self.stacked_widget.setCurrentWidget(page)
             logger.debug(f"切换到{name}页面")
+
+    def show_help(self):
+        from gui.pages.help_page import HelpPage
+        dialog = HelpPage(self)
+        dialog.exec()
 
     def show_about(self):
         QMessageBox.about(

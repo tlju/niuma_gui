@@ -7,3 +7,5 @@
 - Use virtual environment `venv` for Python dependencies
 - After completing any feature, write test code for it
 - Place all test code in the `tests` directory
+- 同步更新帮助界面的内容，确保与功能保持一致
+- 帮助界面的内容需要中文
