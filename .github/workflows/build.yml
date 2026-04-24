@@ -339,28 +339,14 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: '13. 上传到 Gitee Release (Linux)'
-      if: matrix.platform == 'linux' && github.event_name == 'release' && github.event.release.tag_name != ''
-      uses: nicennnnnnnlee/action-gitee-release@v2.0.0
+    - name: Sync GitHub Release to Gitee
+      if: github.event_name == 'release'
+      uses: trustedinster/sync-release-gitee@v1.3
       with:
-        gitee_action: create_release
-        gitee_owner: ${{ secrets.GITEE_USER }}
+        gitee_owner: tlju
         gitee_repo: niuma_gui
         gitee_token: ${{ secrets.GITEE_TOKEN }}
-        gitee_tag_name: ${{ github.event.release.tag_name }}
+        github_owner: tlju
+        github_repo: niuma_gui
         gitee_upload_retry_times: 3
-        gitee_files: |
-          dist/${{ matrix.output_name }}.tar.gz
-
-    - name: '13. 上传到 Gitee Release (Windows)'
-      if: matrix.platform == 'windows' && github.event_name == 'release' && github.event.release.tag_name != ''
-      uses: nicennnnnnnlee/action-gitee-release@v2.0.0
-      with:
-        gitee_action: create_release
-        gitee_owner: ${{ secrets.GITEE_USER }}
-        gitee_repo: niuma_gui
-        gitee_token: ${{ secrets.GITEE_TOKEN }}
-        gitee_tag_name: ${{ github.event.release.tag_name }}
-        gitee_upload_retry_times: 3
-        gitee_files: |
-          dist/${{ matrix.output_name }}.7z
+        debug: true
