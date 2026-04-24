@@ -200,6 +200,25 @@ jobs:
         docker rm -f $CONTAINER_ID
       shell: bash
 
+    - name: '10.1. 推送 Docker 镜像到 DockerHub (Linux)'
+      if: matrix.platform == 'linux' && steps.cache-docker-image.outputs.cache-hit != 'true'
+      run: |
+        echo "=== 登录 DockerHub ==="
+        echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
+        
+        IMAGE_NAME="niuma-build-${{ matrix.arch }}"
+        DOCKERHUB_TAG="${{ secrets.DOCKERHUB_USER }}/${IMAGE_NAME}:latest"
+        
+        echo "=== 标记镜像 ==="
+        docker tag ${IMAGE_NAME}:latest ${DOCKERHUB_TAG}
+        
+        echo "=== 推送镜像 ==="
+        docker push ${DOCKERHUB_TAG}
+        
+        echo "=== 登出 DockerHub ==="
+        docker logout
+      shell: bash
+
     - name: '10.5. 保存 Docker 镜像缓存 (Linux)'
       if: matrix.platform == 'linux' && steps.cache-docker-image.outputs.cache-hit != 'true'
       uses: actions/cache/save@v5
