@@ -9,6 +9,7 @@ from core.logger import get_logger
 from core.workflow_engine import WorkflowExecutor
 from core.node_types import NodeStatus
 from core.utils import get_local_now
+from core.database import SessionLocal
 
 logger = get_logger(__name__)
 
@@ -348,13 +349,23 @@ class WorkflowService:
 
             if node_id in node_exec_map:
                 node_exec = node_exec_map[node_id]
-                self.update_node_execution(
-                    node_exec.id,
-                    status=status,
-                    output=output,
-                    error_message=error,
-                    finished_at=get_local_now() if status in ["success", "failed", "skipped"] else None
-                )
+                thread_db = SessionLocal()
+                try:
+                    node_exec_db = thread_db.query(WorkflowNodeExecution).filter(
+                        WorkflowNodeExecution.id == node_exec.id
+                    ).first()
+                    if node_exec_db:
+                        node_exec_db.status = status
+                        node_exec_db.output = output
+                        node_exec_db.error_message = error
+                        if status in ["success", "failed", "skipped"]:
+                            node_exec_db.finished_at = get_local_now()
+                        thread_db.commit()
+                except Exception as e:
+                    logger.error(f"更新节点执行状态失败: {e}")
+                    thread_db.rollback()
+                finally:
+                    thread_db.close()
 
             if execution_callback:
                 execution_callback(update)
