@@ -84,7 +84,8 @@ class ScriptsPage(QWidget):
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(4, 240)
 
         self.table.doubleClicked.connect(self.show_detail_dialog)
 
@@ -128,12 +129,20 @@ class ScriptsPage(QWidget):
             btn_layout.setAlignment(Qt.AlignCenter)
 
             edit_btn = QPushButton("编辑")
-            edit_btn.setProperty("class", "table-run")
+            edit_btn.setProperty("class", "table-edit")
             edit_btn.setCursor(Qt.PointingHandCursor)
             edit_btn.clicked.connect(
                 lambda checked, s=script: self.show_edit_dialog(s)
             )
             btn_layout.addWidget(edit_btn)
+
+            detail_btn = QPushButton("详情")
+            detail_btn.setProperty("class", "table-view")
+            detail_btn.setCursor(Qt.PointingHandCursor)
+            detail_btn.clicked.connect(
+                lambda checked, s=script: self.show_detail_dialog_by_script(s)
+            )
+            btn_layout.addWidget(detail_btn)
 
             delete_btn = QPushButton("删除")
             delete_btn.setProperty("class", "table-delete")
@@ -178,6 +187,10 @@ class ScriptsPage(QWidget):
             script = self.scripts_data[row]
             dialog = ScriptDetailDialog(script, self, dict_service=self.dict_service)
             dialog.exec()
+
+    def show_detail_dialog_by_script(self, script):
+        dialog = ScriptDetailDialog(script, self, dict_service=self.dict_service)
+        dialog.exec()
 
     def delete_script(self, script_id: int):
         reply = QMessageBox.question(

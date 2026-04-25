@@ -53,7 +53,7 @@ HELP_DATA = [
         "icon_func": "asset_icon",
         "content": """
 <h2>资产管理</h2>
-<p>资产管理模块用于集中管理服务器资产信息，支持添加、编辑、删除、搜索、导入和导出资产。</p>
+<p>资产管理模块用于集中管理服务器资产信息，支持添加、编辑、删除、搜索、导入和导出资产，并可通过堡垒机建立隧道连接。</p>
 
 <div class="schematic">
 <div class="schematic-title">资产管理界面布局</div>
@@ -67,8 +67,8 @@ HELP_DATA = [
 <span class="schematic-search">🔍 搜索...</span>
 </div>
 <div class="schematic-table">
-<div class="schematic-header">单位 | 系统 | IP地址 | 端口 | 主机名 | 用户名 | 业务服务 | 位置 | 服务器类型 | 操作</div>
-<div class="schematic-row-item">示例单位 | 示例系统 | 192.168.1.1 | 22 | server-01 | root | Web服务 | 机房A | 物理机 | <span class="schematic-btn-edit">编辑</span> <span class="schematic-btn-del">删除</span></div>
+<div class="schematic-header">单位 | 系统 | 网络地址 | 业务服务 | 位置 | 服务器类型 | 操作</div>
+<div class="schematic-row-item">示例单位 | 示例系统 | 192.168.1.1 | Web服务 | 机房A | 物理机 | <span class="schematic-btn-connect">连接</span> <span class="schematic-btn-edit">编辑</span> <span class="schematic-btn-del">删除</span></div>
 </div>
 </div>
 
@@ -79,11 +79,19 @@ HELP_DATA = [
 <tr><td>编辑资产</td><td>修改已有资产的信息</td></tr>
 <tr><td>删除资产</td><td>删除指定资产（不可恢复，请谨慎操作）</td></tr>
 <tr><td>资产详情</td><td>双击资产行可查看详细信息</td></tr>
+<tr><td>隧道连接</td><td>通过堡垒机建立SSH隧道连接到目标资产（需堡垒机已连接）</td></tr>
 <tr><td>筛选过滤</td><td>按单位、系统进行下拉筛选</td></tr>
 <tr><td>关键字搜索</td><td>支持按名称、IP、主机名等多字段模糊搜索</td></tr>
 <tr><td>导出资产</td><td>将资产列表导出为 Excel 文件</td></tr>
 <tr><td>导入资产</td><td>从 Excel 文件批量导入资产数据</td></tr>
 </table>
+
+<h3>网络地址显示规则</h3>
+<ul>
+<li>优先显示IPv4地址</li>
+<li>当IPv4地址不存在时，显示IPv6地址</li>
+<li>两者都不存在时，显示为空</li>
+</ul>
 
 <h3>操作步骤 — 添加资产</h3>
 <ol>
@@ -105,6 +113,15 @@ HELP_DATA = [
 <li>点击"确定"保存</li>
 </ol>
 
+<h3>操作步骤 — 通过堡垒机连接资产</h3>
+<ol>
+<li>确保堡垒机已成功连接（状态栏显示绿色"已连接"）</li>
+<li>在资产列表中，有网络地址的资产行会出现"连接"按钮</li>
+<li>点击"连接"按钮，系统将通过堡垒机创建SSH隧道</li>
+<li>隧道建立成功后，状态栏会显示隧道信息（目标IP:端口）</li>
+<li>使用SSH客户端连接 <code>127.0.0.1:本地端口</code> 即可访问目标服务器</li>
+</ol>
+
 <h3>操作步骤 — 导入导出</h3>
 <ol>
 <li><b>导出：</b>点击"导出"按钮，选择保存路径，系统将生成 Excel 文件</li>
@@ -116,6 +133,8 @@ HELP_DATA = [
 <li>单位、系统、位置、服务器类型的选项来自"数据字典"，需先在数据字典中配置</li>
 <li>双击表格行可快速查看资产详情</li>
 <li>搜索支持多字段模糊匹配，输入关键词即可实时过滤</li>
+<li>最多允许同时存在3个隧道连接</li>
+<li>隧道信息显示在状态栏，点击 ✕ 图标可断开对应隧道</li>
 </ul>
 """
     },
@@ -135,7 +154,7 @@ HELP_DATA = [
 </div>
 <div class="schematic-table">
 <div class="schematic-header">ID | 名称 | 描述 | 语言 | 操作</div>
-<div class="schematic-row-item">1 | 磁盘检查 | 检查磁盘使用率 | Bash | <span class="schematic-btn-edit">编辑</span> <span class="schematic-btn-del">删除</span> <span class="schematic-btn-run">执行</span></div>
+<div class="schematic-row-item">1 | 磁盘检查 | 检查磁盘使用率 | Bash | <span class="schematic-btn-edit">编辑</span> <span class="schematic-btn-view">详情</span> <span class="schematic-btn-del">删除</span></div>
 </div>
 </div>
 
@@ -545,7 +564,7 @@ HELP_DATA = [
         "icon_func": "app_icon",
         "content": """
 <h2>堡垒机连接</h2>
-<p>堡垒机连接功能集成在状态栏中，支持自动登录、二次认证和连接状态管理。</p>
+<p>堡垒机连接功能集成在状态栏中，支持自动登录、二次认证、隧道连接和连接状态管理。</p>
 
 <div class="schematic">
 <div class="schematic-title">堡垒机状态指示器（状态栏）</div>
@@ -567,6 +586,26 @@ HELP_DATA = [
 <tr><td>连接失败</td><td style="color:#e74c3c">红色</td><td>连接失败，请检查配置</td></tr>
 </table>
 
+<h3>隧道连接功能</h3>
+<p>堡垒机连接成功后，可通过隧道功能安全访问内网服务器。隧道信息会实时显示在状态栏中。</p>
+
+<div class="schematic">
+<div class="schematic-title">状态栏隧道信息</div>
+<div class="schematic-row">
+<span class="schematic-status schematic-status-authenticated">⬤ 已连接</span>
+<span style="color:#1abc9c">⇄</span> <span>10.0.1.100:22</span> <span style="color:#e74c3c">✕</span>
+<span style="color:#1abc9c">⇄</span> <span>10.0.1.200:22</span> <span style="color:#e74c3c">✕</span>
+</div>
+</div>
+
+<table class="feature-table">
+<tr><th>功能</th><th>说明</th></tr>
+<tr><td>创建隧道</td><td>在资产管理页面点击"连接"按钮，通过堡垒机创建SSH隧道</td></tr>
+<tr><td>隧道显示</td><td>状态栏实时显示所有活跃隧道的目标地址和端口</td></tr>
+<tr><td>断开隧道</td><td>点击隧道信息旁的 ✕ 图标可断开对应隧道</td></tr>
+<tr><td>并发限制</td><td>最多允许同时存在3个隧道连接</td></tr>
+</table>
+
 <h3>操作步骤 — 配置堡垒机</h3>
 <ol>
 <li>在"系统参数"页面添加以下参数：
@@ -586,18 +625,36 @@ HELP_DATA = [
 <li>如需二次认证，在弹出对话框中输入OTP验证码</li>
 </ol>
 
-<h3>操作步骤 — 断开连接</h3>
+<h3>操作步骤 — 创建隧道连接</h3>
+<ol>
+<li>确保堡垒机已成功连接</li>
+<li>进入"资产管理"页面</li>
+<li>找到目标资产，点击操作列中的"连接"按钮</li>
+<li>系统自动创建隧道，状态栏显示隧道信息</li>
+<li>使用SSH客户端连接 <code>127.0.0.1:本地端口</code> 访问目标服务器</li>
+</ol>
+
+<h3>操作步骤 — 断开隧道</h3>
+<ol>
+<li>在状态栏找到要断开的隧道信息</li>
+<li>点击隧道信息旁的 ✕ 图标</li>
+<li>隧道立即断开，状态栏更新显示</li>
+</ol>
+
+<h3>操作步骤 — 断开堡垒机</h3>
 <ol>
 <li>点击状态栏中的堡垒机状态指示器</li>
 <li>选择"断开连接"</li>
-<li>确认断开</li>
+<li>确认断开（所有隧道将同时断开）</li>
 </ol>
 
 <h3>提示</h3>
 <ul>
 <li>系统启动时会自动检测堡垒机配置并尝试连接</li>
 <li>连接失败后会自动重试（最多3次）</li>
-<li>二次认证最多可重试3次，超过后需重新连接</li>
+<li>二次认证最多可重试5次，超过后需重新连接</li>
+<li>断开堡垒机连接时，所有活跃隧道将同时断开</li>
+<li>每个隧道的本地端口由系统自动分配</li>
 </ul>
 """
     },
@@ -626,6 +683,17 @@ HELP_DATA = [
 2. 确认网络可以访问堡垒机地址<br>
 3. 如果需要二次认证，确保输入了正确的OTP验证码<br>
 4. 查看状态栏中的错误提示信息</p>
+
+<h3 class="faq-question">Q: 如何通过堡垒机连接服务器？</h3>
+<p>A: 确保堡垒机已连接后，在资产管理页面中，有网络地址的资产会显示"连接"按钮。点击后系统自动创建SSH隧道，状态栏会显示隧道信息。使用SSH客户端连接 <code>127.0.0.1:本地端口</code> 即可访问目标服务器。</p>
+
+<h3 class="faq-question">Q: 隧道连接数量有限制吗？</h3>
+<p>A: 是的，系统最多允许同时存在3个隧道连接。如果已达上限，需要先断开一个隧道才能创建新的连接。在状态栏点击隧道旁的 ✕ 图标即可断开。</p>
+
+<h3 class="faq-question">Q: 资产列表中看不到"连接"按钮？</h3>
+<p>A: "连接"按钮需要满足两个条件才会显示：<br>
+1. 堡垒机已成功连接（状态栏显示绿色"已连接"）<br>
+2. 该资产有可用的网络地址（IPv4或IPv6）</p>
 
 <h3 class="faq-question">Q: 如何创建循环待办？</h3>
 <p>A: 在添加或编辑待办时，设置"循环"选项（每日/每周/每月），并设置间隔数。待办完成后，系统会根据循环设置自动创建下一个待办。</p>

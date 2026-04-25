@@ -79,7 +79,7 @@ class SystemParamsPage(QWidget):
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(5, 120)
+        self.table.setColumnWidth(5, 180)
 
         layout.addWidget(self.table)
         self.setLayout(layout)

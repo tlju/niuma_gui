@@ -20,6 +20,120 @@ class ConnectionStatus(Enum):
     FAILED = "failed"
 
 
+class BastionTunnel:
+    MAX_TUNNELS = 3
+
+    def __init__(self, transport: paramiko.Transport, target_host: str, target_port: int, local_port: int, tunnel_id: int):
+        self.transport = transport
+        self.target_host = target_host
+        self.target_port = target_port
+        self.local_port = local_port
+        self.tunnel_id = tunnel_id
+        self.is_active = True
+        self._server_socket = None
+        self._listen_thread = None
+        self._forward_threads = []
+        self._lock = threading.Lock()
+        self._running = False
+
+    def start(self):
+        import socket
+        try:
+            self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self._server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self._server_socket.bind(('127.0.0.1', self.local_port))
+            self._server_socket.listen(5)
+            self._server_socket.settimeout(1.0)
+            self._running = True
+
+            self._listen_thread = threading.Thread(target=self._listen_loop, daemon=True)
+            self._listen_thread.start()
+            logger.info(f"隧道 {self.tunnel_id} 已启动: 127.0.0.1:{self.local_port} -> {self.target_host}:{self.target_port}")
+        except Exception as e:
+            self.is_active = False
+            logger.error(f"隧道 {self.tunnel_id} 启动失败: {e}")
+            raise
+
+    def _listen_loop(self):
+        import socket
+        while self._running:
+            try:
+                client_sock, _ = self._server_socket.accept()
+                t = threading.Thread(target=self._forward, args=(client_sock,), daemon=True)
+                t.start()
+                self._forward_threads.append(t)
+            except socket.timeout:
+                continue
+            except Exception as e:
+                if self._running:
+                    logger.error(f"隧道 {self.tunnel_id} 接受连接失败: {e}")
+                break
+
+    def _forward(self, client_sock):
+        import socket
+        try:
+            dest_addr = (self.target_host, self.target_port)
+            local_addr = ('127.0.0.1', self.local_port)
+            channel = self.transport.open_channel("direct-tcpip", dest_addr, local_addr)
+
+            if channel is None:
+                client_sock.close()
+                return
+
+            def pipe(src, dst, is_channel=False):
+                try:
+                    while self._running:
+                        if is_channel:
+                            if not src.recv_ready():
+                                time.sleep(0.05)
+                                continue
+                            data = src.recv(4096)
+                        else:
+                            data = src.recv(4096)
+                        if not data:
+                            break
+                        dst.sendall(data if is_channel else data)
+                except Exception:
+                    pass
+                finally:
+                    try:
+                        src.close()
+                    except Exception:
+                        pass
+                    try:
+                        dst.close()
+                    except Exception:
+                        pass
+
+            t1 = threading.Thread(target=pipe, args=(channel, client_sock), kwargs={"is_channel": True}, daemon=True)
+            t2 = threading.Thread(target=pipe, args=(client_sock, channel), daemon=True)
+            t1.start()
+            t2.start()
+            t1.join(timeout=300)
+            t2.join(timeout=300)
+        except Exception as e:
+            logger.error(f"隧道 {self.tunnel_id} 转发连接失败: {e}")
+        finally:
+            try:
+                client_sock.close()
+            except Exception:
+                pass
+
+    def close(self):
+        with self._lock:
+            self._running = False
+            self.is_active = False
+            if self._server_socket:
+                try:
+                    self._server_socket.close()
+                except Exception:
+                    pass
+            logger.info(f"隧道 {self.tunnel_id} 已关闭: 127.0.0.1:{self.local_port} -> {self.target_host}:{self.target_port}")
+
+    def get_display_info(self) -> str:
+        return f"{self.target_host}:{self.target_port} (本地:{self.local_port})"
+
+
 class BastionChannel:
     def __init__(self, channel: paramiko.Channel, channel_id: int, target_host: str = None):
         self.channel = channel
@@ -94,6 +208,8 @@ class BastionConnection:
         self.client: Optional[paramiko.SSHClient] = None
         self.transport: Optional[paramiko.Transport] = None
         self.channels: List[BastionChannel] = []
+        self.tunnels: List[BastionTunnel] = []
+        self._next_tunnel_id = 1
         self.status = ConnectionStatus.DISCONNECTED
         self.error_message: str = ""
         self._lock = threading.Lock()
@@ -485,10 +601,68 @@ class BastionConnection:
                 logger.error(f"保活线程异常: {e}")
                 time.sleep(5)
 
+    def create_tunnel(self, target_host: str, target_port: int = 22) -> Optional[BastionTunnel]:
+        if not self.is_authenticated:
+            raise Exception("堡垒机未完成认证，无法创建隧道")
+
+        import socket
+        with self._lock:
+            active_tunnels = [t for t in self.tunnels if t.is_active]
+            if len(active_tunnels) >= BastionTunnel.MAX_TUNNELS:
+                raise Exception(f"已达到最大隧道数量 ({BastionTunnel.MAX_TUNNELS})")
+
+            for port in range(20000, 30000):
+                try:
+                    test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    test_sock.settimeout(0.1)
+                    result = test_sock.connect_ex(('127.0.0.1', port))
+                    test_sock.close()
+                    if result != 0:
+                        local_port = port
+                        break
+                except Exception:
+                    continue
+            else:
+                raise Exception("无法找到可用的本地端口")
+
+            tunnel_id = self._next_tunnel_id
+            self._next_tunnel_id += 1
+
+            tunnel = BastionTunnel(
+                transport=self.transport,
+                target_host=target_host,
+                target_port=target_port,
+                local_port=local_port,
+                tunnel_id=tunnel_id
+            )
+            tunnel.start()
+            self.tunnels.append(tunnel)
+            logger.info(f"创建隧道 {tunnel_id}: 127.0.0.1:{local_port} -> {target_host}:{target_port}")
+            return tunnel
+
+    def close_tunnel(self, tunnel_id: int):
+        with self._lock:
+            for i, tunnel in enumerate(self.tunnels):
+                if tunnel.tunnel_id == tunnel_id:
+                    tunnel.close()
+                    self.tunnels.pop(i)
+                    logger.info(f"关闭隧道 {tunnel_id}")
+                    return True
+        return False
+
+    def get_active_tunnels(self) -> List[BastionTunnel]:
+        with self._lock:
+            self.tunnels = [t for t in self.tunnels if t.is_active]
+            return list(self.tunnels)
+
     def disconnect(self):
         self.stop_keepalive()
         
         with self._lock:
+            for tunnel in self.tunnels:
+                tunnel.close()
+            self.tunnels.clear()
+
             for channel in self.channels:
                 channel.close()
             self.channels.clear()
@@ -731,20 +905,42 @@ class BastionService:
                 "connected": False,
                 "authenticated": False,
                 "channels": 0,
+                "tunnels": 0,
                 "error_message": ""
             }
         
+        active_tunnels = connection.get_active_tunnels()
         return {
             "exists": True,
             "status": connection.status.value,
             "connected": connection.is_connected,
             "authenticated": connection.is_authenticated,
             "channels": len([ch for ch in connection.channels if ch.is_active]),
+            "tunnels": len(active_tunnels),
             "host": connection.host,
             "username": connection.username,
             "error_message": connection.error_message,
             "current_target_host": connection._current_target_host
         }
+
+    def create_tunnel(self, connection_id: str = "default",
+                      target_host: str = "", target_port: int = 22) -> Optional[BastionTunnel]:
+        connection = self._connections.get(connection_id)
+        if not connection:
+            raise ValueError(f"未找到连接: {connection_id}")
+        return connection.create_tunnel(target_host, target_port)
+
+    def close_tunnel(self, connection_id: str = "default", tunnel_id: int = 0) -> bool:
+        connection = self._connections.get(connection_id)
+        if not connection:
+            return False
+        return connection.close_tunnel(tunnel_id)
+
+    def get_active_tunnels(self, connection_id: str = "default") -> List[BastionTunnel]:
+        connection = self._connections.get(connection_id)
+        if not connection:
+            return []
+        return connection.get_active_tunnels()
 
     def get_connection(self, connection_id: str = "default") -> Optional[BastionConnection]:
         return self._connections.get(connection_id)

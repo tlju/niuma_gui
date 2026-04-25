@@ -97,3 +97,63 @@ QLabel#bastionStatusLabel {
 QLabel#bastionStatusIndicator {
     border-radius: 5px;
 }
+
+QFrame#tunnelStatusWidget {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+QLabel#tunnelTitleLabel {
+    color: #bdc3c7;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0 4px 0 0;
+}
+
+QFrame#tunnelItemWidget {
+    background-color: rgba(26, 188, 156, 0.15);
+    border: 1px solid rgba(26, 188, 156, 0.4);
+    border-radius: 3px;
+    padding: 0;
+    margin: 0 2px;
+}
+
+QFrame#tunnelItemWidget:hover {
+    background-color: rgba(26, 188, 156, 0.25);
+    border-color: rgba(26, 188, 156, 0.6);
+}
+
+QLabel#tunnelIndicator {
+    color: #1abc9c;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+QLabel#tunnelInfoLabel {
+    color: #ecf0f1;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 0;
+}
+
+QToolButton#tunnelCloseBtn {
+    background-color: transparent;
+    border: none;
+    border-radius: 2px;
+    color: #e74c3c;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 0;
+    margin: 0;
+}
+
+QToolButton#tunnelCloseBtn:hover {
+    background-color: rgba(231, 76, 60, 0.3);
+    color: #ffffff;
+}
+
+QToolButton#tunnelCloseBtn:pressed {
+    background-color: rgba(231, 76, 60, 0.5);
+}

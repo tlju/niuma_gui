@@ -18,11 +18,12 @@ logger = get_logger(__name__)
 
 
 class AssetsPage(QWidget):
-    def __init__(self, asset_service, current_user_id, dict_service=None, parent=None):
+    def __init__(self, asset_service, current_user_id, dict_service=None, bastion_manager=None, parent=None):
         super().__init__(parent)
         self.asset_service = asset_service
         self.current_user_id = current_user_id
         self.dict_service = dict_service
+        self.bastion_manager = bastion_manager
         self.loading_worker = None
         self.all_assets = []
         self.filtered_assets = []
@@ -143,9 +144,9 @@ class AssetsPage(QWidget):
         layout.addWidget(toolbar_frame)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(11)
+        self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
-            "单位", "系统", "IP地址", "IPv6", "端口", "主机名", "用户名", "业务服务", "位置", "服务器类型", "操作"
+            "单位", "系统", "网络地址", "业务服务", "位置", "服务器类型", "操作"
         ])
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -157,10 +158,8 @@ class AssetsPage(QWidget):
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(10, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(10, 150)
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(6, 240)
 
         self.table.verticalHeader().setDefaultSectionSize(42)
 
@@ -247,24 +246,27 @@ class AssetsPage(QWidget):
         for row, asset in enumerate(assets):
             self.table.setItem(row, 0, QTableWidgetItem(self._get_item_name("unit", asset.unit_name)))
             self.table.setItem(row, 1, QTableWidgetItem(self._get_item_name("system", asset.system_name)))
-            self.table.setItem(row, 2, QTableWidgetItem(asset.ip or ""))
-            self.table.setItem(row, 3, QTableWidgetItem(asset.ipv6 or ""))
 
-            port_item = QTableWidgetItem(str(asset.port or ""))
-            port_item.setTextAlignment(Qt.AlignCenter)
-            self.table.setItem(row, 4, port_item)
+            network_addr = asset.ip or asset.ipv6 or ""
+            self.table.setItem(row, 2, QTableWidgetItem(network_addr))
 
-            self.table.setItem(row, 5, QTableWidgetItem(asset.host_name or ""))
-            self.table.setItem(row, 6, QTableWidgetItem(asset.username or ""))
-            self.table.setItem(row, 7, QTableWidgetItem(asset.business_service or ""))
-            self.table.setItem(row, 8, QTableWidgetItem(self._get_item_name("location", asset.location)))
-            self.table.setItem(row, 9, QTableWidgetItem(self._get_item_name("server_type", asset.server_type)))
+            self.table.setItem(row, 3, QTableWidgetItem(asset.business_service or ""))
+            self.table.setItem(row, 4, QTableWidgetItem(self._get_item_name("location", asset.location)))
+            self.table.setItem(row, 5, QTableWidgetItem(self._get_item_name("server_type", asset.server_type)))
 
             btn_widget = QWidget()
             btn_layout = QHBoxLayout(btn_widget)
             btn_layout.setContentsMargins(4, 2, 4, 2)
             btn_layout.setSpacing(4)
             btn_layout.setAlignment(Qt.AlignCenter)
+
+            can_connect = self.bastion_manager and self.bastion_manager.is_connected()
+            if can_connect and (asset.ip or asset.ipv6):
+                connect_btn = QPushButton("连接")
+                connect_btn.setProperty("class", "table-connect")
+                connect_btn.setCursor(Qt.PointingHandCursor)
+                connect_btn.clicked.connect(lambda checked, a=asset: self._connect_via_bastion(a))
+                btn_layout.addWidget(connect_btn)
 
             edit_btn = QPushButton("编辑")
             edit_btn.setProperty("class", "table-edit")
@@ -278,7 +280,32 @@ class AssetsPage(QWidget):
             delete_btn.clicked.connect(lambda checked, a=asset.id: self.delete_asset(a))
             btn_layout.addWidget(delete_btn)
 
-            self.table.setCellWidget(row, 10, btn_widget)
+            self.table.setCellWidget(row, 6, btn_widget)
+
+    def _connect_via_bastion(self, asset):
+        if not self.bastion_manager or not self.bastion_manager.is_connected():
+            QMessageBox.warning(self, "提示", "堡垒机未连接，请先连接堡垒机")
+            return
+
+        target_host = asset.ip or asset.ipv6
+        if not target_host:
+            QMessageBox.warning(self, "提示", "该资产没有可用的网络地址")
+            return
+
+        target_port = asset.port or 22
+
+        try:
+            info = self.bastion_manager.create_tunnel(target_host, target_port)
+            QMessageBox.information(self, "隧道已建立",
+                f"已通过堡垒机建立隧道:\n"
+                f"目标: {target_host}:{target_port}\n"
+                f"本地: 127.0.0.1:{info['local_port']}\n\n"
+                f"使用 SSH 客户端连接 127.0.0.1:{info['local_port']} 即可访问")
+        except Exception as e:
+            QMessageBox.critical(self, "连接失败", f"创建隧道失败:\n{e}")
+
+    def refresh_bastion_state(self):
+        self._populate_table(self.filtered_assets)
 
     def _on_cell_double_clicked(self, row, column):
         if row < len(self.filtered_assets):

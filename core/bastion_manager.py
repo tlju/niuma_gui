@@ -105,6 +105,8 @@ class BastionManager(QObject):
     connection_success = pyqtSignal()
     connection_failed = pyqtSignal(str)
     auth_required = pyqtSignal(dict, int)
+    tunnel_created = pyqtSignal(dict)
+    tunnel_closed = pyqtSignal(int)
     
     MAX_AUTH_RETRIES = 5
     
@@ -183,6 +185,31 @@ class BastionManager(QObject):
         if not self.is_connected():
             raise Exception("堡垒机未连接")
         return self.bastion_service.connect_to_host("default", host, username, password)
+
+    def create_tunnel(self, target_host: str, target_port: int = 22) -> dict:
+        if not self.is_connected():
+            raise Exception("堡垒机未连接")
+        tunnel = self.bastion_service.create_tunnel("default", target_host, target_port)
+        if tunnel:
+            info = {
+                "tunnel_id": tunnel.tunnel_id,
+                "target_host": tunnel.target_host,
+                "target_port": tunnel.target_port,
+                "local_port": tunnel.local_port,
+                "display": tunnel.get_display_info()
+            }
+            self.tunnel_created.emit(info)
+            return info
+        raise Exception("创建隧道失败")
+
+    def close_tunnel(self, tunnel_id: int) -> bool:
+        result = self.bastion_service.close_tunnel("default", tunnel_id)
+        if result:
+            self.tunnel_closed.emit(tunnel_id)
+        return result
+
+    def get_active_tunnels(self) -> list:
+        return self.bastion_service.get_active_tunnels("default")
     
     def _on_status_changed(self, status: str, message: str):
         self.status_changed.emit(status, message)

@@ -158,6 +158,22 @@ QPushButton[class="table-complete"]:hover {
     background-color: #1e8449;
 }
 
+QPushButton[class="table-connect"] {
+    background-color: #2980b9;
+    border: none;
+    border-radius: 3px;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    min-width: 44px;
+    min-height: 24px;
+}
+
+QPushButton[class="table-connect"]:hover {
+    background-color: #1f6da0;
+}
+
 QLineEdit {
     background-color: #ffffff;
     border: 1px solid #ced4da;

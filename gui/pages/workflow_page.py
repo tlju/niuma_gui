@@ -511,6 +511,8 @@ class WorkflowPage(QWidget):
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(4, 300)
 
         self.table.doubleClicked.connect(self.show_edit_dialog)
 
@@ -550,6 +552,8 @@ class WorkflowPage(QWidget):
         exec_header = self.exec_table.horizontalHeader()
         exec_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         exec_header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        exec_header.setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)
+        self.exec_table.setColumnWidth(6, 180)
 
         exec_layout.addWidget(self.exec_table)
         self.tabs.addTab(self.execution_tab, "执行历史")
@@ -589,17 +593,17 @@ class WorkflowPage(QWidget):
             btn_layout.setSpacing(4)
             btn_layout.setAlignment(Qt.AlignCenter)
 
-            edit_btn = QPushButton("编辑")
-            edit_btn.setProperty("class", "table-edit")
-            edit_btn.setCursor(Qt.PointingHandCursor)
-            edit_btn.clicked.connect(lambda checked, w=workflow: self.show_edit_dialog(w))
-            btn_layout.addWidget(edit_btn)
-
             run_btn = QPushButton("执行")
             run_btn.setProperty("class", "table-run")
             run_btn.setCursor(Qt.PointingHandCursor)
             run_btn.clicked.connect(lambda checked, w=workflow: self.execute_workflow(w))
             btn_layout.addWidget(run_btn)
+
+            edit_btn = QPushButton("编辑")
+            edit_btn.setProperty("class", "table-edit")
+            edit_btn.setCursor(Qt.PointingHandCursor)
+            edit_btn.clicked.connect(lambda checked, w=workflow: self.show_edit_dialog(w))
+            btn_layout.addWidget(edit_btn)
 
             export_btn = QPushButton("导出")
             export_btn.setProperty("class", "table-view")

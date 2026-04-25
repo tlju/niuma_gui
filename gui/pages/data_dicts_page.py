@@ -76,7 +76,7 @@ class DataDictsPage(QWidget):
         header = self.dict_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
-        self.dict_table.setColumnWidth(3, 180)
+        self.dict_table.setColumnWidth(3, 240)
 
         self.item_table = QTableWidget()
         self.item_table.setColumnCount(4)
@@ -91,7 +91,7 @@ class DataDictsPage(QWidget):
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
-        self.item_table.setColumnWidth(3, 120)
+        self.item_table.setColumnWidth(3, 180)
 
         self.tabs.addTab(self.dict_table, "字典列表")
         self.tabs.addTab(self.item_table, "字典项列表")
@@ -126,6 +126,12 @@ class DataDictsPage(QWidget):
             btn_layout.setSpacing(4)
             btn_layout.setAlignment(Qt.AlignCenter)
 
+            items_btn = QPushButton("项")
+            items_btn.setProperty("class", "table-view")
+            items_btn.setCursor(Qt.PointingHandCursor)
+            items_btn.clicked.connect(lambda checked, dict_obj=d: self.show_dict_items(dict_obj))
+            btn_layout.addWidget(items_btn)
+
             edit_btn = QPushButton("编辑")
             edit_btn.setProperty("class", "table-edit")
             edit_btn.setCursor(Qt.PointingHandCursor)
@@ -137,12 +143,6 @@ class DataDictsPage(QWidget):
             delete_btn.setCursor(Qt.PointingHandCursor)
             delete_btn.clicked.connect(lambda checked, did=d.id: self.delete_dict(did))
             btn_layout.addWidget(delete_btn)
-
-            items_btn = QPushButton("项")
-            items_btn.setProperty("class", "table-view")
-            items_btn.setCursor(Qt.PointingHandCursor)
-            items_btn.clicked.connect(lambda checked, dict_obj=d: self.show_dict_items(dict_obj))
-            btn_layout.addWidget(items_btn)
 
             self.dict_table.setCellWidget(row, 3, btn_widget)
 
