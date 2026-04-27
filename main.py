@@ -4,6 +4,8 @@ import sys
 import os
 import traceback
 import subprocess
+import shutil
+import platform
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QMessageBox
@@ -12,7 +14,7 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 def setup_input_method():
     """
     设置Qt输入法环境变量，支持Linux下的中文输入
-    支持Fcitx、IBus、搜狗输入法等
+    检测并拷贝fcitx输入法插件
     """
     if sys.platform != "linux":
         return
@@ -21,57 +23,25 @@ def setup_input_method():
     if current_im:
         return
     
-    sogou_paths = [
-        "/opt/apps/com.sogou.sogoupinyin-uos",
-        "/opt/sogoupinyin",
-        "/usr/share/fcitx-sogoupinyin",
-    ]
-    has_sogou = any(os.path.exists(p) for p in sogou_paths)
+    target_dir = os.path.join("bin", "PyQt5", "Qt5", "plugins", "platforminputcontexts")
+    target_plugin = os.path.join(target_dir, "libfcitxplatforminputcontextplugin.so")
     
-    if has_sogou:
-        os.environ["QT_IM_MODULE"] = "fcitx"
-        os.environ["GTK_IM_MODULE"] = "fcitx"
-        os.environ["XMODIFIERS"] = "@im=fcitx"
-        return
+    if not os.path.exists(target_plugin):
+        os.makedirs(target_dir, exist_ok=True)
+        
+        machine = platform.machine()
+        if machine == "aarch64":
+            source_plugin = "/usr/lib/aarch64-linux-gnu/qt5/plugins/platforminputcontexts/libfcitxplatforminputcontextplugin.so"
+        else:
+            source_plugin = "/usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts/libfcitxplatforminputcontextplugin.so"
+        
+        if os.path.exists(source_plugin):
+            try:
+                shutil.copy(source_plugin, target_plugin)
+            except Exception:
+                pass
     
-    try:
-        result = subprocess.run(
-            ["pgrep", "-x", "fcitx"],
-            capture_output=True,
-            text=True,
-            timeout=2
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            os.environ["QT_IM_MODULE"] = "fcitx"
-            os.environ["GTK_IM_MODULE"] = "fcitx"
-            os.environ["XMODIFIERS"] = "@im=fcitx"
-            return
-    except Exception:
-        pass
-    
-    try:
-        result = subprocess.run(
-            ["pgrep", "-x", "ibus-daemon"],
-            capture_output=True,
-            text=True,
-            timeout=2
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            os.environ["QT_IM_MODULE"] = "ibus"
-            os.environ["GTK_IM_MODULE"] = "ibus"
-            os.environ["XMODIFIERS"] = "@im=ibus"
-            return
-    except Exception:
-        pass
-    
-    fcitx5_paths = [
-        "/usr/bin/fcitx5",
-        "/usr/bin/fcitx5-remote",
-    ]
-    if any(os.path.exists(p) for p in fcitx5_paths):
-        os.environ["QT_IM_MODULE"] = "fcitx"
-        os.environ["GTK_IM_MODULE"] = "fcitx"
-        os.environ["XMODIFIERS"] = "@im=fcitx"
+    os.environ["QT_IM_MODULE"] = "fcitx"
 
 
 from gui.main_window import MainWindow
