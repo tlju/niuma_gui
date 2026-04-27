@@ -176,6 +176,7 @@ class MainWindow(QMainWindow):
         
         self.bastion_manager = BastionManager(self.db)
         self.workflow_service = WorkflowService(self.db, self.script_service, self.dict_service, self.param_service, self.bastion_manager)
+        self._auth_dialog = None
 
         self.init_ui()
         self.status_bar.showMessage(f"当前用户: {username}  |  状态: 在线")
@@ -301,14 +302,20 @@ class MainWindow(QMainWindow):
         logger.error(f"堡垒机连接失败: {error}")
 
     def _on_bastion_auth_required(self, auth_info: dict, retry_count: int):
-        dialog = SecondaryAuthDialog(auth_info, retry_count, BastionManager.MAX_AUTH_RETRIES, self)
+        if hasattr(self, '_auth_dialog') and self._auth_dialog is not None:
+            self._auth_dialog.deleteLater()
         
-        if dialog.exec() == SecondaryAuthDialog.DialogCode.Accepted:
-            otp_code = dialog.get_otp_code()
-            self.bastion_manager.submit_auth(otp_code=otp_code)
-        else:
-            self.bastion_manager.disconnect()
-            self.bastion_status_widget.set_status(ConnectionStatus.DISCONNECTED.value, "已取消")
+        self._auth_dialog = SecondaryAuthDialog(auth_info, retry_count, BastionManager.MAX_AUTH_RETRIES, self)
+        self._auth_dialog.auth_submitted.connect(self._on_auth_submitted)
+        self._auth_dialog.rejected.connect(self._on_auth_cancelled)
+        self._auth_dialog.show()
+    
+    def _on_auth_submitted(self, otp_code: str):
+        self.bastion_manager.submit_auth(otp_code=otp_code)
+    
+    def _on_auth_cancelled(self):
+        self.bastion_manager.disconnect()
+        self.bastion_status_widget.set_status(ConnectionStatus.DISCONNECTED.value, "已取消")
 
     def _on_tunnel_created(self, tunnel_info: dict):
         self.tunnel_status_widget.add_tunnel(tunnel_info)

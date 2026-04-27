@@ -236,9 +236,13 @@ class BastionConnection:
                            timeout: int = 30, on_retry: Callable[[int, str], None] = None) -> bool:
         last_error = None
         
+        logger.info(f"堡垒机连接开始: host={self.host}, port={self.port}, username={self.username}, "
+                    f"max_retries={max_retries}, retry_interval={retry_interval}, timeout={timeout}")
+        
         for attempt in range(1, max_retries + 1):
             try:
                 self._update_status(ConnectionStatus.CONNECTING, f"正在连接堡垒机 (尝试 {attempt}/{max_retries})")
+                logger.info(f"堡垒机连接尝试 {attempt}/{max_retries}")
                 result = self.connect(timeout=timeout)
                 return result
             except Exception as e:
@@ -261,7 +265,7 @@ class BastionConnection:
             self.client = paramiko.SSHClient()
             self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             
-            logger.info(f"正在连接堡垒机 {self.host}:{self.port}")
+            logger.info(f"正在连接堡垒机 {self.host}:{self.port}, 用户: {self.username}, 超时: {timeout}秒")
             self.client.connect(
                 hostname=self.host,
                 port=self.port,
@@ -278,7 +282,7 @@ class BastionConnection:
                 self.transport.set_keepalive(30)
             
             self._update_status(ConnectionStatus.CONNECTED, "已连接，等待二次认证")
-            logger.info(f"堡垒机 {self.host} 连接成功")
+            logger.info(f"堡垒机 {self.host}:{self.port} SSH连接成功，等待二次认证")
             return True
             
         except paramiko.AuthenticationException as e:
@@ -302,12 +306,13 @@ class BastionConnection:
             raise Exception("未连接到堡垒机")
 
         try:
+            logger.info(f"开始检测堡垒机认证方式, timeout={timeout}")
             channel = self.client.invoke_shell()
             channel.settimeout(timeout)
             
             time.sleep(0.5)
             output = self._read_channel_output(channel, timeout)
-            logger.debug(f"堡垒机初始输出: {output}")
+            logger.info(f"堡垒机初始输出(前200字符): {output[:200]}")
             channel.close()
             
             auth_info = {
@@ -327,6 +332,10 @@ class BastionConnection:
             if "菜单" in output or "menu" in output.lower() or "选择" in output or "请输入" in output:
                 auth_info["needs_menu"] = True
                 auth_info["has_menu"] = True
+            
+            logger.info(f"堡垒机认证方式检测结果: needs_password={auth_info['needs_password']}, "
+                        f"needs_otp={auth_info['needs_otp']}, needs_menu={auth_info['needs_menu']}, "
+                        f"has_menu={auth_info['has_menu']}")
             
             return auth_info
             
@@ -351,19 +360,25 @@ class BastionConnection:
         self._update_status(ConnectionStatus.AUTHENTICATING, "正在进行二次认证")
 
         try:
+            logger.info(f"开始处理二次认证: auth_type={auth_type}, "
+                        f"has_secondary_password={secondary_password is not None}, "
+                        f"has_otp_code={otp_code is not None}, "
+                        f"has_menu_selection={menu_selection is not None}, timeout={timeout}")
+            
             channel = self.client.invoke_shell()
             channel.settimeout(timeout)
             
             time.sleep(0.5)
             output = self._read_channel_output(channel, timeout)
-            logger.debug(f"堡垒机初始输出: {output}")
+            logger.info(f"二次认证-堡垒机初始输出(前200字符): {output[:200]}")
             
             if "密码" in output or "password" in output.lower() or "口令" in output:
                 if secondary_password:
+                    logger.info("检测到密码提示，发送二次密码")
                     channel.send(secondary_password + "\n")
                     time.sleep(0.5)
                     output = self._read_channel_output(channel, timeout)
-                    logger.debug(f"二次认证后输出: {output}")
+                    logger.info(f"二次认证-密码认证后输出(前200字符): {output[:200]}")
                     
                     if "错误" in output or "error" in output.lower() or "失败" in output or "incorrect" in output.lower():
                         channel.close()
@@ -371,20 +386,22 @@ class BastionConnection:
             
             if "验证码" in output or "OTP" in output.upper() or "动态口令" in output or "令牌" in output:
                 if otp_code:
+                    logger.info("检测到OTP/动态口令提示，发送验证码")
                     channel.send(otp_code + "\n")
                     time.sleep(0.5)
                     output = self._read_channel_output(channel, timeout)
-                    logger.debug(f"OTP认证后输出: {output}")
+                    logger.info(f"二次认证-OTP认证后输出(前200字符): {output[:200]}")
                     
                     if "错误" in output or "error" in output.lower() or "失败" in output:
                         channel.close()
                         raise Exception("动态口令验证失败")
             
             if menu_selection and ("菜单" in output or "menu" in output.lower() or "选择" in output or "请输入" in output):
+                logger.info(f"检测到菜单提示，发送选择: {menu_selection}")
                 channel.send(menu_selection + "\n")
                 time.sleep(0.5)
                 output = self._read_channel_output(channel, timeout)
-                logger.debug(f"菜单选择后输出: {output}")
+                logger.info(f"二次认证-菜单选择后输出(前200字符): {output[:200]}")
             
             patterns = [
                 r"欢迎",
@@ -711,6 +728,9 @@ class BastionService:
                 config["port"] = int(parts[1])
             except ValueError:
                 pass
+        
+        logger.info(f"堡垒机配置读取: host={config['host']}, port={config['port']}, "
+                    f"username={config['username']}, password={'***已配置***' if config['password'] else '未配置'}")
         
         return config
 

@@ -32,6 +32,38 @@ def main():
         if sys.platform == "linux":
             os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
             os.environ.setdefault("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
+            
+            if "QT_IM_MODULE" not in os.environ:
+                im_module = os.environ.get("GTK_IM_MODULE", "") or os.environ.get("XMODIFIERS", "")
+                if "fcitx" in im_module.lower():
+                    os.environ["QT_IM_MODULE"] = "fcitx"
+                elif "ibus" in im_module.lower():
+                    os.environ["QT_IM_MODULE"] = "ibus"
+                elif os.path.exists("/usr/bin/fcitx") or os.path.exists("/usr/bin/fcitx5") or \
+                     os.path.exists("/usr/local/bin/fcitx") or os.path.exists("/usr/local/bin/fcitx5") or \
+                     os.path.exists("/usr/bin/sogou-qimpanel") or \
+                     os.path.exists("/opt/apps/com.sogou.sogoupinyin-uos"):
+                    os.environ["QT_IM_MODULE"] = "fcitx"
+                elif os.path.exists("/usr/bin/ibus-daemon") or os.path.exists("/usr/local/bin/ibus-daemon"):
+                    os.environ["QT_IM_MODULE"] = "ibus"
+            
+            sogou_plugin_paths = [
+                "/usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts",
+                "/usr/lib/aarch64-linux-gnu/qt5/plugins/platforminputcontexts",
+                "/usr/lib/arm-linux-gnueabihf/qt5/plugins/platforminputcontexts",
+                "/opt/sogou-pinyin/files/lib/qt5/plugins/platforminputcontexts",
+                "/opt/apps/com.sogou.sogou-pinyin/files/lib/qt5/plugins/platforminputcontexts",
+                "/opt/apps/com.sogou.sogoupinyin-uos/files/lib/qt5/plugins/platforminputcontexts",
+                "/usr/lib/qt5/plugins/platforminputcontexts",
+            ]
+            existing_plugin_paths = [p for p in sogou_plugin_paths if os.path.exists(p)]
+            if existing_plugin_paths:
+                current_path = os.environ.get("QT_PLUGIN_PATH", "")
+                new_paths = ":".join(existing_plugin_paths)
+                if current_path:
+                    os.environ["QT_PLUGIN_PATH"] = f"{new_paths}:{current_path}"
+                else:
+                    os.environ["QT_PLUGIN_PATH"] = new_paths
 
         QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
         QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
