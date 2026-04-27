@@ -339,25 +339,24 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  sync-gitee:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release'
-    steps:
-    - name: '同步 Release 到 Gitee'
-      run: |
-        echo "=== 下载 release2gitee ==="
-        curl -sL https://github.com/hepengju/release2gitee/releases/latest/download/release2gitee-x86_64-unknown-linux-gnu.tar.gz -o release2gitee.tar.gz
-        tar xzf release2gitee.tar.gz
+  # sync-gitee:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'release'
+  #   steps:
+  #   - name: '同步 Release 到 Gitee'
+  #     run: |
+  #       echo "=== 下载 release2gitee ==="
+  #       curl -sL https://github.com/hepengju/release2gitee/releases/latest/download/release2gitee-x86_64-unknown-linux-gnu.tar.gz -o release2gitee.tar.gz
+  #       tar xzf release2gitee.tar.gz
 
-        echo "=== 执行同步 ==="
-        ./release2gitee \
-          --github-owner tlju \
-          --github-repo niuma_gui \
-          --gitee-owner tlju \
-          --gitee-repo niuma_gui \
-          --gitee-token ${{ secrets.GITEE_TOKEN }} \
-          --gitee-retain-release-count 1 \
-          --verbose
+  #       echo "=== 执行同步 ==="
+  #       ./release2gitee \
+  #         --github-owner tlju \
+  #         --github-repo niuma_gui \
+  #         --gitee-owner tlju \
+  #         --gitee-repo niuma_gui \
+  #         --gitee-token ${{ secrets.GITEE_TOKEN }} \
+  #         --gitee-retain-release-count 1
 
 
