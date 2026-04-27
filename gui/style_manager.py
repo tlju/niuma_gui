@@ -104,7 +104,11 @@ def load_combined_stylesheet(app: QApplication, style_names: list) -> None:
 def get_font() -> QFont:
     font = QFont()
     preferred_fonts = _detect_platform_font()
-    font.setFamilies(preferred_fonts)
+    try:
+        font.setFamilies(preferred_fonts)
+    except AttributeError:
+        if preferred_fonts:
+            font.setFamily(preferred_fonts[0])
     font.setPointSize(_detect_font_size())
     font.setStyleHint(QFont.SansSerif)
     font.setWeight(QFont.Normal)
