@@ -82,35 +82,49 @@ class BastionAuthWorker(QThread):
     status_changed = pyqtSignal(str, str)
     auth_success = pyqtSignal()
     auth_failed = pyqtSignal(str)
+    otp_retry_required = pyqtSignal()
+    server_list_available = pyqtSignal(list, str)
     
     def __init__(self, bastion_service: BastionService, 
-                 otp_code: str = None, parent=None):
+                 otp_code: str = None, menu_selection: str = None, parent=None):
         super().__init__(parent)
         self.bastion_service = bastion_service
         self.otp_code = otp_code
+        self.menu_selection = menu_selection
     
     def run(self):
         try:
             self.status_changed.emit(ConnectionStatus.AUTHENTICATING.value, "正在进行二次认证...")
-            logger.info(f"BastionAuthWorker: 开始二次认证, has_otp_code={self.otp_code is not None}")
+            logger.info(f"BastionAuthWorker: 开始二次认证, has_otp_code={self.otp_code is not None}, "
+                        f"menu_selection={self.menu_selection}")
             
-            self.bastion_service.authenticate(
+            result = self.bastion_service.authenticate(
                 connection_id="default",
                 auth_type="otp",
-                otp_code=self.otp_code
+                otp_code=self.otp_code,
+                menu_selection=self.menu_selection
             )
             
-            self.status_changed.emit(ConnectionStatus.AUTHENTICATED.value, "认证成功")
-            logger.info("BastionAuthWorker: 二次认证成功，启动保活")
-            
-            self.bastion_service.start_keepalive("default", min_channels=1, max_channels=5)
-            
-            self.auth_success.emit()
+            if result.get("has_server_list"):
+                server_list = result.get("server_list", [])
+                raw_output = result.get("output", "")
+                logger.info(f"BastionAuthWorker: 认证成功，发现服务器列表({len(server_list)}台)")
+                self.status_changed.emit(ConnectionStatus.AUTHENTICATED.value, "认证成功，请选择目标服务器")
+                self.server_list_available.emit(server_list, raw_output)
+            else:
+                self.status_changed.emit(ConnectionStatus.AUTHENTICATED.value, "认证成功")
+                logger.info("BastionAuthWorker: 二次认证成功，启动保活")
+                self.bastion_service.start_keepalive("default", min_channels=1, max_channels=5)
+                self.auth_success.emit()
             
         except Exception as e:
-            logger.error(f"BastionAuthWorker: 二次认证失败 - {e}")
-            self.status_changed.emit(ConnectionStatus.FAILED.value, str(e))
-            self.auth_failed.emit(str(e))
+            if str(e) == "OTP_RETRY":
+                logger.warning("BastionAuthWorker: OTP验证码错误，需要重新输入")
+                self.otp_retry_required.emit()
+            else:
+                logger.error(f"BastionAuthWorker: 二次认证失败 - {e}")
+                self.status_changed.emit(ConnectionStatus.FAILED.value, str(e))
+                self.auth_failed.emit(str(e))
 
 
 class BastionManager(QObject):
@@ -118,6 +132,8 @@ class BastionManager(QObject):
     connection_success = pyqtSignal()
     connection_failed = pyqtSignal(str)
     auth_required = pyqtSignal(dict, int)
+    otp_retry_required = pyqtSignal(int)
+    server_list_available = pyqtSignal(list, str)
     tunnel_created = pyqtSignal(dict)
     tunnel_closed = pyqtSignal(int)
     
@@ -167,6 +183,20 @@ class BastionManager(QObject):
         self._auth_worker.status_changed.connect(self._on_status_changed)
         self._auth_worker.auth_success.connect(self._on_auth_success)
         self._auth_worker.auth_failed.connect(self._on_auth_failed)
+        self._auth_worker.otp_retry_required.connect(self._on_otp_retry_required)
+        self._auth_worker.server_list_available.connect(self._on_server_list_available)
+        self._auth_worker.start()
+    
+    def select_server(self, menu_selection: str):
+        logger.info(f"BastionManager: 选择服务器, menu_selection={menu_selection}")
+        self._auth_worker = BastionAuthWorker(
+            self.bastion_service, menu_selection=menu_selection
+        )
+        self._auth_worker.status_changed.connect(self._on_status_changed)
+        self._auth_worker.auth_success.connect(self._on_auth_success)
+        self._auth_worker.auth_failed.connect(self._on_auth_failed)
+        self._auth_worker.otp_retry_required.connect(self._on_otp_retry_required)
+        self._auth_worker.server_list_available.connect(self._on_server_list_available)
         self._auth_worker.start()
     
     def disconnect(self):
@@ -263,6 +293,21 @@ class BastionManager(QObject):
             self.connection_failed.emit(f"动态口令验证失败次数已达上限，请稍后重试")
             self.bastion_service.disconnect("default")
             self._auth_retry_count = 0
+    
+    def _on_otp_retry_required(self):
+        self._auth_retry_count += 1
+        logger.info(f"BastionManager: OTP需要重新输入 (尝试 {self._auth_retry_count}/{self.MAX_AUTH_RETRIES})")
+        if self._auth_retry_count < self.MAX_AUTH_RETRIES:
+            self.otp_retry_required.emit(self._auth_retry_count)
+        else:
+            logger.error(f"BastionManager: OTP重试次数已达上限 ({self.MAX_AUTH_RETRIES}次)")
+            self.connection_failed.emit(f"动态口令验证失败次数已达上限，请稍后重试")
+            self.bastion_service.disconnect("default")
+            self._auth_retry_count = 0
+    
+    def _on_server_list_available(self, server_list: list, raw_output: str):
+        logger.info(f"BastionManager: 服务器列表可用，共 {len(server_list)} 台")
+        self.server_list_available.emit(server_list, raw_output)
     
     def _on_retry_attempt(self, attempt: int, max_retries: int, error: str):
         logger.info(f"堡垒机连接重试 {attempt}/{max_retries}: {error}")

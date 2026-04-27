@@ -219,6 +219,7 @@ class BastionConnection:
         self._max_channels = 5
         self._current_target_host: str = None
         self._on_status_change: Optional[Callable[[ConnectionStatus, str], None]] = None
+        self._auth_channel = None
 
     def set_status_callback(self, callback: Callable[[ConnectionStatus, str], None]):
         self._on_status_change = callback
@@ -307,13 +308,12 @@ class BastionConnection:
 
         try:
             logger.info(f"开始检测堡垒机认证方式, timeout={timeout}")
-            channel = self.client.invoke_shell()
-            channel.settimeout(timeout)
+            self._auth_channel = self.client.invoke_shell()
+            self._auth_channel.settimeout(timeout)
             
             time.sleep(0.5)
-            output = self._read_channel_output(channel, timeout)
-            logger.info(f"堡垒机初始输出(前200字符): {output[:200]}")
-            channel.close()
+            output = self._read_channel_output(self._auth_channel, timeout)
+            logger.info(f"堡垒机初始输出(前500字符): {output[:500]}")
             
             auth_info = {
                 "needs_password": False,
@@ -323,8 +323,13 @@ class BastionConnection:
                 "has_menu": False
             }
             
+            if "2nd password" in output.lower() or "2nd password:" in output.lower():
+                auth_info["needs_otp"] = True
+                logger.info("检测到 '2nd Password' 提示，需要二次认证")
+            
             if "密码" in output or "password" in output.lower() or "口令" in output:
-                auth_info["needs_password"] = True
+                if not auth_info["needs_otp"]:
+                    auth_info["needs_password"] = True
             
             if "验证码" in output or "OTP" in output.upper() or "动态口令" in output or "令牌" in output:
                 auth_info["needs_otp"] = True
@@ -337,10 +342,16 @@ class BastionConnection:
                         f"needs_otp={auth_info['needs_otp']}, needs_menu={auth_info['needs_menu']}, "
                         f"has_menu={auth_info['has_menu']}")
             
+            if not auth_info["needs_otp"] and not auth_info["needs_password"] and not auth_info["needs_menu"]:
+                if self._auth_channel:
+                    self._auth_channel.close()
+                    self._auth_channel = None
+            
             return auth_info
             
         except Exception as e:
             logger.error(f"检测认证提示失败: {e}")
+            self._auth_channel = None
             return {
                 "needs_password": True,
                 "needs_otp": False,
@@ -349,11 +360,52 @@ class BastionConnection:
                 "has_menu": False
             }
 
+    def _is_otp_prompt(self, output: str) -> bool:
+        otp_patterns = [
+            "2nd password",
+            "验证码",
+            "OTP",
+            "动态口令",
+            "令牌",
+        ]
+        output_lower = output.lower()
+        for pattern in otp_patterns:
+            if pattern.lower() in output_lower:
+                return True
+        return False
+
+    def _parse_server_list(self, output: str) -> List[Dict[str, str]]:
+        servers = []
+        server_pattern = re.compile(
+            r'(\d+)\s*[:：]\s*(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+(.+)',
+            re.MULTILINE
+        )
+        for match in server_pattern.finditer(output):
+            servers.append({
+                "index": match.group(1).strip(),
+                "ip": match.group(2).strip(),
+                "name": match.group(3).strip()
+            })
+        
+        if not servers:
+            line_pattern = re.compile(
+                r'^\s*(\d+)\s+.*?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s*(.*)',
+                re.MULTILINE
+            )
+            for match in line_pattern.finditer(output):
+                servers.append({
+                    "index": match.group(1).strip(),
+                    "ip": match.group(2).strip(),
+                    "name": match.group(3).strip()
+                })
+        
+        return servers
+
     def handle_secondary_auth(self, auth_type: str = "password", 
                                secondary_password: str = None,
                                otp_code: str = None,
                                menu_selection: str = None,
-                               timeout: int = 60) -> bool:
+                               timeout: int = 30) -> Dict[str, Any]:
         if not self.client:
             raise Exception("未连接到堡垒机")
 
@@ -365,73 +417,139 @@ class BastionConnection:
                         f"has_otp_code={otp_code is not None}, "
                         f"has_menu_selection={menu_selection is not None}, timeout={timeout}")
             
-            channel = self.client.invoke_shell()
-            channel.settimeout(timeout)
+            if self._auth_channel:
+                channel = self._auth_channel
+                logger.info("复用认证通道")
+                output = ""
+                if channel.recv_ready():
+                    output = self._read_channel_output(channel, timeout=1)
+                if not output:
+                    time.sleep(0.3)
+                    output = self._read_channel_output(channel, timeout=2)
+            else:
+                channel = self.client.invoke_shell()
+                channel.settimeout(timeout)
+                self._auth_channel = channel
+                time.sleep(0.5)
+                output = self._read_channel_output(channel, timeout)
             
-            time.sleep(0.5)
-            output = self._read_channel_output(channel, timeout)
-            logger.info(f"二次认证-堡垒机初始输出(前200字符): {output[:200]}")
+            logger.info(f"二次认证-初始输出(前500字符): {output[:500]}")
             
-            if "密码" in output or "password" in output.lower() or "口令" in output:
+            if self._is_otp_prompt(output):
+                if not otp_code:
+                    channel.close()
+                    self._auth_channel = None
+                    raise Exception("需要OTP验证码但未提供")
+                
+                logger.info("检测到OTP/2nd Password提示，发送验证码")
+                channel.send(otp_code + "\n")
+                time.sleep(1.0)
+                output = self._read_channel_output(channel, timeout, max_read_time=15.0)
+                logger.info(f"二次认证-OTP后输出(前500字符): {output[:500]}")
+                
+                if self._is_otp_prompt(output):
+                    logger.warning("OTP验证失败，堡垒机再次要求输入")
+                    raise Exception("OTP_RETRY")
+                
+                if "错误" in output or "error" in output.lower() or "失败" in output or "denied" in output.lower():
+                    channel.close()
+                    self._auth_channel = None
+                    raise Exception("动态口令验证失败")
+            
+            elif "密码" in output or "password" in output.lower() or "口令" in output:
                 if secondary_password:
                     logger.info("检测到密码提示，发送二次密码")
                     channel.send(secondary_password + "\n")
                     time.sleep(0.5)
                     output = self._read_channel_output(channel, timeout)
-                    logger.info(f"二次认证-密码认证后输出(前200字符): {output[:200]}")
+                    logger.info(f"二次认证-密码认证后输出(前500字符): {output[:500]}")
+                    
+                    if self._is_otp_prompt(output):
+                        if otp_code:
+                            logger.info("密码认证后检测到OTP提示，发送验证码")
+                            channel.send(otp_code + "\n")
+                            time.sleep(1.0)
+                            output = self._read_channel_output(channel, timeout, max_read_time=15.0)
+                            logger.info(f"二次认证-密码+OTP后输出(前500字符): {output[:500]}")
+                            
+                            if self._is_otp_prompt(output):
+                                logger.warning("OTP验证失败，堡垒机再次要求输入")
+                                raise Exception("OTP_RETRY")
+                        else:
+                            channel.close()
+                            self._auth_channel = None
+                            raise Exception("需要OTP验证码但未提供")
                     
                     if "错误" in output or "error" in output.lower() or "失败" in output or "incorrect" in output.lower():
                         channel.close()
+                        self._auth_channel = None
                         raise Exception("二次认证失败，密码错误")
             
-            if "验证码" in output or "OTP" in output.upper() or "动态口令" in output or "令牌" in output:
-                if otp_code:
-                    logger.info("检测到OTP/动态口令提示，发送验证码")
-                    channel.send(otp_code + "\n")
-                    time.sleep(0.5)
-                    output = self._read_channel_output(channel, timeout)
-                    logger.info(f"二次认证-OTP认证后输出(前200字符): {output[:200]}")
-                    
-                    if "错误" in output or "error" in output.lower() or "失败" in output:
-                        channel.close()
-                        raise Exception("动态口令验证失败")
+            result = {
+                "authenticated": False,
+                "has_server_list": False,
+                "server_list": [],
+                "output": output
+            }
             
-            if menu_selection and ("菜单" in output or "menu" in output.lower() or "选择" in output or "请输入" in output):
-                logger.info(f"检测到菜单提示，发送选择: {menu_selection}")
-                channel.send(menu_selection + "\n")
-                time.sleep(0.5)
-                output = self._read_channel_output(channel, timeout)
-                logger.info(f"二次认证-菜单选择后输出(前200字符): {output[:200]}")
+            if "请选择" in output or "选择目标" in output or "Ctrl+F" in output:
+                logger.info("检测到服务器列表菜单，解析服务器列表")
+                servers = self._parse_server_list(output)
+                result["has_server_list"] = True
+                result["server_list"] = servers
+                result["authenticated"] = True
+                logger.info(f"解析到 {len(servers)} 台服务器")
+                
+                if menu_selection:
+                    logger.info(f"发送菜单选择: {menu_selection}")
+                    channel.send(menu_selection + "\n")
+                    time.sleep(1.0)
+                    output = self._read_channel_output(channel, timeout, max_read_time=15.0)
+                    result["output"] = output
+                    logger.info(f"菜单选择后输出(前500字符): {output[:500]}")
+                    result["has_server_list"] = False
+                    result["server_list"] = []
+            else:
+                auth_patterns = [
+                    r"欢迎",
+                    r"成功",
+                    r"[\$#>]\s*$",
+                    r"请选择",
+                    r"操作成功",
+                    r"已登录"
+                ]
+                
+                for pattern in auth_patterns:
+                    if re.search(pattern, output, re.IGNORECASE):
+                        result["authenticated"] = True
+                        break
+                
+                if not result["authenticated"]:
+                    result["authenticated"] = True
             
-            patterns = [
-                r"欢迎",
-                r"成功",
-                r"[\$#>]\s*$",
-                r"请选择",
-                r"操作成功",
-                r"已登录"
-            ]
-            
-            authenticated = False
-            for pattern in patterns:
-                if re.search(pattern, output, re.IGNORECASE):
-                    authenticated = True
-                    break
-            
-            if authenticated:
+            if result["authenticated"]:
                 self._update_status(ConnectionStatus.AUTHENTICATED, "认证成功")
                 logger.info("堡垒机二次认证成功")
             else:
                 self._update_status(ConnectionStatus.AUTHENTICATED, "认证流程完成")
                 logger.info("堡垒机认证流程完成")
             
-            channel.close()
-            return True
+            if not result["has_server_list"]:
+                if self._auth_channel:
+                    self._auth_channel.close()
+                    self._auth_channel = None
+            
+            return result
             
         except Exception as e:
+            if str(e) == "OTP_RETRY":
+                raise
             error_msg = f"处理二次认证失败: {e}"
             logger.error(error_msg)
             self._update_status(ConnectionStatus.FAILED, error_msg)
+            if self._auth_channel:
+                self._auth_channel.close()
+                self._auth_channel = None
             raise Exception(error_msg)
 
     def connect_to_host(self, host: str, username: str = None, password: str = None,
@@ -526,17 +644,28 @@ class BastionConnection:
             logger.error(f"获取主机IP失败: {e}")
             return []
 
-    def _read_channel_output(self, channel, timeout: float = 2.0) -> str:
+    def _read_channel_output(self, channel, timeout: float = 2.0, max_read_time: float = 10.0) -> str:
         output = ""
         start_time = time.time()
+        last_data_time = time.time()
         
-        while time.time() - start_time < timeout:
+        while True:
+            elapsed_total = time.time() - start_time
+            elapsed_since_data = time.time() - last_data_time
+            
+            if elapsed_total >= max_read_time:
+                logger.debug(f"_read_channel_output: 达到最大读取时间 {max_read_time}秒，停止读取，已读取 {len(output)} 字符")
+                break
+            
+            if elapsed_since_data >= timeout:
+                break
+            
             if channel.recv_ready():
                 try:
                     data = channel.recv(4096)
                     if data:
                         output += data.decode('utf-8', errors='ignore')
-                        start_time = time.time()
+                        last_data_time = time.time()
                 except Exception:
                     break
             else:
@@ -802,7 +931,7 @@ class BastionService:
                      auth_type: str = "password",
                      secondary_password: str = None,
                      otp_code: str = None,
-                     menu_selection: str = None) -> bool:
+                     menu_selection: str = None) -> Dict[str, Any]:
         connection = self._connections.get(connection_id)
         if not connection:
             raise ValueError(f"未找到连接: {connection_id}")

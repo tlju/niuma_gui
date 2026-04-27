@@ -3,9 +3,77 @@
 import sys
 import os
 import traceback
+import subprocess
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QMessageBox
+
+
+def setup_input_method():
+    """
+    设置Qt输入法环境变量，支持Linux下的中文输入
+    支持Fcitx、IBus、搜狗输入法等
+    """
+    if sys.platform != "linux":
+        return
+    
+    current_im = os.environ.get("QT_IM_MODULE", "")
+    if current_im:
+        return
+    
+    sogou_paths = [
+        "/opt/apps/com.sogou.sogoupinyin-uos",
+        "/opt/sogoupinyin",
+        "/usr/share/fcitx-sogoupinyin",
+    ]
+    has_sogou = any(os.path.exists(p) for p in sogou_paths)
+    
+    if has_sogou:
+        os.environ["QT_IM_MODULE"] = "fcitx"
+        os.environ["GTK_IM_MODULE"] = "fcitx"
+        os.environ["XMODIFIERS"] = "@im=fcitx"
+        return
+    
+    try:
+        result = subprocess.run(
+            ["pgrep", "-x", "fcitx"],
+            capture_output=True,
+            text=True,
+            timeout=2
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            os.environ["QT_IM_MODULE"] = "fcitx"
+            os.environ["GTK_IM_MODULE"] = "fcitx"
+            os.environ["XMODIFIERS"] = "@im=fcitx"
+            return
+    except Exception:
+        pass
+    
+    try:
+        result = subprocess.run(
+            ["pgrep", "-x", "ibus-daemon"],
+            capture_output=True,
+            text=True,
+            timeout=2
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            os.environ["QT_IM_MODULE"] = "ibus"
+            os.environ["GTK_IM_MODULE"] = "ibus"
+            os.environ["XMODIFIERS"] = "@im=ibus"
+            return
+    except Exception:
+        pass
+    
+    fcitx5_paths = [
+        "/usr/bin/fcitx5",
+        "/usr/bin/fcitx5-remote",
+    ]
+    if any(os.path.exists(p) for p in fcitx5_paths):
+        os.environ["QT_IM_MODULE"] = "fcitx"
+        os.environ["GTK_IM_MODULE"] = "fcitx"
+        os.environ["XMODIFIERS"] = "@im=fcitx"
+
+
 from gui.main_window import MainWindow
 from gui.login_dialog import LoginDialog
 from gui.style_manager import load_stylesheet, setup_app_fonts
@@ -27,43 +95,8 @@ def show_error_dialog(title: str, message: str):
 
 def main():
     try:
+        setup_input_method()
         setup_logger()
-
-        if sys.platform == "linux":
-            os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
-            os.environ.setdefault("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
-            
-            if "QT_IM_MODULE" not in os.environ:
-                im_module = os.environ.get("GTK_IM_MODULE", "") or os.environ.get("XMODIFIERS", "")
-                if "fcitx" in im_module.lower():
-                    os.environ["QT_IM_MODULE"] = "fcitx"
-                elif "ibus" in im_module.lower():
-                    os.environ["QT_IM_MODULE"] = "ibus"
-                elif os.path.exists("/usr/bin/fcitx") or os.path.exists("/usr/bin/fcitx5") or \
-                     os.path.exists("/usr/local/bin/fcitx") or os.path.exists("/usr/local/bin/fcitx5") or \
-                     os.path.exists("/usr/bin/sogou-qimpanel") or \
-                     os.path.exists("/opt/apps/com.sogou.sogoupinyin-uos"):
-                    os.environ["QT_IM_MODULE"] = "fcitx"
-                elif os.path.exists("/usr/bin/ibus-daemon") or os.path.exists("/usr/local/bin/ibus-daemon"):
-                    os.environ["QT_IM_MODULE"] = "ibus"
-            
-            sogou_plugin_paths = [
-                "/usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts",
-                "/usr/lib/aarch64-linux-gnu/qt5/plugins/platforminputcontexts",
-                "/usr/lib/arm-linux-gnueabihf/qt5/plugins/platforminputcontexts",
-                "/opt/sogou-pinyin/files/lib/qt5/plugins/platforminputcontexts",
-                "/opt/apps/com.sogou.sogou-pinyin/files/lib/qt5/plugins/platforminputcontexts",
-                "/opt/apps/com.sogou.sogoupinyin-uos/files/lib/qt5/plugins/platforminputcontexts",
-                "/usr/lib/qt5/plugins/platforminputcontexts",
-            ]
-            existing_plugin_paths = [p for p in sogou_plugin_paths if os.path.exists(p)]
-            if existing_plugin_paths:
-                current_path = os.environ.get("QT_PLUGIN_PATH", "")
-                new_paths = ":".join(existing_plugin_paths)
-                if current_path:
-                    os.environ["QT_PLUGIN_PATH"] = f"{new_paths}:{current_path}"
-                else:
-                    os.environ["QT_PLUGIN_PATH"] = new_paths
 
         QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
         QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)

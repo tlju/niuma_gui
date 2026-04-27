@@ -227,6 +227,8 @@ class MainWindow(QMainWindow):
         self.bastion_manager.connection_success.connect(self._on_bastion_connected)
         self.bastion_manager.connection_failed.connect(self._on_bastion_failed)
         self.bastion_manager.auth_required.connect(self._on_bastion_auth_required)
+        self.bastion_manager.otp_retry_required.connect(self._on_otp_retry_required)
+        self.bastion_manager.server_list_available.connect(self._on_server_list_available)
         self.bastion_manager.tunnel_created.connect(self._on_tunnel_created)
         self.bastion_manager.tunnel_closed.connect(self._on_tunnel_closed)
 
@@ -316,6 +318,30 @@ class MainWindow(QMainWindow):
     def _on_auth_cancelled(self):
         self.bastion_manager.disconnect()
         self.bastion_status_widget.set_status(ConnectionStatus.DISCONNECTED.value, "已取消")
+
+    def _on_otp_retry_required(self, retry_count: int):
+        if hasattr(self, '_auth_dialog') and self._auth_dialog is not None:
+            self._auth_dialog.deleteLater()
+        
+        auth_info = {"needs_otp": True, "retry_error": True}
+        self._auth_dialog = SecondaryAuthDialog(auth_info, retry_count, BastionManager.MAX_AUTH_RETRIES, self)
+        self._auth_dialog.auth_submitted.connect(self._on_auth_submitted)
+        self._auth_dialog.rejected.connect(self._on_auth_cancelled)
+        self._auth_dialog.show()
+
+    def _on_server_list_available(self, server_list: list, raw_output: str):
+        from gui.bastion_dialog import ServerSelectDialog
+        dialog = ServerSelectDialog(server_list, raw_output, self)
+        dialog.server_selected.connect(self._on_server_selected)
+        dialog.rejected.connect(self._on_server_select_cancelled)
+        dialog.show()
+    
+    def _on_server_selected(self, menu_selection: str):
+        self.bastion_manager.select_server(menu_selection)
+    
+    def _on_server_select_cancelled(self):
+        self.bastion_manager.disconnect()
+        self.bastion_status_widget.set_status(ConnectionStatus.DISCONNECTED.value, "已取消选择")
 
     def _on_tunnel_created(self, tunnel_info: dict):
         self.tunnel_status_widget.add_tunnel(tunnel_info)
