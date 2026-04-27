@@ -1,6 +1,6 @@
 # 运维辅助工具 - GUI 版本
 
-纯 Python GUI 版本，基于 PyQt6 实现，支持 x64/arm64 和 Windows/Linux。
+纯 Python GUI 版本，基于 PyQt5 实现，支持 x64/arm64 和 Windows/Linux。
 
 ## 功能特性
 
