@@ -334,7 +334,7 @@ class MainWindow(QMainWindow):
         dialog = ServerSelectDialog(server_list, raw_output, self)
         dialog.server_selected.connect(self._on_server_selected)
         dialog.rejected.connect(self._on_server_select_cancelled)
-        dialog.show()
+        dialog.exec()
     
     def _on_server_selected(self, menu_selection: str):
         self.bastion_manager.select_server(menu_selection)

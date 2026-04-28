@@ -6,7 +6,7 @@ from collections import defaultdict
 from core.logger import get_logger
 from core.node_types import (
     BaseNode, NodeStatus, NodeResult,
-    get_node_class, StartNode, EndNode, ConditionNode, ParallelNode, MergeNode, ScriptNode, CommandNode, MinioNode, BastionNode, LocalExecutionNode
+    get_node_class, StartNode, EndNode, ConditionNode, ParallelNode, MergeNode, ScriptNode, CommandNode, MinioNode, BastionNode, RemoteExecutionNode, LocalExecutionNode
 )
 
 logger = get_logger(__name__)
@@ -38,6 +38,8 @@ class WorkflowExecutor:
         self.bastion_manager = bastion_manager
         self.execution_environment = ExecutionEnvironment.LOCAL
         self.bastion_connected = False
+        self.current_target_host: Optional[str] = None
+        self.current_channel_id: Optional[int] = None
 
         self._build_graph(nodes, connections)
 
@@ -63,8 +65,8 @@ class WorkflowExecutor:
             
             if isinstance(node, (ScriptNode, CommandNode)):
                 node.set_services(self.dict_service, self.param_service)
-            elif isinstance(node, (MinioNode, BastionNode)):
-                node.set_services(db=self.db)
+            elif isinstance(node, (MinioNode, BastionNode, RemoteExecutionNode)):
+                node.set_services(db=self.db, bastion_manager=self.bastion_manager)
             
             self.nodes[node_id] = node
 
@@ -143,7 +145,7 @@ class WorkflowExecutor:
 
         node = self.nodes[node_id]
         
-        if isinstance(node, BastionNode):
+        if isinstance(node, (BastionNode, RemoteExecutionNode)):
             if not self._check_bastion_connection():
                 error_msg = "堡垒机连接未建立，工作流执行失败"
                 node.status = NodeStatus.FAILED
@@ -153,14 +155,13 @@ class WorkflowExecutor:
                 self._emit_log("ERROR", error_msg, node_id)
                 self.is_cancelled = True
                 return result
-            self.execution_environment = ExecutionEnvironment.REMOTE_BASTION
-            self.bastion_connected = True
-            self._emit_log("INFO", f"切换到远程堡垒机执行环境", node_id)
         
         if isinstance(node, LocalExecutionNode):
             self.execution_environment = ExecutionEnvironment.LOCAL
+            self.current_target_host = None
+            self.current_channel_id = None
             self._emit_log("INFO", f"切换到本地执行环境", node_id)
-        
+
         if self.execution_environment == ExecutionEnvironment.REMOTE_BASTION:
             if not self._check_bastion_connection():
                 error_msg = "堡垒机连接已断开，工作流执行失败"
@@ -175,7 +176,7 @@ class WorkflowExecutor:
         node.status = NodeStatus.RUNNING
         self._update_node_status(node_id, NodeStatus.RUNNING)
         
-        env_prefix = "[本地]" if self.execution_environment == ExecutionEnvironment.LOCAL else "[远程堡垒机]"
+        env_prefix = "[本地]" if self.execution_environment == ExecutionEnvironment.LOCAL else f"[远程:{self.current_target_host or '未知'}]"
         log_message = f"{env_prefix} 开始执行节点: {node.name}"
         if isinstance(node, CommandNode):
             command = node.config.get("command", "")
@@ -199,11 +200,25 @@ class WorkflowExecutor:
                     "data": pred_result.data,
                     "status": pred_result.status.value
                 }
+        
+        if self.execution_environment == ExecutionEnvironment.REMOTE_BASTION:
+            inputs["execution_environment"] = "remote"
+            inputs["target_host"] = self.current_target_host
+            inputs["channel_id"] = self.current_channel_id
+            inputs["bastion_manager"] = self.bastion_manager
 
         try:
             result = node.execute(inputs)
             node.status = result.status
             node.result = result
+            
+            if isinstance(node, (BastionNode, RemoteExecutionNode)) and result.status == NodeStatus.SUCCESS:
+                self.execution_environment = ExecutionEnvironment.REMOTE_BASTION
+                self.bastion_connected = True
+                if result.data:
+                    self.current_target_host = result.data.get("target_host")
+                    self.current_channel_id = result.data.get("channel_id")
+                self._emit_log("INFO", f"切换到远程执行环境，目标主机: {self.current_target_host}", node_id)
 
             self._update_node_status(node_id, result.status, result)
 

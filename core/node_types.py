@@ -195,28 +195,62 @@ class CommandNode(BaseNode):
 
         try:
             self.status = NodeStatus.RUNNING
-            result = subprocess.run(
-                command,
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                cwd=working_dir
-            )
-            if result.returncode == 0:
-                self.status = NodeStatus.SUCCESS
-                self.result = NodeResult(
-                    status=NodeStatus.SUCCESS,
-                    output=result.stdout,
-                    data={"return_code": result.returncode}
-                )
+            
+            if inputs.get("execution_environment") == "remote":
+                bastion_manager = inputs.get("bastion_manager")
+                if not bastion_manager:
+                    self.status = NodeStatus.FAILED
+                    self.result = NodeResult(
+                        status=NodeStatus.FAILED,
+                        error="远程执行环境但堡垒机管理器不可用"
+                    )
+                    return self.result
+                
+                try:
+                    exec_result = bastion_manager.execute_command(command, timeout)
+                    if exec_result.get("success"):
+                        self.status = NodeStatus.SUCCESS
+                        self.result = NodeResult(
+                            status=NodeStatus.SUCCESS,
+                            output=exec_result.get("output", ""),
+                            data={"return_code": 0, "target_host": inputs.get("target_host")}
+                        )
+                    else:
+                        self.status = NodeStatus.FAILED
+                        self.result = NodeResult(
+                            status=NodeStatus.FAILED,
+                            output=exec_result.get("output", ""),
+                            error=exec_result.get("error", "远程命令执行失败")
+                        )
+                except Exception as e:
+                    self.status = NodeStatus.FAILED
+                    self.result = NodeResult(
+                        status=NodeStatus.FAILED,
+                        error=f"远程命令执行异常: {str(e)}"
+                    )
             else:
-                self.status = NodeStatus.FAILED
-                self.result = NodeResult(
-                    status=NodeStatus.FAILED,
-                    output=result.stdout,
-                    error=result.stderr
+                result = subprocess.run(
+                    command,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                    cwd=working_dir
                 )
+                if result.returncode == 0:
+                    self.status = NodeStatus.SUCCESS
+                    self.result = NodeResult(
+                        status=NodeStatus.SUCCESS,
+                        output=result.stdout,
+                        data={"return_code": result.returncode}
+                    )
+                else:
+                    self.status = NodeStatus.FAILED
+                    self.result = NodeResult(
+                        status=NodeStatus.FAILED,
+                        output=result.stdout,
+                        error=result.stderr
+                    )
         except subprocess.TimeoutExpired:
             self.status = NodeStatus.FAILED
             self.result = NodeResult(
@@ -362,28 +396,70 @@ class ScriptNode(BaseNode):
 
         try:
             self.status = NodeStatus.RUNNING
-            result = subprocess.run(
-                command,
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                cwd=working_dir
-            )
-            if result.returncode == 0:
-                self.status = NodeStatus.SUCCESS
-                self.result = NodeResult(
-                    status=NodeStatus.SUCCESS,
-                    output=result.stdout,
-                    data={"return_code": result.returncode, "script_name": script_name, "script_language": script_language}
-                )
+            
+            if inputs.get("execution_environment") == "remote":
+                bastion_manager = inputs.get("bastion_manager")
+                if not bastion_manager:
+                    self.status = NodeStatus.FAILED
+                    self.result = NodeResult(
+                        status=NodeStatus.FAILED,
+                        error="远程执行环境但堡垒机管理器不可用"
+                    )
+                    return self.result
+                
+                if script_language != "bash":
+                    self.status = NodeStatus.FAILED
+                    self.result = NodeResult(
+                        status=NodeStatus.FAILED,
+                        error=f"远程执行仅支持Bash脚本，当前脚本语言: {script_language}"
+                    )
+                    return self.result
+                
+                try:
+                    exec_result = bastion_manager.execute_command(command, timeout)
+                    if exec_result.get("success"):
+                        self.status = NodeStatus.SUCCESS
+                        self.result = NodeResult(
+                            status=NodeStatus.SUCCESS,
+                            output=exec_result.get("output", ""),
+                            data={"return_code": 0, "script_name": script_name, "script_language": script_language, "target_host": inputs.get("target_host")}
+                        )
+                    else:
+                        self.status = NodeStatus.FAILED
+                        self.result = NodeResult(
+                            status=NodeStatus.FAILED,
+                            output=exec_result.get("output", ""),
+                            error=exec_result.get("error", "远程脚本执行失败")
+                        )
+                except Exception as e:
+                    self.status = NodeStatus.FAILED
+                    self.result = NodeResult(
+                        status=NodeStatus.FAILED,
+                        error=f"远程脚本执行异常: {str(e)}"
+                    )
             else:
-                self.status = NodeStatus.FAILED
-                self.result = NodeResult(
-                    status=NodeStatus.FAILED,
-                    output=result.stdout,
-                    error=result.stderr
+                result = subprocess.run(
+                    command,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                    cwd=working_dir
                 )
+                if result.returncode == 0:
+                    self.status = NodeStatus.SUCCESS
+                    self.result = NodeResult(
+                        status=NodeStatus.SUCCESS,
+                        output=result.stdout,
+                        data={"return_code": result.returncode, "script_name": script_name, "script_language": script_language}
+                    )
+                else:
+                    self.status = NodeStatus.FAILED
+                    self.result = NodeResult(
+                        status=NodeStatus.FAILED,
+                        output=result.stdout,
+                        error=result.stderr
+                    )
         except subprocess.TimeoutExpired:
             self.status = NodeStatus.FAILED
             self.result = NodeResult(
@@ -832,42 +908,37 @@ class MinioNode(BaseNode):
         return self.result
 
 
-class BastionNode(BaseNode):
-    node_type = "bastion"
-    category = "action"
-    display_name = "堡垒机连接"
-    description = "连接齐治堡垒机，支持二次认证、连接目标主机和通道保活"
+class RemoteExecutionNode(BaseNode):
+    node_type = "remote_execution"
+    category = "environment"
+    display_name = "远程执行"
+    description = "切换到远程执行环境，此节点之后的所有动作节点将在远程主机执行，直至遇到本机执行节点"
     input_ports = 1
     output_ports = 1
 
     def __init__(self, node_id: int, name: str, config: Dict[str, Any] = None):
         super().__init__(node_id, name, config)
         self.db = None
-        self._host_channel = None
+        self.bastion_manager = None
 
-    def set_services(self, db=None, **kwargs):
+    def set_services(self, db=None, bastion_manager=None, **kwargs):
         self.db = db
+        self.bastion_manager = bastion_manager
 
     def get_config_schema(self) -> Dict[str, Any]:
         return {
             "type": "object",
             "properties": {
-                "operation": {
-                    "type": "string",
-                    "title": "操作类型",
-                    "description": "选择要执行的堡垒机操作",
-                    "enum": ["connect_host", "disconnect", "execute", "get_ips", "status"],
-                    "enumNames": ["连接目标主机", "断开连接", "执行命令", "获取主机IP", "查询状态"],
-                    "default": "connect_host"
-                },
                 "target_host": {
                     "type": "string",
                     "title": "目标主机地址",
-                    "description": "从堡垒机已建立的连接中选择目标主机",
-                    "dynamicEnum": "connected_hosts"
+                    "description": "选择或输入目标主机IP地址。可从下拉菜单选择已连接的主机，或手动输入IP地址",
+                    "dynamicEnum": "connected_hosts",
+                    "allowManualInput": True,
+                    "placeholder": "选择或输入目标主机IP"
                 }
             },
-            "required": ["operation"]
+            "required": ["target_host"]
         }
 
     def _replace_variables(self, content: str, inputs: Dict[str, Any] = None) -> str:
@@ -919,12 +990,14 @@ class BastionNode(BaseNode):
             )
             return self.result
 
-        operation = self.config.get("operation")
-        if not operation:
+        target_host = self.config.get("target_host", "")
+        target_host = self._replace_variables(target_host, inputs)
+        
+        if not target_host:
             self.status = NodeStatus.FAILED
             self.result = NodeResult(
                 status=NodeStatus.FAILED,
-                error="未指定操作类型"
+                error="未指定目标主机地址"
             )
             return self.result
 
@@ -932,96 +1005,37 @@ class BastionNode(BaseNode):
             self.status = NodeStatus.RUNNING
             bastion_service = BastionService(db=self.db)
             
-            result_data = {}
-            output_msg = ""
-            
             connection_id = "default"
             
             status = bastion_service.get_connection_status(connection_id)
             if not status.get("authenticated"):
                 raise Exception("堡垒机未连接或未完成认证，请先在主界面连接堡垒机")
             
-            if operation == "connect_host":
-                target_host = self.config.get("target_host", "")
-                
-                if not target_host:
-                    raise ValueError("连接目标主机需要指定目标主机地址")
-                
-                channel = bastion_service.connect_to_host(
-                    connection_id=connection_id,
-                    host=target_host,
-                    username=None,
-                    password=None,
-                    timeout=30
-                )
-                
-                if channel:
-                    self._host_channel = channel
-                    output_msg = f"成功连接到目标主机: {target_host}"
-                    result_data = {
-                        "target_host": target_host,
-                        "channel_id": channel.channel_id,
-                        "connected": True
-                    }
-                else:
-                    raise Exception(f"连接目标主机 {target_host} 失败")
-                    
-            elif operation == "get_ips":
-                channel = self._host_channel or bastion_service.get_channel(connection_id)
-                if not channel:
-                    raise Exception("无法获取可用通道，请先连接目标主机")
-                
-                ips = bastion_service.get_host_ips(connection_id, channel, 30)
-                
-                if ips:
-                    output_msg = f"获取到 {len(ips)} 个IP地址: {', '.join(ips)}"
-                    result_data = {
-                        "ips": ips,
-                        "count": len(ips),
-                        "target_host": channel.target_host
-                    }
-                else:
-                    output_msg = "未获取到IP地址"
-                    result_data = {"ips": [], "count": 0}
-                    
-            elif operation == "disconnect":
-                bastion_service.disconnect(connection_id)
-                output_msg = f"堡垒机连接已断开: {connection_id}"
-                result_data = {"connection_id": connection_id}
-                
-            elif operation == "execute":
-                command = self.config.get("command", "")
-                
-                if not command:
-                    raise ValueError("执行命令操作需要指定命令内容")
-                
-                channel = self._host_channel or bastion_service.get_channel(connection_id)
-                if not channel:
-                    raise Exception("无法获取可用通道")
-                
-                exec_result = bastion_service.execute_command(connection_id, command, 30)
-                if exec_result["success"]:
-                    output_msg = f"命令执行成功:\n{exec_result['output']}"
-                    result_data = exec_result
-                    if self._host_channel:
-                        result_data["executed_on_host"] = self._host_channel.target_host
-                else:
-                    raise Exception(exec_result.get("error", "命令执行失败"))
-                    
-            elif operation == "status":
-                status = bastion_service.get_connection_status(connection_id)
-                output_msg = f"连接状态: {status}"
-                result_data = status
-                
-            else:
-                raise ValueError(f"不支持的操作类型: {operation}")
-            
-            self.status = NodeStatus.SUCCESS
-            self.result = NodeResult(
-                status=NodeStatus.SUCCESS,
-                output=output_msg,
-                data=result_data
+            channel = bastion_service.connect_to_host(
+                connection_id=connection_id,
+                host=target_host,
+                username=None,
+                password=None,
+                timeout=30
             )
+            
+            if channel:
+                output_msg = f"已切换到远程执行环境，目标主机: {target_host}"
+                result_data = {
+                    "target_host": target_host,
+                    "channel_id": channel.channel_id,
+                    "connected": True,
+                    "execution_environment": "remote"
+                }
+                
+                self.status = NodeStatus.SUCCESS
+                self.result = NodeResult(
+                    status=NodeStatus.SUCCESS,
+                    output=output_msg,
+                    data=result_data
+                )
+            else:
+                raise Exception(f"连接目标主机 {target_host} 失败")
             
         except ValueError as e:
             self.status = NodeStatus.FAILED
@@ -1033,10 +1047,20 @@ class BastionNode(BaseNode):
             self.status = NodeStatus.FAILED
             self.result = NodeResult(
                 status=NodeStatus.FAILED,
-                error=f"堡垒机操作失败: {str(e)}"
+                error=f"远程执行环境切换失败: {str(e)}"
             )
         
         return self.result
+
+
+class BastionNode(RemoteExecutionNode):
+    node_type = "bastion"
+    category = "environment"
+    display_name = "堡垒机连接"
+    description = "切换到远程执行环境（兼容旧版节点）"
+
+
+
 
 
 class LocalExecutionNode(BaseNode):
@@ -1067,7 +1091,7 @@ NODE_TYPES: Dict[str, type] = {
     "parallel": ParallelNode,
     "merge": MergeNode,
     "minio": MinioNode,
-    "bastion": BastionNode,
+    "remote_execution": RemoteExecutionNode,
     "local_execution": LocalExecutionNode,
 }
 

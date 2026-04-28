@@ -32,6 +32,7 @@ class WorkflowNodeItem(QGraphicsItem):
         "parallel": QColor("#00BCD4"),
         "merge": QColor("#795548"),
         "bastion": QColor("#E91E63"),
+        "remote_execution": QColor("#E91E63"),
         "local_execution": QColor("#009688"),
         "base": QColor("#607D8B")
     }

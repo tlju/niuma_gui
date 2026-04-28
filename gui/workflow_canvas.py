@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
     QFormLayout, QDialogButtonBox, QMessageBox, QSplitter,
     QListWidget, QListWidgetItem, QGroupBox, QCheckBox,
     QTableWidget, QTableWidgetItem, QHeaderView, QApplication,
-    QGraphicsItem, QShortcut
+    QGraphicsItem, QShortcut, QCompleter
 )
 from PyQt5.QtCore import Qt, QPointF, pyqtSignal, QRectF, QTimer
 from PyQt5.QtGui import (
@@ -17,12 +17,16 @@ from pyqtgraph import GraphicsLayoutWidget, PlotItem
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 import json
+import os
+import json as json_module
 
 from gui.workflow_items import WorkflowNodeItem, ConnectionItem, TempConnectionItem
 from core.node_types import get_all_node_types, NODE_TYPES
 from core.logger import get_logger
 
 logger = get_logger(__name__)
+
+HOST_HISTORY_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "host_history.json")
 
 
 class NodeConfigDialog(QDialog):
@@ -132,25 +136,7 @@ class NodeConfigDialog(QDialog):
                     if prop.get("description"):
                         widget.setToolTip(prop.get("description"))
                 elif prop.get("dynamicEnum") == "connected_hosts":
-                    widget = QComboBox()
-                    
-                    widget.addItem("请选择主机...", None)
-                    
-                    if self.bastion_manager:
-                        try:
-                            hosts = self.bastion_manager.get_service().get_all_connected_hosts()
-                            for host in hosts:
-                                widget.addItem(host, host)
-                        except Exception as e:
-                            logger.warning(f"获取已连接主机列表失败: {e}")
-                    
-                    if current_value is not None:
-                        index = widget.findData(current_value)
-                        if index >= 0:
-                            widget.setCurrentIndex(index)
-                    
-                    if prop.get("description"):
-                        widget.setToolTip(prop.get("description"))
+                    widget = self._create_host_selector(prop, current_value)
                 elif prop.get("type") == "integer":
                     widget = QSpinBox()
                     widget.setMaximum(999999)
@@ -176,6 +162,86 @@ class NodeConfigDialog(QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+    
+    def _create_host_selector(self, prop: dict, current_value: Any) -> QComboBox:
+        """创建主机选择下拉列表，支持堡垒机服务器列表和手动输入"""
+        widget = QComboBox()
+        widget.setEditable(True)
+        widget.setInsertPolicy(QComboBox.NoInsert)
+        
+        widget.addItem("请选择或输入主机IP...", None)
+        
+        bastion_connected = False
+        server_list = []
+        
+        if self.bastion_manager:
+            try:
+                status = self.bastion_manager.get_status()
+                bastion_connected = status.get("authenticated", False)
+                
+                if bastion_connected:
+                    server_list = self.bastion_manager.get_service().get_all_connected_hosts()
+                    
+                    if server_list:
+                        for host in server_list:
+                            widget.addItem(f"🖥 {host}", host)
+                    else:
+                        widget.addItem("📡 暂无已连接主机", None)
+            except Exception as e:
+                logger.warning(f"获取堡垒机状态失败: {e}")
+        
+        if not bastion_connected:
+            widget.addItem("⚠ 堡垒机未连接", None)
+        
+        history_hosts = self._load_host_history()
+        if history_hosts:
+            widget.insertSeparator(widget.count())
+            for host in history_hosts[:10]:
+                if host not in server_list:
+                    widget.addItem(f"🕐 {host}", host)
+        
+        completer = QCompleter([host for host in history_hosts[:10]], widget)
+        completer.setCaseSensitivity(Qt.CaseInsensitive)
+        completer.setFilterMode(Qt.MatchContains)
+        widget.setCompleter(completer)
+        
+        if current_value is not None:
+            index = widget.findData(current_value)
+            if index >= 0:
+                widget.setCurrentIndex(index)
+            else:
+                widget.setEditText(str(current_value))
+        
+        if prop.get("description"):
+            widget.setToolTip(prop.get("description"))
+        
+        return widget
+    
+    def _load_host_history(self) -> List[str]:
+        """加载主机历史记录"""
+        try:
+            if os.path.exists(HOST_HISTORY_FILE):
+                with open(HOST_HISTORY_FILE, 'r', encoding='utf-8') as f:
+                    return json_module.load(f)
+        except Exception as e:
+            logger.warning(f"加载主机历史记录失败: {e}")
+        return []
+    
+    def _save_host_history(self, host: str):
+        """保存主机到历史记录"""
+        if not host:
+            return
+        try:
+            os.makedirs(os.path.dirname(HOST_HISTORY_FILE), exist_ok=True)
+            history = self._load_host_history()
+            if host in history:
+                history.remove(host)
+            history.insert(0, host)
+            history = history[:20]
+            with open(HOST_HISTORY_FILE, 'w', encoding='utf-8') as f:
+                json_module.dump(history, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.warning(f"保存主机历史记录失败: {e}")
             
     def _on_script_selected(self):
         if "script_id" not in self.config_widgets:
@@ -223,7 +289,19 @@ class NodeConfigDialog(QDialog):
                     else:
                         config[key] = None
                 else:
-                    config[key] = widget.currentData()
+                    data = widget.currentData()
+                    if data is not None:
+                        config[key] = data
+                    elif widget.isEditable():
+                        text = widget.currentText().strip()
+                        if text and text != "请选择或输入主机IP..." and not text.startswith("⚠") and not text.startswith("📡"):
+                            config[key] = text
+                            if key == "target_host":
+                                self._save_host_history(text)
+                        else:
+                            config[key] = None
+                    else:
+                        config[key] = None
             elif isinstance(widget, QSpinBox):
                 config[key] = widget.value()
             elif isinstance(widget, QCheckBox):
