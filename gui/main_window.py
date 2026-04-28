@@ -291,6 +291,7 @@ class MainWindow(QMainWindow):
         self.bastion_status_widget.set_status(status, message)
 
     def _on_bastion_connected(self):
+        self._cleanup_auth_dialog()
         status = self.bastion_manager.get_status()
         self.bastion_status_widget.set_status(
             ConnectionStatus.AUTHENTICATED.value, 
@@ -304,13 +305,30 @@ class MainWindow(QMainWindow):
         logger.error(f"堡垒机连接失败: {error}")
 
     def _on_bastion_auth_required(self, auth_info: dict, retry_count: int):
-        if hasattr(self, '_auth_dialog') and self._auth_dialog is not None:
-            self._auth_dialog.deleteLater()
+        self._cleanup_auth_dialog()
         
         self._auth_dialog = SecondaryAuthDialog(auth_info, retry_count, BastionManager.MAX_AUTH_RETRIES, self)
         self._auth_dialog.auth_submitted.connect(self._on_auth_submitted)
         self._auth_dialog.rejected.connect(self._on_auth_cancelled)
+        self._auth_dialog.finished.connect(self._on_auth_dialog_finished)
         self._auth_dialog.show()
+    
+    def _cleanup_auth_dialog(self):
+        if hasattr(self, '_auth_dialog') and self._auth_dialog is not None:
+            try:
+                self._auth_dialog.auth_submitted.disconnect()
+                self._auth_dialog.rejected.disconnect()
+                self._auth_dialog.finished.disconnect()
+            except TypeError:
+                pass
+            self._auth_dialog.deleteLater()
+            self._auth_dialog = None
+    
+    def _on_auth_dialog_finished(self, result):
+        if result == QDialog.DialogCode.Accepted:
+            pass
+        else:
+            self._cleanup_auth_dialog()
     
     def _on_auth_submitted(self, otp_code: str):
         self.bastion_manager.submit_auth(otp_code=otp_code)
@@ -318,15 +336,16 @@ class MainWindow(QMainWindow):
     def _on_auth_cancelled(self):
         self.bastion_manager.disconnect()
         self.bastion_status_widget.set_status(ConnectionStatus.DISCONNECTED.value, "已取消")
+        self._cleanup_auth_dialog()
 
     def _on_otp_retry_required(self, retry_count: int):
-        if hasattr(self, '_auth_dialog') and self._auth_dialog is not None:
-            self._auth_dialog.deleteLater()
+        self._cleanup_auth_dialog()
         
         auth_info = {"needs_otp": True, "retry_error": True}
         self._auth_dialog = SecondaryAuthDialog(auth_info, retry_count, BastionManager.MAX_AUTH_RETRIES, self)
         self._auth_dialog.auth_submitted.connect(self._on_auth_submitted)
         self._auth_dialog.rejected.connect(self._on_auth_cancelled)
+        self._auth_dialog.finished.connect(self._on_auth_dialog_finished)
         self._auth_dialog.show()
 
     def _on_server_list_available(self, server_list: list, raw_output: str):

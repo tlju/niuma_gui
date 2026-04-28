@@ -117,8 +117,6 @@ class SecondaryAuthDialog(QDialog):
     def _on_text_changed(self, text: str):
         enabled = len(text) == 6
         self.ok_btn.setEnabled(enabled)
-        if enabled:
-            self.submit_auth()
     
     def submit_auth(self):
         otp_code = self.otp_input.text()

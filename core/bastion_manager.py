@@ -279,6 +279,7 @@ class BastionManager(QObject):
     def _on_auth_success(self):
         logger.info("BastionManager: 二次认证成功")
         self._auth_retry_count = 0
+        self._cleanup_auth_worker()
         self.connection_success.emit()
         self._start_status_monitor()
     
@@ -290,6 +291,7 @@ class BastionManager(QObject):
             self.auth_required.emit(self._auth_info, self._auth_retry_count)
         else:
             logger.error(f"BastionManager: 二次认证失败次数已达上限 ({self.MAX_AUTH_RETRIES}次): {error}")
+            self._cleanup_auth_worker()
             self.connection_failed.emit(f"动态口令验证失败次数已达上限，请稍后重试")
             self.bastion_service.disconnect("default")
             self._auth_retry_count = 0
@@ -301,13 +303,30 @@ class BastionManager(QObject):
             self.otp_retry_required.emit(self._auth_retry_count)
         else:
             logger.error(f"BastionManager: OTP重试次数已达上限 ({self.MAX_AUTH_RETRIES}次)")
+            self._cleanup_auth_worker()
             self.connection_failed.emit(f"动态口令验证失败次数已达上限，请稍后重试")
             self.bastion_service.disconnect("default")
             self._auth_retry_count = 0
     
     def _on_server_list_available(self, server_list: list, raw_output: str):
         logger.info(f"BastionManager: 服务器列表可用，共 {len(server_list)} 台")
+        self._cleanup_auth_worker()
         self.server_list_available.emit(server_list, raw_output)
+    
+    def _cleanup_auth_worker(self):
+        if self._auth_worker is not None:
+            try:
+                self._auth_worker.status_changed.disconnect()
+                self._auth_worker.auth_success.disconnect()
+                self._auth_worker.auth_failed.disconnect()
+                self._auth_worker.otp_retry_required.disconnect()
+                self._auth_worker.server_list_available.disconnect()
+            except TypeError:
+                pass
+            if self._auth_worker.isRunning():
+                self._auth_worker.wait(1000)
+            self._auth_worker.deleteLater()
+            self._auth_worker = None
     
     def _on_retry_attempt(self, attempt: int, max_retries: int, error: str):
         logger.info(f"堡垒机连接重试 {attempt}/{max_retries}: {error}")
