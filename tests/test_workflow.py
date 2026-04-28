@@ -842,3 +842,362 @@ class TestWorkflowImportExport:
         result = service._generate_unique_name("测试工作流")
         
         assert result == "测试工作流 (3)"
+
+
+class TestWorkflowConcurrency:
+    """工作流并发执行测试类"""
+    
+    def test_multiple_parallel_branches(self):
+        """测试多分支并行执行"""
+        nodes = [
+            {"id": 1, "node_type": "start", "name": "开始"},
+            {"id": 2, "node_type": "parallel", "name": "并行"},
+            {"id": 3, "node_type": "delay", "name": "分支1", "config": {"delay_seconds": 0}},
+            {"id": 4, "node_type": "delay", "name": "分支2", "config": {"delay_seconds": 0}},
+            {"id": 5, "node_type": "delay", "name": "分支3", "config": {"delay_seconds": 0}},
+            {"id": 6, "node_type": "merge", "name": "合并"},
+            {"id": 7, "node_type": "end", "name": "结束"}
+        ]
+        connections = [
+            {"source": 1, "target": 2},
+            {"source": 2, "target": 3},
+            {"source": 2, "target": 4},
+            {"source": 2, "target": 5},
+            {"source": 3, "target": 6},
+            {"source": 4, "target": 6},
+            {"source": 5, "target": 6},
+            {"source": 6, "target": 7}
+        ]
+
+        executor = WorkflowExecutor(1, nodes, connections)
+        result = executor.execute(max_workers=4)
+
+        assert result["status"] == "success"
+        assert result["success_count"] == 7
+        assert result["failed_count"] == 0
+
+    def test_parallel_execution_timing(self):
+        """测试并行执行时间正确性"""
+        import time
+        
+        nodes = [
+            {"id": 1, "node_type": "start", "name": "开始"},
+            {"id": 2, "node_type": "parallel", "name": "并行"},
+            {"id": 3, "node_type": "delay", "name": "延时1", "config": {"delay_seconds": 1}},
+            {"id": 4, "node_type": "delay", "name": "延时2", "config": {"delay_seconds": 1}},
+            {"id": 5, "node_type": "delay", "name": "延时3", "config": {"delay_seconds": 1}},
+            {"id": 6, "node_type": "merge", "name": "合并"},
+            {"id": 7, "node_type": "end", "name": "结束"}
+        ]
+        connections = [
+            {"source": 1, "target": 2},
+            {"source": 2, "target": 3},
+            {"source": 2, "target": 4},
+            {"source": 2, "target": 5},
+            {"source": 3, "target": 6},
+            {"source": 4, "target": 6},
+            {"source": 5, "target": 6},
+            {"source": 6, "target": 7}
+        ]
+
+        executor = WorkflowExecutor(1, nodes, connections)
+        
+        start_time = time.time()
+        result = executor.execute(max_workers=4)
+        end_time = time.time()
+        
+        execution_time = end_time - start_time
+        
+        assert result["status"] == "success"
+        assert execution_time < 3.0, f"并行执行时间应小于3秒，实际为{execution_time:.2f}秒"
+
+    def test_nested_parallel_execution(self):
+        """测试嵌套并行执行"""
+        nodes = [
+            {"id": 1, "node_type": "start", "name": "开始"},
+            {"id": 2, "node_type": "parallel", "name": "外层并行"},
+            {"id": 3, "node_type": "delay", "name": "分支A", "config": {"delay_seconds": 0}},
+            {"id": 4, "node_type": "parallel", "name": "内层并行"},
+            {"id": 5, "node_type": "delay", "name": "分支B-1", "config": {"delay_seconds": 0}},
+            {"id": 6, "node_type": "delay", "name": "分支B-2", "config": {"delay_seconds": 0}},
+            {"id": 7, "node_type": "merge", "name": "内层合并"},
+            {"id": 8, "node_type": "merge", "name": "外层合并"},
+            {"id": 9, "node_type": "end", "name": "结束"}
+        ]
+        connections = [
+            {"source": 1, "target": 2},
+            {"source": 2, "target": 3},
+            {"source": 2, "target": 4},
+            {"source": 4, "target": 5},
+            {"source": 4, "target": 6},
+            {"source": 5, "target": 7},
+            {"source": 6, "target": 7},
+            {"source": 3, "target": 8},
+            {"source": 7, "target": 8},
+            {"source": 8, "target": 9}
+        ]
+
+        executor = WorkflowExecutor(1, nodes, connections)
+        result = executor.execute(max_workers=4)
+
+        assert result["status"] == "success"
+        assert result["success_count"] == 9
+
+    def test_parallel_with_command_nodes(self):
+        """测试并行执行命令节点"""
+        nodes = [
+            {"id": 1, "node_type": "start", "name": "开始"},
+            {"id": 2, "node_type": "parallel", "name": "并行"},
+            {"id": 3, "node_type": "command", "name": "命令1", "config": {"command": "echo test1", "timeout": 10}},
+            {"id": 4, "node_type": "command", "name": "命令2", "config": {"command": "echo test2", "timeout": 10}},
+            {"id": 5, "node_type": "command", "name": "命令3", "config": {"command": "echo test3", "timeout": 10}},
+            {"id": 6, "node_type": "merge", "name": "合并"},
+            {"id": 7, "node_type": "end", "name": "结束"}
+        ]
+        connections = [
+            {"source": 1, "target": 2},
+            {"source": 2, "target": 3},
+            {"source": 2, "target": 4},
+            {"source": 2, "target": 5},
+            {"source": 3, "target": 6},
+            {"source": 4, "target": 6},
+            {"source": 5, "target": 6},
+            {"source": 6, "target": 7}
+        ]
+
+        executor = WorkflowExecutor(1, nodes, connections)
+        result = executor.execute(max_workers=4)
+
+        assert result["status"] == "success"
+        assert result["success_count"] == 7
+        
+        assert "test1" in result["node_results"][3]["output"]
+        assert "test2" in result["node_results"][4]["output"]
+        assert "test3" in result["node_results"][5]["output"]
+
+    def test_parallel_execution_with_failure(self):
+        """测试并行执行时部分节点失败"""
+        nodes = [
+            {"id": 1, "node_type": "start", "name": "开始"},
+            {"id": 2, "node_type": "parallel", "name": "并行"},
+            {"id": 3, "node_type": "command", "name": "成功命令", "config": {"command": "echo success", "timeout": 10}},
+            {"id": 4, "node_type": "command", "name": "失败命令", "config": {"command": "exit 1", "timeout": 10}},
+            {"id": 5, "node_type": "delay", "name": "延时节点", "config": {"delay_seconds": 0}},
+            {"id": 6, "node_type": "merge", "name": "合并"},
+            {"id": 7, "node_type": "end", "name": "结束"}
+        ]
+        connections = [
+            {"source": 1, "target": 2},
+            {"source": 2, "target": 3},
+            {"source": 2, "target": 4},
+            {"source": 2, "target": 5},
+            {"source": 3, "target": 6},
+            {"source": 4, "target": 6},
+            {"source": 5, "target": 6},
+            {"source": 6, "target": 7}
+        ]
+
+        executor = WorkflowExecutor(1, nodes, connections)
+        result = executor.execute(max_workers=4)
+
+        assert result["status"] == "failed"
+        assert result["failed_count"] == 1
+        assert result["success_count"] == 4
+
+    def test_max_workers_limit(self):
+        """测试最大工作线程数限制"""
+        nodes = [
+            {"id": 1, "node_type": "start", "name": "开始"},
+            {"id": 2, "node_type": "parallel", "name": "并行"},
+            {"id": 3, "node_type": "delay", "name": "延时1", "config": {"delay_seconds": 0}},
+            {"id": 4, "node_type": "delay", "name": "延时2", "config": {"delay_seconds": 0}},
+            {"id": 5, "node_type": "delay", "name": "延时3", "config": {"delay_seconds": 0}},
+            {"id": 6, "node_type": "delay", "name": "延时4", "config": {"delay_seconds": 0}},
+            {"id": 7, "node_type": "delay", "name": "延时5", "config": {"delay_seconds": 0}},
+            {"id": 8, "node_type": "merge", "name": "合并"},
+            {"id": 9, "node_type": "end", "name": "结束"}
+        ]
+        connections = [
+            {"source": 1, "target": 2},
+            {"source": 2, "target": 3},
+            {"source": 2, "target": 4},
+            {"source": 2, "target": 5},
+            {"source": 2, "target": 6},
+            {"source": 2, "target": 7},
+            {"source": 3, "target": 8},
+            {"source": 4, "target": 8},
+            {"source": 5, "target": 8},
+            {"source": 6, "target": 8},
+            {"source": 7, "target": 8},
+            {"source": 8, "target": 9}
+        ]
+
+        executor = WorkflowExecutor(1, nodes, connections)
+        result = executor.execute(max_workers=2)
+
+        assert result["status"] == "success"
+        assert result["success_count"] == 9
+
+    def test_parallel_execution_order(self):
+        """测试并行执行后节点执行顺序正确"""
+        execution_order = []
+        
+        nodes = [
+            {"id": 1, "node_type": "start", "name": "开始"},
+            {"id": 2, "node_type": "parallel", "name": "并行"},
+            {"id": 3, "node_type": "command", "name": "命令A", "config": {"command": "echo A", "timeout": 10}},
+            {"id": 4, "node_type": "command", "name": "命令B", "config": {"command": "echo B", "timeout": 10}},
+            {"id": 5, "node_type": "merge", "name": "合并"},
+            {"id": 6, "node_type": "command", "name": "命令C", "config": {"command": "echo C", "timeout": 10}},
+            {"id": 7, "node_type": "end", "name": "结束"}
+        ]
+        connections = [
+            {"source": 1, "target": 2},
+            {"source": 2, "target": 3},
+            {"source": 2, "target": 4},
+            {"source": 3, "target": 5},
+            {"source": 4, "target": 5},
+            {"source": 5, "target": 6},
+            {"source": 6, "target": 7}
+        ]
+
+        def track_execution(update):
+            node_id = update.get("node_id")
+            status = update.get("status")
+            if status == "running":
+                execution_order.append(node_id)
+
+        executor = WorkflowExecutor(1, nodes, connections)
+        executor.set_callbacks(track_execution, None)
+        result = executor.execute(max_workers=4)
+
+        assert result["status"] == "success"
+        
+        start_idx = execution_order.index(1)
+        parallel_idx = execution_order.index(2)
+        
+        assert start_idx < parallel_idx
+        
+        merge_idx = execution_order.index(5)
+        cmd_a_idx = execution_order.index(3)
+        cmd_b_idx = execution_order.index(4)
+        
+        assert parallel_idx < cmd_a_idx
+        assert parallel_idx < cmd_b_idx
+        assert cmd_a_idx < merge_idx
+        assert cmd_b_idx < merge_idx
+        
+        cmd_c_idx = execution_order.index(6)
+        end_idx = execution_order.index(7)
+        
+        assert merge_idx < cmd_c_idx
+        assert cmd_c_idx < end_idx
+
+    def test_concurrent_callback_handling(self):
+        """测试并发执行时回调正确处理"""
+        updates = []
+        logs = []
+        
+        nodes = [
+            {"id": 1, "node_type": "start", "name": "开始"},
+            {"id": 2, "node_type": "parallel", "name": "并行"},
+            {"id": 3, "node_type": "delay", "name": "延时1", "config": {"delay_seconds": 0}},
+            {"id": 4, "node_type": "delay", "name": "延时2", "config": {"delay_seconds": 0}},
+            {"id": 5, "node_type": "merge", "name": "合并"},
+            {"id": 6, "node_type": "end", "name": "结束"}
+        ]
+        connections = [
+            {"source": 1, "target": 2},
+            {"source": 2, "target": 3},
+            {"source": 2, "target": 4},
+            {"source": 3, "target": 5},
+            {"source": 4, "target": 5},
+            {"source": 5, "target": 6}
+        ]
+
+        def on_execution(update):
+            updates.append(update)
+
+        def on_log(log):
+            logs.append(log)
+
+        executor = WorkflowExecutor(1, nodes, connections)
+        executor.set_callbacks(on_execution, on_log)
+        result = executor.execute(max_workers=4)
+
+        assert result["status"] == "success"
+        
+        success_updates = [u for u in updates if u.get("status") == "success"]
+        assert len(success_updates) == 6
+        
+        assert len(logs) > 0
+
+    def test_parallel_with_script_nodes(self):
+        """测试并行执行脚本节点"""
+        nodes = [
+            {"id": 1, "node_type": "start", "name": "开始"},
+            {"id": 2, "node_type": "parallel", "name": "并行"},
+            {"id": 3, "node_type": "script", "name": "脚本1", "config": {
+                "script_content": "echo script1",
+                "script_language": "bash",
+                "timeout": 10
+            }},
+            {"id": 4, "node_type": "script", "name": "脚本2", "config": {
+                "script_content": "print('script2')",
+                "script_language": "python",
+                "timeout": 10
+            }},
+            {"id": 5, "node_type": "merge", "name": "合并"},
+            {"id": 6, "node_type": "end", "name": "结束"}
+        ]
+        connections = [
+            {"source": 1, "target": 2},
+            {"source": 2, "target": 3},
+            {"source": 2, "target": 4},
+            {"source": 3, "target": 5},
+            {"source": 4, "target": 5},
+            {"source": 5, "target": 6}
+        ]
+
+        executor = WorkflowExecutor(1, nodes, connections)
+        result = executor.execute(max_workers=4)
+
+        assert result["status"] == "success"
+        assert result["success_count"] == 6
+        
+        assert "script1" in result["node_results"][3]["output"]
+        assert "script2" in result["node_results"][4]["output"]
+
+    def test_complex_parallel_workflow(self):
+        """测试复杂并行工作流"""
+        nodes = [
+            {"id": 1, "node_type": "start", "name": "开始"},
+            {"id": 2, "node_type": "parallel", "name": "并行1"},
+            {"id": 3, "node_type": "command", "name": "命令A", "config": {"command": "echo A", "timeout": 10}},
+            {"id": 4, "node_type": "parallel", "name": "并行2"},
+            {"id": 5, "node_type": "command", "name": "命令B1", "config": {"command": "echo B1", "timeout": 10}},
+            {"id": 6, "node_type": "command", "name": "命令B2", "config": {"command": "echo B2", "timeout": 10}},
+            {"id": 7, "node_type": "merge", "name": "合并2"},
+            {"id": 8, "node_type": "merge", "name": "合并1"},
+            {"id": 9, "node_type": "command", "name": "命令C", "config": {"command": "echo C", "timeout": 10}},
+            {"id": 10, "node_type": "end", "name": "结束"}
+        ]
+        connections = [
+            {"source": 1, "target": 2},
+            {"source": 2, "target": 3},
+            {"source": 2, "target": 4},
+            {"source": 4, "target": 5},
+            {"source": 4, "target": 6},
+            {"source": 5, "target": 7},
+            {"source": 6, "target": 7},
+            {"source": 3, "target": 8},
+            {"source": 7, "target": 8},
+            {"source": 8, "target": 9},
+            {"source": 9, "target": 10}
+        ]
+
+        executor = WorkflowExecutor(1, nodes, connections)
+        result = executor.execute(max_workers=4)
+
+        assert result["status"] == "success"
+        assert result["success_count"] == 10

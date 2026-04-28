@@ -1,10 +1,10 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 from models.server_asset import ServerAsset
-from models.audit_log import AuditLog
 from models.data_dict_item import DataDictItem
 from services.crypto import CryptoManager
 from services.dict_service import DictService
+from services.audit_mixin import AuditMixin
 from typing import List, Optional, Dict, Any, Tuple
 from core.config import settings
 from core.logger import get_logger
@@ -15,7 +15,8 @@ from datetime import datetime
 
 logger = get_logger(__name__)
 
-class AssetService:
+
+class AssetService(AuditMixin):
     def __init__(self, db: Session, dict_service: Optional[DictService] = None):
         self.db = db
         self.crypto = CryptoManager(settings.CRYPTO_KEY)
@@ -60,17 +61,13 @@ class AssetService:
         self.db.commit()
         self.db.refresh(asset)
 
-        if user_id:
-            audit = AuditLog(
-                user_id=user_id,
-                action_type="create",
-                resource_type="asset",
-                resource_id=asset.id,
-                details=f"创建资产: {unit_name} - {system_name} ({ip or ipv6})",
-                created_at=get_local_now()
-            )
-            self.db.add(audit)
-            self.db.commit()
+        self.log_audit(
+            user_id=user_id,
+            action_type="create",
+            resource_type="asset",
+            resource_id=asset.id,
+            details=f"创建资产: {unit_name} - {system_name} ({ip or ipv6})"
+        )
 
         return asset.id
 
@@ -129,17 +126,13 @@ class AssetService:
 
         self.db.commit()
 
-        if user_id:
-            audit = AuditLog(
-                user_id=user_id,
-                action_type="update",
-                resource_type="asset",
-                resource_id=asset_id,
-                details=f"更新资产: {asset.unit_name} - {asset.system_name} ({asset.ip or asset.ipv6})",
-                created_at=get_local_now()
-            )
-            self.db.add(audit)
-            self.db.commit()
+        self.log_audit(
+            user_id=user_id,
+            action_type="update",
+            resource_type="asset",
+            resource_id=asset_id,
+            details=f"更新资产: {asset.unit_name} - {asset.system_name} ({asset.ip or asset.ipv6})"
+        )
 
         return True
 
@@ -148,15 +141,13 @@ class AssetService:
         if not asset:
             return False
 
-        audit = AuditLog(
+        self.log_audit(
             user_id=user_id,
             action_type="delete",
             resource_type="asset",
             resource_id=asset_id,
-            details=f"删除资产: {asset.unit_name} - {asset.system_name} ({asset.ip or asset.ipv6})",
-            created_at=get_local_now()
+            details=f"删除资产: {asset.unit_name} - {asset.system_name} ({asset.ip or asset.ipv6})"
         )
-        self.db.add(audit)
 
         self.db.delete(asset)
         self.db.commit()

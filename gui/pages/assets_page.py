@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont
-from core.workers import AssetLoadWorker
+from core.workers import AssetLoadWorker, AssetExportWorker, AssetImportWorker
 from core.logger import get_logger
 from gui.icons import icons
 from gui.style_manager import load_combined_stylesheet
@@ -25,6 +25,8 @@ class AssetsPage(QWidget):
         self.dict_service = dict_service
         self.bastion_manager = bastion_manager
         self.loading_worker = None
+        self.export_worker = None
+        self.import_worker = None
         self.all_assets = []
         self.filtered_assets = []
         self.dict_cache = {}
@@ -356,74 +358,126 @@ class AssetsPage(QWidget):
         dialog = ExportDialog(self, len(self.all_assets))
         if dialog.exec() == QDialog.DialogCode.Accepted:
             options = dialog.get_options()
-            try:
-                file_path, _ = QFileDialog.getSaveFileName(
-                    self,
-                    "导出资产",
-                    f"资产列表_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                    "Excel 文件 (*.xlsx)"
-                )
+            file_path, _ = QFileDialog.getSaveFileName(
+                self,
+                "导出资产",
+                f"资产列表_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                "Excel 文件 (*.xlsx)"
+            )
+            
+            if file_path:
+                if self.export_worker and self.export_worker.isRunning():
+                    logger.warning("资产导出任务正在进行中，跳过")
+                    return
                 
-                if file_path:
-                    asset_ids = None if options["export_all"] else [
-                        self.filtered_assets[i].id for i in range(self.table.rowCount())
-                    ]
-                    
-                    file_data = self.asset_service.export_assets(
-                        asset_ids=asset_ids,
-                        include_password=options["include_password"]
-                    )
-                    
-                    with open(file_path, 'wb') as f:
-                        f.write(file_data)
-                    
-                    QMessageBox.information(self, "成功", f"成功导出 {len(self.all_assets) if options['export_all'] else self.table.rowCount()} 个资产")
-                    logger.info(f"资产导出成功: {file_path}")
-                    
-            except Exception as e:
-                logger.error(f"导出资产失败: {e}")
-                QMessageBox.critical(self, "错误", f"导出资产失败:\n{e}")
+                self._export_file_path = file_path
+                self._export_options = options
+                
+                self.export_btn.setEnabled(False)
+                self.export_btn.setText("导出中...")
+                
+                asset_ids = None if options["export_all"] else [
+                    self.filtered_assets[i].id for i in range(self.table.rowCount())
+                ]
+                
+                self.export_worker = AssetExportWorker(
+                    self.asset_service,
+                    asset_ids=asset_ids,
+                    include_password=options["include_password"]
+                )
+                self.export_worker.finished.connect(self._on_export_finished)
+                self.export_worker.error.connect(self._on_export_error)
+                self.export_worker.start()
+                logger.debug("开始异步导出资产")
+
+    def _on_export_finished(self, file_data):
+        self.export_btn.setEnabled(True)
+        self.export_btn.setText("导出")
+        
+        try:
+            with open(self._export_file_path, 'wb') as f:
+                f.write(file_data)
+            
+            count = len(self.all_assets) if self._export_options['export_all'] else self.table.rowCount()
+            QMessageBox.information(self, "成功", f"成功导出 {count} 个资产")
+            logger.info(f"资产导出成功: {self._export_file_path}")
+        except Exception as e:
+            logger.error(f"写入导出文件失败: {e}")
+            QMessageBox.critical(self, "错误", f"写入导出文件失败:\n{e}")
+
+    def _on_export_error(self, error_msg):
+        self.export_btn.setEnabled(True)
+        self.export_btn.setText("导出")
+        logger.error(f"导出资产失败: {error_msg}")
+        QMessageBox.critical(self, "错误", f"导出资产失败:\n{error_msg}")
 
     def import_assets(self):
         dialog = ImportDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             options = dialog.get_options()
-            try:
-                file_path, _ = QFileDialog.getOpenFileName(
-                    self,
-                    "导入资产",
-                    "",
-                    "Excel 文件 (*.xlsx *.xls)"
-                )
+            file_path, _ = QFileDialog.getOpenFileName(
+                self,
+                "导入资产",
+                "",
+                "Excel 文件 (*.xlsx *.xls)"
+            )
+            
+            if file_path:
+                if self.import_worker and self.import_worker.isRunning():
+                    logger.warning("资产导入任务正在进行中，跳过")
+                    return
                 
-                if file_path:
+                self._import_options = options
+                
+                self.import_btn.setEnabled(False)
+                self.import_btn.setText("导入中...")
+                
+                try:
                     with open(file_path, 'rb') as f:
                         file_data = f.read()
                     
-                    success_count, fail_count, errors = self.asset_service.import_assets(
+                    self.import_worker = AssetImportWorker(
+                        self.asset_service,
                         file_data=file_data,
                         update_existing=options["update_existing"],
                         skip_errors=options["skip_errors"]
                     )
-                    
-                    self.load_assets()
-                    
-                    result_msg = f"导入完成!\n成功: {success_count} 个\n失败: {fail_count} 个"
-                    if errors:
-                        result_msg += f"\n\n错误详情:\n" + "\n".join(errors[:10])
-                        if len(errors) > 10:
-                            result_msg += f"\n... 还有 {len(errors) - 10} 个错误"
-                    
-                    if fail_count > 0:
-                        QMessageBox.warning(self, "导入完成", result_msg)
-                    else:
-                        QMessageBox.information(self, "导入成功", result_msg)
-                    
-                    logger.info(f"资产导入完成: 成功 {success_count}, 失败 {fail_count}")
-                    
-            except Exception as e:
-                logger.error(f"导入资产失败: {e}")
-                QMessageBox.critical(self, "错误", f"导入资产失败:\n{e}")
+                    self.import_worker.finished.connect(self._on_import_finished)
+                    self.import_worker.error.connect(self._on_import_error)
+                    self.import_worker.start()
+                    logger.debug("开始异步导入资产")
+                except Exception as e:
+                    self.import_btn.setEnabled(True)
+                    self.import_btn.setText("导入")
+                    logger.error(f"读取导入文件失败: {e}")
+                    QMessageBox.critical(self, "错误", f"读取导入文件失败:\n{e}")
+
+    def _on_import_finished(self, result):
+        self.import_btn.setEnabled(True)
+        self.import_btn.setText("导入")
+        
+        success_count, fail_count, errors = result
+        
+        self.load_assets()
+        
+        result_msg = f"导入完成!\n成功: {success_count} 个\n失败: {fail_count} 个"
+        if errors:
+            result_msg += f"\n\n错误详情:\n" + "\n".join(errors[:10])
+            if len(errors) > 10:
+                result_msg += f"\n... 还有 {len(errors) - 10} 个错误"
+        
+        if fail_count > 0:
+            QMessageBox.warning(self, "导入完成", result_msg)
+        else:
+            QMessageBox.information(self, "导入成功", result_msg)
+        
+        logger.info(f"资产导入完成: 成功 {success_count}, 失败 {fail_count}")
+
+    def _on_import_error(self, error_msg):
+        self.import_btn.setEnabled(True)
+        self.import_btn.setText("导入")
+        logger.error(f"导入资产失败: {error_msg}")
+        QMessageBox.critical(self, "错误", f"导入资产失败:\n{error_msg}")
 
 
 class AssetDialog(QDialog):

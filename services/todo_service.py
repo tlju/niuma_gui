@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from models.todo import Todo, TodoStatus, RecurrenceType
-from models.audit_log import AuditLog
+from services.audit_mixin import AuditMixin
 from typing import List, Optional
 from datetime import datetime, timedelta
 from core.logger import get_logger
@@ -9,7 +9,7 @@ from core.utils import get_local_now
 logger = get_logger(__name__)
 
 
-class TodoService:
+class TodoService(AuditMixin):
     def __init__(self, db: Session):
         self.db = db
 
@@ -33,17 +33,13 @@ class TodoService:
         self.db.refresh(todo)
         logger.info(f"创建待办事项: {title}")
 
-        if created_by:
-            audit = AuditLog(
-                user_id=created_by,
-                action_type="create",
-                resource_type="todo",
-                resource_id=todo.id,
-                details=f"创建待办: {title}",
-                created_at=get_local_now()
-            )
-            self.db.add(audit)
-            self.db.commit()
+        self.log_create(
+            user_id=created_by,
+            resource_type="todo",
+            resource_id=todo.id,
+            resource_name=title,
+            details=f"创建待办: {title}"
+        )
 
         return todo
 
@@ -79,33 +75,26 @@ class TodoService:
         self.db.refresh(todo)
         logger.info(f"更新待办事项: {todo.title}")
 
-        if user_id:
-            audit = AuditLog(
-                user_id=user_id,
-                action_type="update",
-                resource_type="todo",
-                resource_id=todo_id,
-                details=f"更新待办: {todo.title}",
-                created_at=get_local_now()
-            )
-            self.db.add(audit)
-            self.db.commit()
+        self.log_update(
+            user_id=user_id,
+            resource_type="todo",
+            resource_id=todo_id,
+            resource_name=todo.title,
+            details=f"更新待办: {todo.title}"
+        )
 
         return todo
 
     def delete_todo(self, todo_id: int, user_id: Optional[int] = None) -> bool:
         todo = self.get_todo(todo_id)
         if todo:
-            if user_id:
-                audit = AuditLog(
-                    user_id=user_id,
-                    action_type="delete",
-                    resource_type="todo",
-                    resource_id=todo_id,
-                    details=f"删除待办: {todo.title}",
-                    created_at=get_local_now()
-                )
-                self.db.add(audit)
+            self.log_delete(
+                user_id=user_id,
+                resource_type="todo",
+                resource_id=todo_id,
+                resource_name=todo.title,
+                details=f"删除待办: {todo.title}"
+            )
             self.db.delete(todo)
             self.db.commit()
             logger.info(f"删除待办事项: {todo.title}")
@@ -123,17 +112,13 @@ class TodoService:
         self.db.refresh(todo)
         logger.info(f"完成待办事项: {todo.title}")
 
-        if user_id:
-            audit = AuditLog(
-                user_id=user_id,
-                action_type="update",
-                resource_type="todo",
-                resource_id=todo_id,
-                details=f"完成待办: {todo.title}",
-                created_at=get_local_now()
-            )
-            self.db.add(audit)
-            self.db.commit()
+        self.log_audit(
+            user_id=user_id,
+            action_type="update",
+            resource_type="todo",
+            resource_id=todo_id,
+            details=f"完成待办: {todo.title}"
+        )
         
         if todo.recurrence_type and todo.recurrence_type != RecurrenceType.NONE:
             self._create_next_recurrence(todo)

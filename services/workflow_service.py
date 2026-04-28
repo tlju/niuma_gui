@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from models.workflow import Workflow, WorkflowNode, WorkflowExecution, WorkflowNodeExecution
-from models.audit_log import AuditLog
+from services.audit_mixin import AuditMixin
 from core.logger import get_logger
 from core.workflow_engine import WorkflowExecutor
 from core.node_types import NodeStatus
@@ -14,7 +14,7 @@ from core.database import SessionLocal
 logger = get_logger(__name__)
 
 
-class WorkflowService:
+class WorkflowService(AuditMixin):
     def __init__(self, db: Session, script_service=None, dict_service=None, param_service=None, bastion_manager=None):
         self.db = db
         self.script_service = script_service
@@ -43,17 +43,12 @@ class WorkflowService:
         self.db.refresh(workflow)
         logger.info(f"创建工作流: {name}, ID: {workflow.id}")
 
-        if user_id:
-            audit = AuditLog(
-                user_id=user_id,
-                action_type="create",
-                resource_type="workflow",
-                resource_id=workflow.id,
-                details=f"创建工作流: {name}",
-                created_at=get_local_now()
-            )
-            self.db.add(audit)
-            self.db.commit()
+        self.log_create(
+            user_id=user_id,
+            resource_type="workflow",
+            resource_id=workflow.id,
+            resource_name=name
+        )
 
         return workflow
 
@@ -71,17 +66,12 @@ class WorkflowService:
         self.db.refresh(workflow)
         logger.info(f"更新工作流: {workflow.name}, ID: {workflow_id}")
 
-        if user_id:
-            audit = AuditLog(
-                user_id=user_id,
-                action_type="update",
-                resource_type="workflow",
-                resource_id=workflow_id,
-                details=f"更新工作流: {workflow.name}",
-                created_at=get_local_now()
-            )
-            self.db.add(audit)
-            self.db.commit()
+        self.log_update(
+            user_id=user_id,
+            resource_type="workflow",
+            resource_id=workflow_id,
+            resource_name=workflow.name
+        )
 
         return workflow
 
@@ -90,16 +80,12 @@ class WorkflowService:
         if not workflow:
             return False
 
-        if user_id:
-            audit = AuditLog(
-                user_id=user_id,
-                action_type="delete",
-                resource_type="workflow",
-                resource_id=workflow_id,
-                details=f"删除工作流: {workflow.name}",
-                created_at=get_local_now()
-            )
-            self.db.add(audit)
+        self.log_delete(
+            user_id=user_id,
+            resource_type="workflow",
+            resource_id=workflow_id,
+            resource_name=workflow.name
+        )
 
         workflow.is_active = False
         self.db.commit()
@@ -133,17 +119,13 @@ class WorkflowService:
         self.db.refresh(workflow)
         logger.info(f"保存工作流图形: {workflow.name}, 节点数: {len(nodes)}")
 
-        if user_id:
-            audit = AuditLog(
-                user_id=user_id,
-                action_type="update",
-                resource_type="workflow",
-                resource_id=workflow_id,
-                details=f"保存工作流图形: {workflow.name}",
-                created_at=get_local_now()
-            )
-            self.db.add(audit)
-            self.db.commit()
+        self.log_audit(
+            user_id=user_id,
+            action_type="update",
+            resource_type="workflow",
+            resource_id=workflow_id,
+            details=f"保存工作流图形: {workflow.name}"
+        )
 
         return workflow
 
@@ -213,16 +195,12 @@ class WorkflowService:
         if not execution:
             return False
 
-        if user_id:
-            audit = AuditLog(
-                user_id=user_id,
-                action_type="delete",
-                resource_type="workflow_execution",
-                resource_id=execution_id,
-                details=f"删除工作流执行记录: #{execution_id}",
-                created_at=get_local_now()
-            )
-            self.db.add(audit)
+        self.log_delete(
+            user_id=user_id,
+            resource_type="workflow_execution",
+            resource_id=execution_id,
+            details=f"删除工作流执行记录: #{execution_id}"
+        )
 
         self.db.delete(execution)
         self.db.commit()
@@ -268,17 +246,13 @@ class WorkflowService:
             graph_data=graph_data
         )
 
-        if user_id:
-            audit = AuditLog(
-                user_id=user_id,
-                action_type="import",
-                resource_type="workflow",
-                resource_id=workflow.id,
-                details=f"导入工作流: {name}",
-                created_at=get_local_now()
-            )
-            self.db.add(audit)
-            self.db.commit()
+        self.log_audit(
+            user_id=user_id,
+            action_type="import",
+            resource_type="workflow",
+            resource_id=workflow.id,
+            details=f"导入工作流: {name}"
+        )
 
         logger.info(f"导入工作流: {name}, ID: {workflow.id}")
         return workflow
@@ -315,17 +289,12 @@ class WorkflowService:
 
         execution = self.create_execution(workflow_id)
 
-        if user_id:
-            audit = AuditLog(
-                user_id=user_id,
-                action_type="execute",
-                resource_type="workflow",
-                resource_id=workflow_id,
-                details=f"执行工作流: {workflow.name}",
-                created_at=get_local_now()
-            )
-            self.db.add(audit)
-            self.db.commit()
+        self.log_execute(
+            user_id=user_id,
+            resource_type="workflow",
+            resource_id=workflow_id,
+            resource_name=workflow.name
+        )
 
         executor = WorkflowExecutor(workflow_id, nodes, connections, self.script_service, 
                                     self.dict_service, self.param_service, self.db, self.bastion_manager)

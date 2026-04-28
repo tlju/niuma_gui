@@ -1,13 +1,14 @@
 from sqlalchemy.orm import Session
 from models.script import Script
-from models.audit_log import AuditLog
+from services.audit_mixin import AuditMixin
 from typing import List, Optional
 from core.logger import get_logger
 from core.utils import get_local_now
 
 logger = get_logger(__name__)
 
-class ScriptService:
+
+class ScriptService(AuditMixin):
     def __init__(self, db: Session):
         self.db = db
 
@@ -34,17 +35,12 @@ class ScriptService:
         self.db.refresh(script)
         logger.info(f"创建脚本: {name}, ID: {script.id}")
 
-        if created_by:
-            audit = AuditLog(
-                user_id=created_by,
-                action_type="create",
-                resource_type="script",
-                resource_id=script.id,
-                details=f"创建脚本: {name}",
-                created_at=get_local_now()
-            )
-            self.db.add(audit)
-            self.db.commit()
+        self.log_create(
+            user_id=created_by,
+            resource_type="script",
+            resource_id=script.id,
+            resource_name=name
+        )
 
         return script.id
 
@@ -80,17 +76,12 @@ class ScriptService:
         self.db.commit()
         logger.info(f"更新脚本: {script.name}, ID: {script_id}")
 
-        if updated_by:
-            audit = AuditLog(
-                user_id=updated_by,
-                action_type="update",
-                resource_type="script",
-                resource_id=script_id,
-                details=f"更新脚本: {script.name}",
-                created_at=get_local_now()
-            )
-            self.db.add(audit)
-            self.db.commit()
+        self.log_update(
+            user_id=updated_by,
+            resource_type="script",
+            resource_id=script_id,
+            resource_name=script.name
+        )
 
         return True
 
@@ -101,15 +92,13 @@ class ScriptService:
             return False
 
         script_name = script.name
-        audit = AuditLog(
+        
+        self.log_delete(
             user_id=user_id,
-            action_type="delete",
             resource_type="script",
             resource_id=script_id,
-            details=f"删除脚本: {script.name}",
-            created_at=get_local_now()
+            resource_name=script_name
         )
-        self.db.add(audit)
 
         self.db.delete(script)
         self.db.commit()

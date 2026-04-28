@@ -1,14 +1,14 @@
 from sqlalchemy.orm import Session
 from models.user import User, UserStatus
-from models.audit_log import AuditLog
 from services.crypto import verify_password
+from services.audit_mixin import AuditMixin
 from typing import Optional
 from core.logger import get_logger
-from core.utils import get_local_now
 
 logger = get_logger(__name__)
 
-class AuthService:
+
+class AuthService(AuditMixin):
     def __init__(self, db: Session):
         self.db = db
 
@@ -26,12 +26,12 @@ class AuthService:
             logger.warning(f"登录失败: 用户状态异常 - {username}, 状态: {user.status}")
             return None
 
-        self._log_audit(user.id, "login", "user", user.id, f"用户登录: {username}")
+        self.log_login(user.id, username)
         logger.info(f"用户登录成功: {username}")
         return user
 
     def logout(self, user_id: int, username: str = None):
-        self._log_audit(user_id, "logout", "user", user_id, f"用户登出: {username or str(user_id)}")
+        self.log_logout(user_id, username)
         logger.info(f"用户登出: {username or str(user_id)}")
 
     def get_user_by_username(self, username: str) -> Optional[User]:
@@ -39,22 +39,3 @@ class AuthService:
 
     def get_user_by_id(self, user_id: int) -> Optional[User]:
         return self.db.query(User).filter(User.id == user_id).first()
-
-    def _log_audit(
-        self,
-        user_id: int,
-        action: str,
-        resource_type: str,
-        resource_id: int,
-        details: Optional[str] = None
-    ):
-        audit = AuditLog(
-            user_id=user_id,
-            action_type=action,
-            resource_type=resource_type,
-            resource_id=resource_id,
-            details=details,
-            created_at=get_local_now()
-        )
-        self.db.add(audit)
-        self.db.commit()
