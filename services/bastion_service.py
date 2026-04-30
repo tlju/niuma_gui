@@ -20,120 +20,6 @@ class ConnectionStatus(Enum):
     FAILED = "failed"
 
 
-class BastionTunnel:
-    MAX_TUNNELS = 3
-
-    def __init__(self, transport: paramiko.Transport, target_host: str, target_port: int, local_port: int, tunnel_id: int):
-        self.transport = transport
-        self.target_host = target_host
-        self.target_port = target_port
-        self.local_port = local_port
-        self.tunnel_id = tunnel_id
-        self.is_active = True
-        self._server_socket = None
-        self._listen_thread = None
-        self._forward_threads = []
-        self._lock = threading.Lock()
-        self._running = False
-
-    def start(self):
-        import socket
-        try:
-            self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self._server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self._server_socket.bind(('127.0.0.1', self.local_port))
-            self._server_socket.listen(5)
-            self._server_socket.settimeout(1.0)
-            self._running = True
-
-            self._listen_thread = threading.Thread(target=self._listen_loop, daemon=True)
-            self._listen_thread.start()
-            logger.info(f"隧道 {self.tunnel_id} 已启动: 127.0.0.1:{self.local_port} -> {self.target_host}:{self.target_port}")
-        except Exception as e:
-            self.is_active = False
-            logger.error(f"隧道 {self.tunnel_id} 启动失败: {e}")
-            raise
-
-    def _listen_loop(self):
-        import socket
-        while self._running:
-            try:
-                client_sock, _ = self._server_socket.accept()
-                t = threading.Thread(target=self._forward, args=(client_sock,), daemon=True)
-                t.start()
-                self._forward_threads.append(t)
-            except socket.timeout:
-                continue
-            except Exception as e:
-                if self._running:
-                    logger.error(f"隧道 {self.tunnel_id} 接受连接失败: {e}")
-                break
-
-    def _forward(self, client_sock):
-        import socket
-        try:
-            dest_addr = (self.target_host, self.target_port)
-            local_addr = ('127.0.0.1', self.local_port)
-            channel = self.transport.open_channel("direct-tcpip", dest_addr, local_addr)
-
-            if channel is None:
-                client_sock.close()
-                return
-
-            def pipe(src, dst, is_channel=False):
-                try:
-                    while self._running:
-                        if is_channel:
-                            if not src.recv_ready():
-                                time.sleep(0.05)
-                                continue
-                            data = src.recv(4096)
-                        else:
-                            data = src.recv(4096)
-                        if not data:
-                            break
-                        dst.sendall(data if is_channel else data)
-                except Exception:
-                    pass
-                finally:
-                    try:
-                        src.close()
-                    except Exception:
-                        pass
-                    try:
-                        dst.close()
-                    except Exception:
-                        pass
-
-            t1 = threading.Thread(target=pipe, args=(channel, client_sock), kwargs={"is_channel": True}, daemon=True)
-            t2 = threading.Thread(target=pipe, args=(client_sock, channel), daemon=True)
-            t1.start()
-            t2.start()
-            t1.join(timeout=300)
-            t2.join(timeout=300)
-        except Exception as e:
-            logger.error(f"隧道 {self.tunnel_id} 转发连接失败: {e}")
-        finally:
-            try:
-                client_sock.close()
-            except Exception:
-                pass
-
-    def close(self):
-        with self._lock:
-            self._running = False
-            self.is_active = False
-            if self._server_socket:
-                try:
-                    self._server_socket.close()
-                except Exception:
-                    pass
-            logger.info(f"隧道 {self.tunnel_id} 已关闭: 127.0.0.1:{self.local_port} -> {self.target_host}:{self.target_port}")
-
-    def get_display_info(self) -> str:
-        return f"{self.target_host}:{self.target_port} (本地:{self.local_port})"
-
-
 class BastionChannel:
     def __init__(self, channel: paramiko.Channel, channel_id: int, target_host: str = None):
         self.channel = channel
@@ -208,18 +94,14 @@ class BastionConnection:
         self.client: Optional[paramiko.SSHClient] = None
         self.transport: Optional[paramiko.Transport] = None
         self.channels: List[BastionChannel] = []
-        self.tunnels: List[BastionTunnel] = []
-        self._next_tunnel_id = 1
         self.status = ConnectionStatus.DISCONNECTED
         self.error_message: str = ""
         self._lock = threading.Lock()
         self._keepalive_thread: Optional[threading.Thread] = None
         self._keepalive_running = False
-        self._min_channels = 1
-        self._max_channels = 5
-        self._current_target_host: str = None
         self._on_status_change: Optional[Callable[[ConnectionStatus, str], None]] = None
-        self._auth_channel = None
+        self._auth_channel: Optional[paramiko.Channel] = None
+        self._current_session_channel: Optional[BastionChannel] = None
 
     def set_status_callback(self, callback: Callable[[ConnectionStatus, str], None]):
         self._on_status_change = callback
@@ -492,12 +374,12 @@ class BastionConnection:
                 "output": output
             }
             
-            if "请选择" in output or "选择目标" in output or "Ctrl+F" in output:
+            if "请选择" in output or "选择目标" in output or "Ctrl+F" in output or "目标资产列表" in output:
                 logger.info("检测到服务器列表菜单，解析服务器列表")
                 servers = self._parse_server_list(output)
+                result["authenticated"] = True
                 result["has_server_list"] = True
                 result["server_list"] = servers
-                result["authenticated"] = True
                 logger.info(f"解析到 {len(servers)} 台服务器")
                 
                 if menu_selection:
@@ -552,98 +434,6 @@ class BastionConnection:
                 self._auth_channel = None
             raise Exception(error_msg)
 
-    def connect_to_host(self, host: str, username: str = None, password: str = None,
-                        timeout: int = 30) -> Optional[BastionChannel]:
-        if not self.client or self.status != ConnectionStatus.AUTHENTICATED:
-            raise Exception("堡垒机未完成认证，无法连接目标主机")
-
-        try:
-            channel = self.transport.open_session()
-            channel.get_pty()
-            channel.invoke_shell()
-            
-            time.sleep(0.3)
-            output = self._read_channel_output(channel, timeout=2)
-            
-            connect_cmd = f"ssh {username + '@' if username else ''}{host}\n"
-            channel.send(connect_cmd)
-            time.sleep(0.5)
-            output = self._read_channel_output(channel, timeout=5)
-            
-            if "password" in output.lower() or "密码" in output:
-                if password:
-                    channel.send(password + "\n")
-                    time.sleep(0.5)
-                    output = self._read_channel_output(channel, timeout=5)
-            
-            if "yes/no" in output.lower():
-                channel.send("yes\n")
-                time.sleep(0.5)
-                output = self._read_channel_output(channel, timeout=5)
-            
-            success_patterns = [r"[\$#>]\s*$", r"欢迎", r"Last login"]
-            connected = any(re.search(p, output, re.IGNORECASE) for p in success_patterns)
-            
-            if connected:
-                bastion_channel = BastionChannel(channel, len(self.channels), target_host=host)
-                with self._lock:
-                    self.channels.append(bastion_channel)
-                    self._current_target_host = host
-                
-                logger.info(f"成功连接到目标主机 {host}")
-                return bastion_channel
-            else:
-                channel.close()
-                raise Exception(f"连接目标主机 {host} 失败: {output}")
-                
-        except Exception as e:
-            logger.error(f"连接目标主机失败: {e}")
-            raise
-
-    def get_host_ips(self, channel: BastionChannel, timeout: int = 10) -> List[str]:
-        if not channel or not channel.is_active:
-            raise Exception("通道不可用")
-
-        try:
-            ip_commands = [
-                "ip addr show | grep 'inet ' | awk '{print $2}' | cut -d'/' -f1",
-                "hostname -I",
-                "ifconfig | grep 'inet ' | awk '{print $2}'"
-            ]
-            
-            ips = []
-            for cmd in ip_commands:
-                channel.send(cmd + "\n")
-                time.sleep(0.5)
-                output = ""
-                start_time = time.time()
-                
-                while time.time() - start_time < timeout:
-                    if channel.recv_ready():
-                        data = channel.recv(4096)
-                        if data:
-                            output += data.decode('utf-8', errors='ignore')
-                            if re.search(r'[\$#>]\s*$', output):
-                                break
-                    time.sleep(0.1)
-                
-                ip_pattern = r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b'
-                found_ips = re.findall(ip_pattern, output)
-                
-                for ip in found_ips:
-                    if ip not in ips and not ip.startswith('127.'):
-                        ips.append(ip)
-                
-                if ips:
-                    break
-            
-            logger.info(f"获取到主机IP地址: {ips}")
-            return ips
-            
-        except Exception as e:
-            logger.error(f"获取主机IP失败: {e}")
-            return []
-
     def _read_channel_output(self, channel, timeout: float = 2.0, max_read_time: float = 10.0) -> str:
         output = ""
         start_time = time.time()
@@ -673,16 +463,249 @@ class BastionConnection:
         
         return output
 
+    def search_and_select_asset(self, target_ip: str, timeout: int = 30) -> Dict[str, Any]:
+        if not self._auth_channel or not self._auth_channel.recv_ready:
+            if not self.client or self.status != ConnectionStatus.AUTHENTICATED:
+                raise Exception("堡垒机未完成认证，无法搜索资产")
+            
+            self._auth_channel = self.client.invoke_shell()
+            self._auth_channel.settimeout(timeout)
+            time.sleep(0.5)
+            self._read_channel_output(self._auth_channel, timeout=2)
+        
+        channel = self._auth_channel
+        result = {
+            "success": False,
+            "output": "",
+            "error": None
+        }
+        
+        try:
+            logger.info(f"搜索资产: {target_ip}")
+            search_cmd = f"/{target_ip}\n"
+            channel.send(search_cmd)
+            time.sleep(1.0)
+            output = self._read_channel_output(channel, timeout, max_read_time=10.0)
+            logger.info(f"搜索结果(前500字符): {output[:500]}")
+            
+            servers = self._parse_server_list(output)
+            if not servers:
+                result["error"] = f"未找到IP为 {target_ip} 的资产"
+                return result
+            
+            first_server = servers[0]
+            logger.info(f"选择第一个匹配的资产: {first_server}")
+            
+            select_cmd = f"{first_server['index']}\n"
+            channel.send(select_cmd)
+            time.sleep(1.0)
+            output = self._read_channel_output(channel, timeout, max_read_time=10.0)
+            logger.info(f"选择资产后输出(前500字符): {output[:500]}")
+            
+            result["output"] = output
+            result["success"] = True
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"搜索选择资产失败: {e}")
+            result["error"] = str(e)
+            return result
+
+    def connect_to_asset(self, target_ip: str, asset_username: str, asset_password: str, 
+                          timeout: int = 60) -> Dict[str, Any]:
+        if not self.client or self.status != ConnectionStatus.AUTHENTICATED:
+            raise Exception("堡垒机未完成认证，无法连接资产")
+
+        result = {
+            "success": False,
+            "output": "",
+            "error": None,
+            "channel": None
+        }
+
+        try:
+            search_result = self.search_and_select_asset(target_ip, timeout)
+            if not search_result["success"]:
+                result["error"] = search_result["error"]
+                return result
+            
+            channel = self._auth_channel
+            output = search_result["output"]
+            
+            if "login:" in output.lower() or "login" in output:
+                logger.info(f"输入用户名: {asset_username}")
+                channel.send(asset_username + "\n")
+                time.sleep(0.5)
+                output = self._read_channel_output(channel, timeout=5)
+                logger.info(f"输入用户名后输出(前300字符): {output[:300]}")
+            
+            if "password" in output.lower() or "密码" in output:
+                logger.info("输入密码")
+                channel.send(asset_password + "\n")
+                time.sleep(1.0)
+                output = self._read_channel_output(channel, timeout=10, max_read_time=15.0)
+                logger.info(f"输入密码后输出(前300字符): {output[:300]}")
+            
+            if "permission denied" in output.lower() or "denied" in output.lower():
+                result["error"] = "资产密码错误或权限被拒绝"
+                result["output"] = output
+                return result
+            
+            if "yes/no" in output.lower():
+                logger.info("确认主机密钥")
+                channel.send("yes\n")
+                time.sleep(0.5)
+                output = self._read_channel_output(channel, timeout=5)
+            
+            success_patterns = [r"[\$#>]\s*$", r"欢迎", r"Last login", r"Authorized users"]
+            connected = any(re.search(p, output, re.IGNORECASE) for p in success_patterns)
+            
+            if connected:
+                bastion_channel = BastionChannel(channel, len(self.channels), target_host=target_ip)
+                with self._lock:
+                    self.channels.append(bastion_channel)
+                    self._current_session_channel = bastion_channel
+                
+                self._auth_channel = None
+                
+                result["success"] = True
+                result["output"] = output
+                result["channel"] = bastion_channel
+                logger.info(f"成功连接到资产 {target_ip}")
+            else:
+                result["error"] = f"连接资产失败，未检测到成功登录提示"
+                result["output"] = output
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"连接资产失败: {e}")
+            result["error"] = str(e)
+            return result
+
+    def execute_command_on_asset(self, command: str, timeout: int = 30) -> Dict[str, Any]:
+        if not self._current_session_channel or not self._current_session_channel.is_active:
+            return {
+                "success": False,
+                "output": "",
+                "error": "没有活跃的资产会话"
+            }
+        
+        channel = self._current_session_channel
+        result = {
+            "success": False,
+            "output": "",
+            "error": None
+        }
+        
+        try:
+            logger.info(f"在资产上执行命令: {command}")
+            channel.send(command + "\n")
+            time.sleep(0.5)
+            
+            output = ""
+            start_time = time.time()
+            
+            while time.time() - start_time < timeout:
+                if channel.recv_ready():
+                    data = channel.recv(4096)
+                    if data:
+                        output += data.decode('utf-8', errors='ignore')
+                        start_time = time.time()
+                else:
+                    time.sleep(0.1)
+                    if output and not channel.recv_ready():
+                        break
+            
+            result["output"] = output
+            result["success"] = True
+            logger.info(f"命令执行完成，输出长度: {len(output)}")
+            
+        except Exception as e:
+            logger.error(f"执行命令失败: {e}")
+            result["error"] = str(e)
+        
+        return result
+
+    def exit_asset_session(self, timeout: int = 10) -> Dict[str, Any]:
+        if not self._current_session_channel or not self._current_session_channel.is_active:
+            return {
+                "success": True,
+                "output": "",
+                "message": "没有活跃的资产会话"
+            }
+        
+        channel = self._current_session_channel
+        result = {
+            "success": False,
+            "output": "",
+            "error": None
+        }
+        
+        try:
+            logger.info("退出资产会话")
+            channel.send("exit\n")
+            time.sleep(0.5)
+            
+            output = self._read_channel_output(channel.channel, timeout=timeout, max_read_time=5.0)
+            logger.info(f"退出后输出(前300字符): {output[:300]}")
+            
+            channel.close()
+            with self._lock:
+                if channel in self.channels:
+                    self.channels.remove(channel)
+            self._current_session_channel = None
+            
+            self._auth_channel = self.client.invoke_shell()
+            self._auth_channel.settimeout(timeout)
+            time.sleep(0.5)
+            menu_output = self._read_channel_output(self._auth_channel, timeout=5, max_read_time=10.0)
+            
+            result["success"] = True
+            result["output"] = output
+            logger.info("已退出资产会话，返回堡垒机菜单")
+            
+        except Exception as e:
+            logger.error(f"退出资产会话失败: {e}")
+            result["error"] = str(e)
+        
+        return result
+
+    def disconnect_from_bastion(self, timeout: int = 5) -> Dict[str, Any]:
+        result = {
+            "success": False,
+            "output": "",
+            "error": None
+        }
+        
+        try:
+            if self._current_session_channel and self._current_session_channel.is_active:
+                self.exit_asset_session(timeout)
+            
+            if self._auth_channel:
+                self._auth_channel.send("q\n")
+                time.sleep(0.5)
+                output = self._read_channel_output(self._auth_channel, timeout=timeout)
+                logger.info(f"退出堡垒机输出: {output[:200]}")
+            
+            self.disconnect()
+            result["success"] = True
+            logger.info("已断开堡垒机连接")
+            
+        except Exception as e:
+            logger.error(f"断开堡垒机连接失败: {e}")
+            result["error"] = str(e)
+            self.disconnect()
+        
+        return result
+
     def create_channel(self) -> Optional[BastionChannel]:
         if not self.client or self.status != ConnectionStatus.AUTHENTICATED:
             logger.error("无法创建通道: 堡垒机未完成认证")
             return None
 
         with self._lock:
-            if len(self.channels) >= self._max_channels:
-                logger.warning(f"已达到最大通道数 {self._max_channels}")
-                return None
-
             try:
                 channel = self.transport.open_session()
                 channel.get_pty()
@@ -708,9 +731,7 @@ class BastionConnection:
                     logger.info(f"关闭通道 {channel_id}，剩余通道数: {len(self.channels)}")
                     return
 
-    def start_keepalive(self, interval: int = 30, min_channels: int = 1, max_channels: int = 5):
-        self._min_channels = min_channels
-        self._max_channels = max_channels
+    def start_keepalive(self, interval: int = 30):
         self._keepalive_running = True
         
         self._keepalive_thread = threading.Thread(
@@ -719,7 +740,7 @@ class BastionConnection:
             daemon=True
         )
         self._keepalive_thread.start()
-        logger.info(f"启动保活线程，间隔 {interval} 秒，通道范围 {min_channels}-{max_channels}")
+        logger.info(f"启动保活线程，间隔 {interval} 秒")
 
     def stop_keepalive(self):
         self._keepalive_running = False
@@ -735,11 +756,6 @@ class BastionConnection:
                     
                     for channel in self.channels:
                         channel.keepalive()
-                    
-                    while len(self.channels) < self._min_channels:
-                        new_channel = self.create_channel()
-                        if not new_channel:
-                            break
                 
                 time.sleep(interval)
                 
@@ -747,71 +763,20 @@ class BastionConnection:
                 logger.error(f"保活线程异常: {e}")
                 time.sleep(5)
 
-    def create_tunnel(self, target_host: str, target_port: int = 22) -> Optional[BastionTunnel]:
-        if not self.is_authenticated:
-            raise Exception("堡垒机未完成认证，无法创建隧道")
-
-        import socket
-        with self._lock:
-            active_tunnels = [t for t in self.tunnels if t.is_active]
-            if len(active_tunnels) >= BastionTunnel.MAX_TUNNELS:
-                raise Exception(f"已达到最大隧道数量 ({BastionTunnel.MAX_TUNNELS})")
-
-            for port in range(20000, 30000):
-                try:
-                    test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    test_sock.settimeout(0.1)
-                    result = test_sock.connect_ex(('127.0.0.1', port))
-                    test_sock.close()
-                    if result != 0:
-                        local_port = port
-                        break
-                except Exception:
-                    continue
-            else:
-                raise Exception("无法找到可用的本地端口")
-
-            tunnel_id = self._next_tunnel_id
-            self._next_tunnel_id += 1
-
-            tunnel = BastionTunnel(
-                transport=self.transport,
-                target_host=target_host,
-                target_port=target_port,
-                local_port=local_port,
-                tunnel_id=tunnel_id
-            )
-            tunnel.start()
-            self.tunnels.append(tunnel)
-            logger.info(f"创建隧道 {tunnel_id}: 127.0.0.1:{local_port} -> {target_host}:{target_port}")
-            return tunnel
-
-    def close_tunnel(self, tunnel_id: int):
-        with self._lock:
-            for i, tunnel in enumerate(self.tunnels):
-                if tunnel.tunnel_id == tunnel_id:
-                    tunnel.close()
-                    self.tunnels.pop(i)
-                    logger.info(f"关闭隧道 {tunnel_id}")
-                    return True
-        return False
-
-    def get_active_tunnels(self) -> List[BastionTunnel]:
-        with self._lock:
-            self.tunnels = [t for t in self.tunnels if t.is_active]
-            return list(self.tunnels)
-
     def disconnect(self):
         self.stop_keepalive()
         
         with self._lock:
-            for tunnel in self.tunnels:
-                tunnel.close()
-            self.tunnels.clear()
-
             for channel in self.channels:
                 channel.close()
             self.channels.clear()
+            
+            if self._auth_channel:
+                try:
+                    self._auth_channel.close()
+                except Exception:
+                    pass
+                self._auth_channel = None
             
             if self.client:
                 try:
@@ -943,43 +908,55 @@ class BastionService:
             menu_selection=menu_selection
         )
 
-    def connect_to_host(self, connection_id: str = "default",
-                        host: str = "", username: str = None, password: str = None,
-                        timeout: int = 30) -> Optional[BastionChannel]:
+    def connect_to_asset(self, connection_id: str = "default",
+                         target_ip: str = "",
+                         asset_username: str = None,
+                         asset_password: str = None,
+                         timeout: int = 60) -> Dict[str, Any]:
         connection = self._connections.get(connection_id)
         if not connection:
             raise ValueError(f"未找到连接: {connection_id}")
         
-        return connection.connect_to_host(host, username, password, timeout)
+        return connection.connect_to_asset(target_ip, asset_username, asset_password, timeout)
 
-    def get_host_ips(self, connection_id: str = "default",
-                     channel: BastionChannel = None, timeout: int = 10) -> List[str]:
+    def execute_command_on_asset(self, connection_id: str = "default",
+                                  command: str = "",
+                                  timeout: int = 30) -> Dict[str, Any]:
         connection = self._connections.get(connection_id)
         if not connection:
             raise ValueError(f"未找到连接: {connection_id}")
         
-        if channel:
-            return connection.get_host_ips(channel, timeout)
+        return connection.execute_command_on_asset(command, timeout)
+
+    def exit_asset_session(self, connection_id: str = "default",
+                           timeout: int = 10) -> Dict[str, Any]:
+        connection = self._connections.get(connection_id)
+        if not connection:
+            raise ValueError(f"未找到连接: {connection_id}")
         
-        active_channel = self.get_channel(connection_id)
-        if active_channel:
-            return connection.get_host_ips(active_channel, timeout)
+        return connection.exit_asset_session(timeout)
+
+    def disconnect_from_bastion(self, connection_id: str = "default",
+                                timeout: int = 5) -> Dict[str, Any]:
+        connection = self._connections.get(connection_id)
+        if not connection:
+            return {"success": True, "output": "", "message": "连接不存在"}
         
-        return []
+        result = connection.disconnect_from_bastion(timeout)
+        
+        with self._lock:
+            if connection_id in self._connections:
+                del self._connections[connection_id]
+        
+        return result
 
     def start_keepalive(self, connection_id: str = "default",
-                        interval: int = 30,
-                        min_channels: int = 1,
-                        max_channels: int = 5):
+                        interval: int = 30):
         connection = self._connections.get(connection_id)
         if not connection:
             raise ValueError(f"未找到连接: {connection_id}")
         
-        connection.start_keepalive(
-            interval=interval,
-            min_channels=min_channels,
-            max_channels=max_channels
-        )
+        connection.start_keepalive(interval=interval)
 
     def get_channel(self, connection_id: str = "default") -> Optional[BastionChannel]:
         connection = self._connections.get(connection_id)
@@ -1022,101 +999,42 @@ class BastionService:
             return {
                 "success": True,
                 "output": output,
-                "command": command
+                "exit_code": 0
             }
             
         except Exception as e:
             logger.error(f"执行命令失败: {e}")
             return {
                 "success": False,
-                "error": str(e),
-                "command": command
+                "output": "",
+                "error": str(e)
             }
-
-    def disconnect(self, connection_id: str = "default"):
-        with self._lock:
-            connection = self._connections.pop(connection_id, None)
-            if connection:
-                connection.disconnect()
-
-    def disconnect_all(self):
-        with self._lock:
-            for connection in list(self._connections.values()):
-                connection.disconnect()
-            self._connections.clear()
 
     def get_connection_status(self, connection_id: str = "default") -> Dict[str, Any]:
         connection = self._connections.get(connection_id)
         if not connection:
             return {
-                "exists": False,
-                "status": ConnectionStatus.DISCONNECTED.value,
                 "connected": False,
                 "authenticated": False,
-                "channels": 0,
-                "tunnels": 0,
-                "error_message": ""
+                "status": ConnectionStatus.DISCONNECTED.value,
+                "host": None,
+                "username": None,
+                "error": None
             }
         
-        active_tunnels = connection.get_active_tunnels()
         return {
-            "exists": True,
-            "status": connection.status.value,
             "connected": connection.is_connected,
             "authenticated": connection.is_authenticated,
-            "channels": len([ch for ch in connection.channels if ch.is_active]),
-            "tunnels": len(active_tunnels),
+            "status": connection.status.value,
             "host": connection.host,
             "username": connection.username,
-            "error_message": connection.error_message,
-            "current_target_host": connection._current_target_host
+            "error": connection.error_message
         }
 
-    def create_tunnel(self, connection_id: str = "default",
-                      target_host: str = "", target_port: int = 22) -> Optional[BastionTunnel]:
+    def disconnect(self, connection_id: str = "default"):
         connection = self._connections.get(connection_id)
-        if not connection:
-            raise ValueError(f"未找到连接: {connection_id}")
-        return connection.create_tunnel(target_host, target_port)
-
-    def close_tunnel(self, connection_id: str = "default", tunnel_id: int = 0) -> bool:
-        connection = self._connections.get(connection_id)
-        if not connection:
-            return False
-        return connection.close_tunnel(tunnel_id)
-
-    def get_active_tunnels(self, connection_id: str = "default") -> List[BastionTunnel]:
-        connection = self._connections.get(connection_id)
-        if not connection:
-            return []
-        return connection.get_active_tunnels()
-
-    def get_connection(self, connection_id: str = "default") -> Optional[BastionConnection]:
-        return self._connections.get(connection_id)
-
-    def get_connected_hosts(self, connection_id: str = "default") -> List[str]:
-        connection = self._connections.get(connection_id)
-        if not connection:
-            return []
-        
-        hosts = []
-        with connection._lock:
-            for channel in connection.channels:
-                if channel.is_active and channel.target_host:
-                    if channel.target_host not in hosts:
-                        hosts.append(channel.target_host)
-        
-        if connection._current_target_host and connection._current_target_host not in hosts:
-            hosts.append(connection._current_target_host)
-        
-        return hosts
-
-    def get_all_connected_hosts(self) -> List[str]:
-        all_hosts = []
-        with self._lock:
-            for connection_id, connection in self._connections.items():
-                hosts = self.get_connected_hosts(connection_id)
-                for host in hosts:
-                    if host not in all_hosts:
-                        all_hosts.append(host)
-        return all_hosts
+        if connection:
+            connection.disconnect()
+            with self._lock:
+                if connection_id in self._connections:
+                    del self._connections[connection_id]

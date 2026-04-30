@@ -64,7 +64,7 @@ class BastionConnectionWorker(QThread):
                 self.auth_required.emit(auth_info)
             else:
                 self.status_changed.emit(ConnectionStatus.AUTHENTICATED.value, "认证成功")
-                self.bastion_service.start_keepalive("default", min_channels=1, max_channels=5)
+                self.bastion_service.start_keepalive("default")
                 logger.info("BastionConnectionWorker: 无需二次认证，连接完成")
                 self.connection_success.emit()
                 
@@ -114,7 +114,7 @@ class BastionAuthWorker(QThread):
             else:
                 self.status_changed.emit(ConnectionStatus.AUTHENTICATED.value, "认证成功")
                 logger.info("BastionAuthWorker: 二次认证成功，启动保活")
-                self.bastion_service.start_keepalive("default", min_channels=1, max_channels=5)
+                self.bastion_service.start_keepalive("default")
                 self.auth_success.emit()
             
         except Exception as e:
@@ -127,6 +127,49 @@ class BastionAuthWorker(QThread):
                 self.auth_failed.emit(str(e))
 
 
+class AssetConnectionWorker(QThread):
+    status_changed = pyqtSignal(str, str)
+    connection_success = pyqtSignal(str)
+    connection_failed = pyqtSignal(str)
+    
+    def __init__(self, bastion_service: BastionService, 
+                 target_ip: str, asset_username: str, asset_password: str,
+                 parent=None):
+        super().__init__(parent)
+        self.bastion_service = bastion_service
+        self.target_ip = target_ip
+        self.asset_username = asset_username
+        self.asset_password = asset_password
+    
+    def run(self):
+        try:
+            self.status_changed.emit(ConnectionStatus.AUTHENTICATING.value, f"正在连接资产 {self.target_ip}...")
+            logger.info(f"AssetConnectionWorker: 开始连接资产 {self.target_ip}")
+            
+            result = self.bastion_service.connect_to_asset(
+                connection_id="default",
+                target_ip=self.target_ip,
+                asset_username=self.asset_username,
+                asset_password=self.asset_password,
+                timeout=60
+            )
+            
+            if result.get("success"):
+                logger.info(f"AssetConnectionWorker: 成功连接到资产 {self.target_ip}")
+                self.status_changed.emit(ConnectionStatus.AUTHENTICATED.value, f"已连接: {self.target_ip}")
+                self.connection_success.emit(self.target_ip)
+            else:
+                error = result.get("error", "未知错误")
+                logger.error(f"AssetConnectionWorker: 连接资产失败 - {error}")
+                self.status_changed.emit(ConnectionStatus.FAILED.value, error)
+                self.connection_failed.emit(error)
+                
+        except Exception as e:
+            logger.error(f"AssetConnectionWorker: 连接资产异常 - {e}")
+            self.status_changed.emit(ConnectionStatus.FAILED.value, str(e))
+            self.connection_failed.emit(str(e))
+
+
 class BastionManager(QObject):
     status_changed = pyqtSignal(str, str)
     connection_success = pyqtSignal()
@@ -134,8 +177,8 @@ class BastionManager(QObject):
     auth_required = pyqtSignal(dict, int)
     otp_retry_required = pyqtSignal(int)
     server_list_available = pyqtSignal(list, str)
-    tunnel_created = pyqtSignal(dict)
-    tunnel_closed = pyqtSignal(int)
+    asset_connection_success = pyqtSignal(str)
+    asset_connection_failed = pyqtSignal(str)
     
     MAX_AUTH_RETRIES = 5
     
@@ -145,10 +188,12 @@ class BastionManager(QObject):
         self.bastion_service = BastionService(db)
         self._connection_worker: Optional[BastionConnectionWorker] = None
         self._auth_worker: Optional[BastionAuthWorker] = None
+        self._asset_worker: Optional[AssetConnectionWorker] = None
         self._status_monitor_timer: Optional[QTimer] = None
         self._is_auto_login = False
         self._auth_retry_count = 0
         self._auth_info: dict = {}
+        self._current_asset_ip: str = None
     
     def has_bastion_config(self) -> bool:
         return self.bastion_service.has_bastion_config()
@@ -199,6 +244,34 @@ class BastionManager(QObject):
         self._auth_worker.server_list_available.connect(self._on_server_list_available)
         self._auth_worker.start()
     
+    def connect_to_asset(self, target_ip: str, asset_username: str, asset_password: str):
+        if not self.is_connected():
+            raise Exception("堡垒机未连接")
+        
+        logger.info(f"BastionManager: 连接资产 {target_ip}, username={asset_username}")
+        self._current_asset_ip = target_ip
+        
+        self._asset_worker = AssetConnectionWorker(
+            self.bastion_service, target_ip, asset_username, asset_password
+        )
+        self._asset_worker.status_changed.connect(self._on_status_changed)
+        self._asset_worker.connection_success.connect(self._on_asset_connection_success)
+        self._asset_worker.connection_failed.connect(self._on_asset_connection_failed)
+        self._asset_worker.start()
+    
+    def execute_command_on_asset(self, command: str, timeout: int = 30) -> Dict[str, Any]:
+        if not self.is_connected():
+            raise Exception("堡垒机未连接")
+        return self.bastion_service.execute_command_on_asset("default", command, timeout)
+    
+    def exit_asset_session(self) -> Dict[str, Any]:
+        if not self.is_connected():
+            raise Exception("堡垒机未连接")
+        
+        result = self.bastion_service.exit_asset_session("default")
+        self._current_asset_ip = None
+        return result
+    
     def disconnect(self):
         if self._connection_worker and self._connection_worker.isRunning():
             self._connection_worker.cancel()
@@ -207,8 +280,12 @@ class BastionManager(QObject):
         if self._auth_worker and self._auth_worker.isRunning():
             self._auth_worker.wait(2000)
         
+        if self._asset_worker and self._asset_worker.isRunning():
+            self._asset_worker.wait(2000)
+        
         self.bastion_service.disconnect("default")
         self._auth_retry_count = 0
+        self._current_asset_ip = None
         self.status_changed.emit(ConnectionStatus.DISCONNECTED.value, "已断开连接")
     
     def get_status(self) -> Dict[str, Any]:
@@ -221,41 +298,14 @@ class BastionManager(QObject):
     def get_service(self) -> BastionService:
         return self.bastion_service
     
+    def get_current_asset_ip(self) -> Optional[str]:
+        return self._current_asset_ip
+    
     def execute_command(self, command: str, timeout: int = 30) -> Dict[str, Any]:
         if not self.is_connected():
             raise Exception("堡垒机未连接")
         return self.bastion_service.execute_command("default", command, timeout)
-    
-    def connect_to_host(self, host: str, username: str = None, password: str = None):
-        if not self.is_connected():
-            raise Exception("堡垒机未连接")
-        return self.bastion_service.connect_to_host("default", host, username, password)
 
-    def create_tunnel(self, target_host: str, target_port: int = 22) -> dict:
-        if not self.is_connected():
-            raise Exception("堡垒机未连接")
-        tunnel = self.bastion_service.create_tunnel("default", target_host, target_port)
-        if tunnel:
-            info = {
-                "tunnel_id": tunnel.tunnel_id,
-                "target_host": tunnel.target_host,
-                "target_port": tunnel.target_port,
-                "local_port": tunnel.local_port,
-                "display": tunnel.get_display_info()
-            }
-            self.tunnel_created.emit(info)
-            return info
-        raise Exception("创建隧道失败")
-
-    def close_tunnel(self, tunnel_id: int) -> bool:
-        result = self.bastion_service.close_tunnel("default", tunnel_id)
-        if result:
-            self.tunnel_closed.emit(tunnel_id)
-        return result
-
-    def get_active_tunnels(self) -> list:
-        return self.bastion_service.get_active_tunnels("default")
-    
     def _on_status_changed(self, status: str, message: str):
         logger.info(f"BastionManager: 状态变更 - {status}: {message}")
         self.status_changed.emit(status, message)
@@ -312,6 +362,16 @@ class BastionManager(QObject):
         logger.info(f"BastionManager: 服务器列表可用，共 {len(server_list)} 台")
         self._cleanup_auth_worker()
         self.server_list_available.emit(server_list, raw_output)
+    
+    def _on_asset_connection_success(self, target_ip: str):
+        logger.info(f"BastionManager: 资产连接成功 - {target_ip}")
+        self._current_asset_ip = target_ip
+        self.asset_connection_success.emit(target_ip)
+    
+    def _on_asset_connection_failed(self, error: str):
+        logger.error(f"BastionManager: 资产连接失败 - {error}")
+        self._current_asset_ip = None
+        self.asset_connection_failed.emit(error)
     
     def _cleanup_auth_worker(self):
         if self._auth_worker is not None:

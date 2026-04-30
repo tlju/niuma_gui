@@ -294,17 +294,62 @@ class AssetsPage(QWidget):
             QMessageBox.warning(self, "提示", "该资产没有可用的网络地址")
             return
 
-        target_port = asset.port or 22
+        asset_username = asset.username
+        if not asset_username:
+            QMessageBox.warning(self, "提示", "该资产未配置用户名")
+            return
+
+        asset_password = self.asset_service.get_password(asset.id)
+        if not asset_password:
+            QMessageBox.warning(self, "提示", "该资产未配置密码")
+            return
 
         try:
-            info = self.bastion_manager.create_tunnel(target_host, target_port)
-            QMessageBox.information(self, "隧道已建立",
-                f"已通过堡垒机建立隧道:\n"
-                f"目标: {target_host}:{target_port}\n"
-                f"本地: 127.0.0.1:{info['local_port']}\n\n"
-                f"使用 SSH 客户端连接 127.0.0.1:{info['local_port']} 即可访问")
+            self.bastion_manager.connect_to_asset(target_host, asset_username, asset_password)
+            self._show_connecting_dialog(target_host)
         except Exception as e:
-            QMessageBox.critical(self, "连接失败", f"创建隧道失败:\n{e}")
+            QMessageBox.critical(self, "连接失败", f"连接资产失败:\n{e}")
+
+    def _show_connecting_dialog(self, target_host):
+        self._connecting_dialog = QMessageBox(self)
+        self._connecting_dialog.setWindowTitle("连接中")
+        self._connecting_dialog.setText(f"正在通过堡垒机连接 {target_host}...")
+        self._connecting_dialog.setStandardButtons(QMessageBox.StandardButton.NoButton)
+        self._connecting_dialog.show()
+        
+        self._connect_target_host = target_host
+        
+        self.bastion_manager.asset_connection_success.connect(self._on_asset_connected)
+        self.bastion_manager.asset_connection_failed.connect(self._on_asset_connect_failed)
+
+    def _on_asset_connected(self, target_ip):
+        if hasattr(self, '_connecting_dialog') and self._connecting_dialog:
+            self._connecting_dialog.close()
+            self._connecting_dialog = None
+        
+        try:
+            self.bastion_manager.asset_connection_success.disconnect(self._on_asset_connected)
+            self.bastion_manager.asset_connection_failed.disconnect(self._on_asset_connect_failed)
+        except TypeError:
+            pass
+        
+        QMessageBox.information(self, "连接成功", 
+            f"已成功连接到资产 {target_ip}\n\n"
+            f"现在可以通过堡垒机执行命令。\n"
+            f"点击\"断开\"按钮可断开当前资产连接。")
+
+    def _on_asset_connect_failed(self, error):
+        if hasattr(self, '_connecting_dialog') and self._connecting_dialog:
+            self._connecting_dialog.close()
+            self._connecting_dialog = None
+        
+        try:
+            self.bastion_manager.asset_connection_success.disconnect(self._on_asset_connected)
+            self.bastion_manager.asset_connection_failed.disconnect(self._on_asset_connect_failed)
+        except TypeError:
+            pass
+        
+        QMessageBox.critical(self, "连接失败", f"连接资产失败:\n{error}")
 
     def refresh_bastion_state(self):
         self._populate_table(self.filtered_assets)
