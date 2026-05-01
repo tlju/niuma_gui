@@ -220,8 +220,8 @@ class DocumentDialog(QDialog):
         self.document = document
         self.readonly = readonly
         self.setWindowTitle("查看文档" if readonly else ("编辑文档" if document else "添加文档"))
-        self.resize(800, 600)
-        self.setMinimumSize(600, 500)
+        self.resize(1200, 700)
+        self.setMinimumSize(1000, 600)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.init_ui()
         if document:
