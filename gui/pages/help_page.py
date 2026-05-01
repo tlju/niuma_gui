@@ -43,7 +43,6 @@ HELP_DATA = [
 <h3>提示</h3>
 <ul>
 <li>如果连续多次登录失败，请联系系统管理员</li>
-<li>退出系统时会自动记录登出日志</li>
 </ul>
 """
     },
@@ -463,8 +462,6 @@ HELP_DATA = [
 <h3>操作类型说明</h3>
 <table class="feature-table">
 <tr><th>类型</th><th>说明</th></tr>
-<tr><td>登录</td><td>用户登录系统的记录</td></tr>
-<tr><td>登出</td><td>用户退出系统的记录</td></tr>
 <tr><td>创建</td><td>新增数据的操作记录</td></tr>
 <tr><td>更新</td><td>修改数据的操作记录</td></tr>
 <tr><td>删除</td><td>删除数据的操作记录</td></tr>

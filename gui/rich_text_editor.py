@@ -1,10 +1,10 @@
 import sys
 import base64
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QTextEdit,
+    QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QTextBrowser,
     QFontComboBox, QComboBox, QToolButton, QColorDialog,
     QFileDialog, QSpinBox, QLabel, QFrame, QMenu, QGridLayout,
-    QApplication, QAction
+    QApplication, QAction, QInputDialog
 )
 from PyQt5.QtCore import Qt, QSize, QBuffer
 from PyQt5.QtGui import (
@@ -45,11 +45,13 @@ class RichTextEditor(QWidget):
         self._toolbar = self._create_toolbar()
         layout.addWidget(self._toolbar)
 
-        self._editor = QTextEdit()
+        self._editor = QTextBrowser()
         self._editor.setAcceptRichText(True)
+        self._editor.setReadOnly(False)
         self._editor.setPlaceholderText("在此输入内容...")
         self._editor.setMinimumHeight(200)
         self._editor.setFont(self._get_default_font())
+        self._editor.setOpenExternalLinks(True)
         self._editor.currentCharFormatChanged.connect(self._update_toolbar_state)
         self._editor.cursorPositionChanged.connect(self._update_toolbar_state)
         layout.addWidget(self._editor)
@@ -359,10 +361,11 @@ class RichTextEditor(QWidget):
     def _insert_link(self):
         cursor = self._editor.textCursor()
         selected_text = cursor.selectedText()
-        if selected_text:
-            cursor.insertText(f'<a href="url">{selected_text}</a>')
-        else:
-            cursor.insertText('<a href="url">链接文字</a>')
+        
+        url, ok = QInputDialog.getText(self, "插入链接", "请输入链接地址:", text="https://")
+        if ok and url:
+            link_text = selected_text if selected_text else url
+            cursor.insertHtml(f'<a href="{url}">{link_text}</a>')
 
     def _insert_image(self):
         file_path, _ = QFileDialog.getOpenFileName(

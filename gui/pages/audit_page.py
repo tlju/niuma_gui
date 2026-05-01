@@ -13,8 +13,6 @@ from gui.style_manager import load_combined_stylesheet
 logger = get_logger(__name__)
 
 ACTION_TYPE_NAMES = {
-    "login": "登录",
-    "logout": "登出",
     "create": "创建",
     "update": "更新",
     "delete": "删除",
@@ -45,8 +43,6 @@ class AuditPage(QWidget):
         toolbar_layout.addWidget(QLabel("操作类型:"))
         self.action_combo = QComboBox()
         self.action_combo.addItem("全部", "")
-        self.action_combo.addItem("登录", "login")
-        self.action_combo.addItem("登出", "logout")
         self.action_combo.addItem("创建", "create")
         self.action_combo.addItem("更新", "update")
         self.action_combo.addItem("删除", "delete")

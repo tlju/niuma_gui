@@ -26,12 +26,10 @@ class AuthService(AuditMixin):
             logger.warning(f"登录失败: 用户状态异常 - {username}, 状态: {user.status}")
             return None
 
-        self.log_login(user.id, username)
         logger.info(f"用户登录成功: {username}")
         return user
 
     def logout(self, user_id: int, username: str = None):
-        self.log_logout(user_id, username)
         logger.info(f"用户登出: {username or str(user_id)}")
 
     def get_user_by_username(self, username: str) -> Optional[User]:
