@@ -41,7 +41,6 @@ class TestBastionService(unittest.TestCase):
         status = self.bastion_service.get_connection_status("nonexistent")
         
         self.assertEqual(status["status"], ConnectionStatus.DISCONNECTED.value)
-        self.assertEqual(status["channels"], 0)
         self.assertFalse(status["authenticated"])
     
     def test_get_channel_no_connection(self):
@@ -77,7 +76,7 @@ class TestBastionNode(unittest.TestCase):
     
     def test_node_properties(self):
         self.assertEqual(BastionNode.node_type, "bastion")
-        self.assertEqual(BastionNode.category, "action")
+        self.assertEqual(BastionNode.category, "environment")
         self.assertEqual(BastionNode.display_name, "堡垒机连接")
         self.assertEqual(BastionNode.input_ports, 1)
         self.assertEqual(BastionNode.output_ports, 1)
@@ -85,21 +84,14 @@ class TestBastionNode(unittest.TestCase):
     def test_get_config_schema(self):
         schema = self.node.get_config_schema()
         
-        self.assertIn("operation", schema["properties"])
-        self.assertIn("connect_host", schema["properties"]["operation"]["enum"])
-        self.assertIn("disconnect", schema["properties"]["operation"]["enum"])
-        self.assertIn("get_ips", schema["properties"]["operation"]["enum"])
         self.assertIn("target_host", schema["properties"])
-        self.assertNotIn("target_username", schema["properties"])
-        self.assertNotIn("target_password", schema["properties"])
-        self.assertNotIn("connection_id", schema["properties"])
     
-    def test_execute_missing_operation(self):
+    def test_execute_missing_target_host(self):
         self.node.config = {}
         result = self.node.execute()
         
         self.assertEqual(result.status, NodeStatus.FAILED)
-        self.assertIn("未指定操作类型", result.error)
+        self.assertIn("未指定目标主机地址", result.error)
     
     def test_execute_missing_db(self):
         node = BastionNode(node_id=2, name="无数据库节点")
@@ -118,20 +110,6 @@ class TestBastionNode(unittest.TestCase):
     def test_replace_variables_no_match(self):
         result = self.node._replace_variables("@unknown.variable")
         self.assertEqual(result, "@unknown.variable")
-    
-    @patch('services.bastion_service.BastionService')
-    def test_execute_connect_host_missing_target(self, mock_bastion_service_class):
-        mock_service = Mock()
-        mock_bastion_service_class.return_value = mock_service
-        mock_service.get_connection_status.return_value = {
-            "authenticated": True
-        }
-        
-        self.node.config = {"operation": "connect_host"}
-        result = self.node.execute()
-        
-        self.assertEqual(result.status, NodeStatus.FAILED)
-        self.assertIn("需要指定目标主机地址", result.error)
 
 
 class TestBastionConnectionWorker(unittest.TestCase):

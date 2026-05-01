@@ -74,89 +74,6 @@ class BastionStatusWidget(QFrame):
         super().mousePressEvent(event)
 
 
-class TunnelItemWidget(QFrame):
-    close_requested = pyqtSignal(int)
-
-    def __init__(self, tunnel_info: dict, parent=None):
-        super().__init__(parent)
-        self.setObjectName("tunnelItemWidget")
-        self.tunnel_id = tunnel_info["tunnel_id"]
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(6, 2, 2, 2)
-        layout.setSpacing(4)
-
-        indicator = QLabel("⇄")
-        indicator.setObjectName("tunnelIndicator")
-        indicator.setFixedWidth(14)
-        indicator.setAlignment(Qt.AlignCenter)
-        layout.addWidget(indicator)
-
-        info_text = f"{tunnel_info['target_host']}:{tunnel_info['target_port']}"
-        info_label = QLabel(info_text)
-        info_label.setObjectName("tunnelInfoLabel")
-        info_label.setToolTip(f"本地端口: {tunnel_info['local_port']}")
-        layout.addWidget(info_label)
-
-        close_btn = QToolButton()
-        close_btn.setObjectName("tunnelCloseBtn")
-        close_btn.setText("✕")
-        close_btn.setFixedSize(18, 18)
-        close_btn.setCursor(Qt.PointingHandCursor)
-        close_btn.setToolTip("断开隧道")
-        close_btn.clicked.connect(lambda: self.close_requested.emit(self.tunnel_id))
-        layout.addWidget(close_btn)
-
-
-class TunnelStatusWidget(QFrame):
-    tunnel_close_requested = pyqtSignal(int)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setObjectName("tunnelStatusWidget")
-        self._tunnel_items = {}
-
-        self.main_layout = QHBoxLayout(self)
-        self.main_layout.setContentsMargins(4, 0, 4, 0)
-        self.main_layout.setSpacing(2)
-
-        self.title_label = QLabel("隧道:")
-        self.title_label.setObjectName("tunnelTitleLabel")
-        self.main_layout.addWidget(self.title_label)
-
-        self.hide()
-
-    def add_tunnel(self, tunnel_info: dict):
-        tunnel_id = tunnel_info["tunnel_id"]
-        if tunnel_id in self._tunnel_items:
-            return
-
-        item = TunnelItemWidget(tunnel_info)
-        item.close_requested.connect(self._on_close_requested)
-        self._tunnel_items[tunnel_id] = item
-        self.main_layout.addWidget(item)
-        self._update_visibility()
-
-    def remove_tunnel(self, tunnel_id: int):
-        if tunnel_id in self._tunnel_items:
-            item = self._tunnel_items.pop(tunnel_id)
-            self.main_layout.removeWidget(item)
-            item.deleteLater()
-            self._update_visibility()
-
-    def clear_all(self):
-        for tunnel_id in list(self._tunnel_items.keys()):
-            self.remove_tunnel(tunnel_id)
-
-    def _on_close_requested(self, tunnel_id: int):
-        self.tunnel_close_requested.emit(tunnel_id)
-
-    def _update_visibility(self):
-        if self._tunnel_items:
-            self.show()
-        else:
-            self.hide()
-
-
 class MainWindow(QMainWindow):
     def __init__(self, user_id: int, username: str, db):
         super().__init__()
@@ -218,10 +135,6 @@ class MainWindow(QMainWindow):
         self.bastion_status_widget = BastionStatusWidget()
         self.bastion_status_widget.clicked.connect(self._show_bastion_menu)
         self.status_bar.addPermanentWidget(self.bastion_status_widget)
-
-        self.tunnel_status_widget = TunnelStatusWidget()
-        self.tunnel_status_widget.tunnel_close_requested.connect(self._on_tunnel_close_requested)
-        self.status_bar.addPermanentWidget(self.tunnel_status_widget)
         
         self.bastion_manager.status_changed.connect(self._on_bastion_status_changed)
         self.bastion_manager.connection_success.connect(self._on_bastion_connected)
@@ -229,8 +142,6 @@ class MainWindow(QMainWindow):
         self.bastion_manager.auth_required.connect(self._on_bastion_auth_required)
         self.bastion_manager.otp_retry_required.connect(self._on_otp_retry_required)
         self.bastion_manager.server_list_available.connect(self._on_server_list_available)
-        self.bastion_manager.tunnel_created.connect(self._on_tunnel_created)
-        self.bastion_manager.tunnel_closed.connect(self._on_tunnel_closed)
 
     def _show_bastion_menu(self):
         menu = QMenu(self)
@@ -285,7 +196,6 @@ class MainWindow(QMainWindow):
         if reply == QMessageBox.StandardButton.Yes:
             self.bastion_manager.disconnect()
             self.bastion_status_widget.set_status(ConnectionStatus.DISCONNECTED.value, "已断开")
-            self.tunnel_status_widget.clear_all()
 
     def _on_bastion_status_changed(self, status: str, message: str):
         self.bastion_status_widget.set_status(status, message)
@@ -361,25 +271,6 @@ class MainWindow(QMainWindow):
     def _on_server_select_cancelled(self):
         self.bastion_manager.disconnect()
         self.bastion_status_widget.set_status(ConnectionStatus.DISCONNECTED.value, "已取消选择")
-
-    def _on_tunnel_created(self, tunnel_info: dict):
-        self.tunnel_status_widget.add_tunnel(tunnel_info)
-        display = tunnel_info.get("display", "")
-        self.status_bar.showMessage(f"隧道已建立: {display}", 3000)
-        if self.assets_page:
-            self.assets_page.refresh_bastion_state()
-
-    def _on_tunnel_closed(self, tunnel_id: int):
-        self.tunnel_status_widget.remove_tunnel(tunnel_id)
-        self.status_bar.showMessage(f"隧道 {tunnel_id} 已断开", 3000)
-        if self.assets_page:
-            self.assets_page.refresh_bastion_state()
-
-    def _on_tunnel_close_requested(self, tunnel_id: int):
-        try:
-            self.bastion_manager.close_tunnel(tunnel_id)
-        except Exception as e:
-            QMessageBox.warning(self, "提示", f"断开隧道失败: {e}")
 
     def create_menu_bar(self):
         menubar = self.menuBar()

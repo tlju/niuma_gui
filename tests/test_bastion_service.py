@@ -118,8 +118,8 @@ class TestParseServerList:
         conn = BastionConnection("192.168.1.100", 22, "admin", "password")
         
         output = """
-  1  Web服务器 192.168.1.10
-  2  数据库服务器 192.168.1.11
+  1: 192.168.1.10 Web服务器
+  2: 192.168.1.11 数据库服务器
 """
         servers = conn._parse_server_list(output)
         
@@ -208,14 +208,16 @@ class TestSearchAndSelectAsset:
         mock_channel.recv_ready.return_value = False
         mock_client.invoke_shell.return_value = mock_channel
         
+        initial_output = "欢迎使用堡垒机\n"
         search_output = """
-搜索结果:
-1: 192.168.1.10 目标服务器
-
-请选择:
+过滤条件：192.168.1.10
+目标资产列表
+序号: IP 地址                                  名称(说明) *
+   1: 192.168.1.10                             目标服务器
+请选择目标资产：
 """
         select_output = """
-Connecting to 192.168.1.10...
+Connecting to any@目标服务器(192.168.1.10) ...
 login:
 """
         
@@ -223,6 +225,8 @@ login:
         def mock_read_output(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
+                return initial_output
+            elif call_count[0] == 2:
                 return search_output
             return select_output
         
@@ -247,7 +251,17 @@ login:
         mock_channel.recv_ready.return_value = False
         mock_client.invoke_shell.return_value = mock_channel
         
-        with patch.object(conn, '_read_channel_output', return_value="未找到匹配的资产"):
+        initial_output = "欢迎使用堡垒机\n"
+        search_output = "未找到匹配的资产"
+        
+        call_count = [0]
+        def mock_read_output(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return initial_output
+            return search_output
+        
+        with patch.object(conn, '_read_channel_output', side_effect=mock_read_output):
             result = conn.search_and_select_asset("192.168.1.99", timeout=30)
         
         assert result["success"] == False
@@ -271,8 +285,9 @@ class TestConnectToAsset:
         mock_client.invoke_shell.return_value = mock_channel
         
         outputs = [
-            "1: 192.168.1.10 目标服务器\n",
-            "login:",
+            "欢迎使用堡垒机\n",
+            "过滤条件：192.168.1.10\n目标资产列表\n   1: 192.168.1.10 目标服务器\n请选择目标资产：",
+            "Connecting to any@目标服务器(192.168.1.10) ...\nlogin:",
             "Password:",
             "Welcome to Ubuntu\n$ "
         ]
@@ -310,8 +325,9 @@ class TestConnectToAsset:
         mock_client.invoke_shell.return_value = mock_channel
         
         outputs = [
-            "1: 192.168.1.10 目标服务器\n",
-            "login:",
+            "欢迎使用堡垒机\n",
+            "过滤条件：192.168.1.10\n目标资产列表\n   1: 192.168.1.10 目标服务器\n请选择目标资产：",
+            "Connecting to any@目标服务器(192.168.1.10) ...\nlogin:",
             "Permission denied, please try again."
         ]
         output_index = [0]
@@ -339,7 +355,17 @@ class TestExecuteCommandOnAsset:
         
         mock_channel = Mock()
         mock_channel.is_active = True
-        mock_channel.recv_ready.return_value = True
+        
+        recv_ready_calls = [True, True, False]
+        recv_ready_index = [0]
+        def mock_recv_ready():
+            idx = recv_ready_index[0]
+            if idx < len(recv_ready_calls):
+                recv_ready_index[0] += 1
+                return recv_ready_calls[idx]
+            return False
+        
+        mock_channel.recv_ready.side_effect = mock_recv_ready
         mock_channel.recv.return_value = b"total 0\ndrwxr-xr-x 2 root root 40 Apr 1 10:00 .\n"
         
         conn._current_session_channel = BastionChannel(mock_channel, 0, "192.168.1.10")
@@ -499,8 +525,8 @@ class TestBastionService:
     def test_get_connection_status_not_exists(self, bastion_service):
         status = bastion_service.get_connection_status("nonexistent")
         
-        assert status["exists"] == False
         assert status["connected"] == False
+        assert status["authenticated"] == False
 
     @patch('services.bastion_service.paramiko.SSHClient')
     def test_connect_with_explicit_params(self, mock_ssh_client_class, bastion_service):
@@ -518,14 +544,13 @@ class TestBastionService:
         )
         
         assert conn.is_connected == True
-        assert bastion_service.get_connection_status("test_conn")["exists"] == True
+        assert bastion_service.get_connection_status("test_conn")["connected"] == True
 
-    def test_disconnect_all(self, bastion_service):
+    def test_disconnect(self, bastion_service):
         mock_conn = Mock()
         bastion_service._connections["conn1"] = mock_conn
-        bastion_service._connections["conn2"] = Mock()
         
-        bastion_service.disconnect_all()
+        bastion_service.disconnect("conn1")
         
         mock_conn.disconnect.assert_called_once()
-        assert len(bastion_service._connections) == 0
+        assert "conn1" not in bastion_service._connections
