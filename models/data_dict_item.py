@@ -10,4 +10,3 @@ class DataDictItem(Base):
     item_code = Column(String(50), nullable=False)
     item_name = Column(String(100), nullable=False)
     sort_order = Column(Integer, default=0)
-    is_active = Column(Integer, default=1)

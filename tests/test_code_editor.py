@@ -48,27 +48,14 @@ class TestCodeEditorCompletionWords:
         mock_dict_service = Mock()
         mock_dict = Mock()
         mock_dict.code = "env_type"
-        mock_dict.is_active = 1
         mock_item = Mock()
         mock_item.item_code = "prod"
         mock_item.item_name = "生产环境"
-        mock_item.is_active = 1
         mock_dict_service.get_dicts.return_value = [mock_dict]
         mock_dict_service.get_dict_items.return_value = [mock_item]
 
         editor = CodeEditor(param_service=None, dict_service=mock_dict_service)
         assert "@dict.env_type" in editor._completion_words
-
-    def test_load_completion_words_filters_inactive_dicts(self, qapp):
-        from gui.code_editor import CodeEditor
-        mock_dict_service = Mock()
-        mock_dict = Mock()
-        mock_dict.code = "env_type"
-        mock_dict.is_active = 0
-        mock_dict_service.get_dicts.return_value = [mock_dict]
-
-        editor = CodeEditor(param_service=None, dict_service=mock_dict_service)
-        assert len(editor._completion_words) == 0
 
     def test_load_completion_words_no_services(self, qapp):
         from gui.code_editor import CodeEditor

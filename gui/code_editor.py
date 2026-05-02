@@ -520,12 +520,10 @@ class CodeEditor(QPlainTextEdit):
                 dicts = self._dict_service.get_dicts()
                 logger.debug(f"Loaded {len(dicts) if dicts else 0} dicts")
                 for d in dicts:
-                    if d.is_active:
-                        self._completion_words.append(f"@dict.{d.code}")
-                        items = self._dict_service.get_dict_items(d.code)
-                        for item in items:
-                            if item.is_active:
-                                self._completion_words.append(f"@dict.{d.code}.{item.item_name}")
+                    self._completion_words.append(f"@dict.{d.code}")
+                    items = self._dict_service.get_dict_items(d.code)
+                    for item in items:
+                        self._completion_words.append(f"@dict.{d.code}.{item.item_name}")
             except Exception as e:
                 logger.warning(f"Failed to load dicts for completion: {e}")
         

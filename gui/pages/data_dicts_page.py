@@ -73,6 +73,7 @@ class DataDictsPage(QWidget):
         self.dict_table.setShowGrid(False)
         self.dict_table.verticalHeader().setDefaultSectionSize(42)
         self.dict_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.dict_table.itemClicked.connect(self.on_dict_selected)
         header = self.dict_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
