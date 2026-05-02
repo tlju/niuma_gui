@@ -6,24 +6,37 @@ import traceback
 import subprocess
 import shutil
 import platform
+import tempfile
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
 
-def setup_input_method():
+def setup_linux_env():
     """
-    设置Qt输入法环境变量，支持Linux下的中文输入
-    检测并拷贝fcitx输入法插件
+    设置Linux环境变量，包括运行时目录、Qt平台插件和输入法支持
     """
     if sys.platform != "linux":
         return
     
-    current_im = os.environ.get("QT_IM_MODULE", "")
-    if current_im:
-        return
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "")
+    if runtime_dir and os.path.exists(runtime_dir):
+        try:
+            stat_info = os.stat(runtime_dir)
+            if stat_info.st_mode & 0o777 != 0o700:
+                temp_runtime = os.path.join(tempfile.gettempdir(), f"runtime-{os.getuid()}")
+                os.makedirs(temp_runtime, mode=0o700, exist_ok=True)
+                os.environ["XDG_RUNTIME_DIR"] = temp_runtime
+        except OSError:
+            temp_runtime = os.path.join(tempfile.gettempdir(), f"runtime-{os.getuid()}")
+            os.makedirs(temp_runtime, mode=0o700, exist_ok=True)
+            os.environ["XDG_RUNTIME_DIR"] = temp_runtime
     
-    target_dir = os.path.join("bin", "PyQt5", "Qt5", "plugins", "platforminputcontexts")
+    if not os.environ.get("QT_QPA_PLATFORM"):
+        os.environ["QT_QPA_PLATFORM"] = "xcb"
+    
+    app_root = os.path.dirname(os.path.abspath(__file__))
+    target_dir = os.path.join(app_root, "bin", "PyQt5", "Qt5", "plugins", "platforminputcontexts")
     target_plugin = os.path.join(target_dir, "libfcitxplatforminputcontextplugin.so")
     
     if not os.path.exists(target_plugin):
@@ -38,10 +51,11 @@ def setup_input_method():
         if os.path.exists(source_plugin):
             try:
                 shutil.copy(source_plugin, target_plugin)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"拷贝输入法插件失败: {e}")
     
-    os.environ["QT_IM_MODULE"] = "fcitx"
+    if not os.environ.get("QT_IM_MODULE"):
+        os.environ["QT_IM_MODULE"] = "fcitx"
 
 
 from gui.main_window import MainWindow
@@ -65,7 +79,7 @@ def show_error_dialog(title: str, message: str):
 
 def main():
     try:
-        setup_input_method()
+        setup_linux_env()
         setup_logger()
 
         QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
