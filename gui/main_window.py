@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QMessageBox, QStatusBar, QFrame, QStackedWidget, QApplication,
-    QPushButton, QMenu, QAction, QToolButton, QSizePolicy
+    QPushButton, QMenu, QAction, QToolButton, QSizePolicy, QDialog
 )
 from PyQt5.QtCore import pyqtSignal, Qt, QTimer
 from PyQt5.QtGui import QColor
@@ -94,6 +94,7 @@ class MainWindow(QMainWindow):
         self.bastion_manager = BastionManager(self.db)
         self.workflow_service = WorkflowService(self.db, self.script_service, self.dict_service, self.param_service, self.bastion_manager)
         self._auth_dialog = None
+        self._server_select_dialog = None
 
         self.init_ui()
         self.status_bar.showMessage(f"当前用户: {username}  |  状态: 在线")
@@ -150,6 +151,10 @@ class MainWindow(QMainWindow):
         status = self.bastion_manager.get_status()
         
         if status.get("authenticated"):
+            if self.bastion_manager.has_server_list():
+                select_action = menu.addAction("选择服务器")
+                select_action.triggered.connect(self._show_server_select_dialog)
+            
             disconnect_action = menu.addAction("断开连接")
             disconnect_action.triggered.connect(self._disconnect_bastion)
             
@@ -165,6 +170,13 @@ class MainWindow(QMainWindow):
         menu.exec(self.bastion_status_widget.mapToGlobal(
             self.bastion_status_widget.rect().bottomLeft()
         ))
+    
+    def _show_server_select_dialog(self):
+        server_list, raw_output = self.bastion_manager.get_server_list()
+        if not server_list and not raw_output:
+            self.bastion_status_widget.set_status(ConnectionStatus.AUTHENTICATED.value, "无可用服务器列表")
+            return
+        self._on_server_list_available(server_list, raw_output)
 
     def _init_bastion_auto_login(self):
         if self.bastion_manager.has_bastion_config():
@@ -235,10 +247,7 @@ class MainWindow(QMainWindow):
             self._auth_dialog = None
     
     def _on_auth_dialog_finished(self, result):
-        if result == QDialog.DialogCode.Accepted:
-            pass
-        else:
-            self._cleanup_auth_dialog()
+        self._cleanup_auth_dialog()
     
     def _on_auth_submitted(self, otp_code: str):
         self.bastion_manager.submit_auth(otp_code=otp_code)
@@ -259,18 +268,34 @@ class MainWindow(QMainWindow):
         self._auth_dialog.show()
 
     def _on_server_list_available(self, server_list: list, raw_output: str):
+        self._cleanup_server_select_dialog()
+        
         from gui.bastion_dialog import ServerSelectDialog
-        dialog = ServerSelectDialog(server_list, raw_output, self)
-        dialog.server_selected.connect(self._on_server_selected)
-        dialog.rejected.connect(self._on_server_select_cancelled)
-        dialog.exec()
+        self._server_select_dialog = ServerSelectDialog(server_list, raw_output, self)
+        self._server_select_dialog.server_selected.connect(self._on_server_selected)
+        self._server_select_dialog.rejected.connect(self._on_server_select_cancelled)
+        self._server_select_dialog.finished.connect(self._on_server_select_finished)
+        self._server_select_dialog.show()
+    
+    def _cleanup_server_select_dialog(self):
+        if hasattr(self, '_server_select_dialog') and self._server_select_dialog is not None:
+            try:
+                self._server_select_dialog.server_selected.disconnect()
+                self._server_select_dialog.rejected.disconnect()
+                self._server_select_dialog.finished.disconnect()
+            except TypeError:
+                pass
+            self._server_select_dialog.deleteLater()
+            self._server_select_dialog = None
+    
+    def _on_server_select_finished(self, result):
+        self._cleanup_server_select_dialog()
     
     def _on_server_selected(self, menu_selection: str):
         self.bastion_manager.select_server(menu_selection)
     
     def _on_server_select_cancelled(self):
-        self.bastion_manager.disconnect()
-        self.bastion_status_widget.set_status(ConnectionStatus.DISCONNECTED.value, "已取消选择")
+        self.bastion_status_widget.set_status(ConnectionStatus.AUTHENTICATED.value, "已认证-未选择服务器")
 
     def create_menu_bar(self):
         menubar = self.menuBar()
@@ -431,6 +456,8 @@ class MainWindow(QMainWindow):
             auth_service = AuthService(self.db)
             auth_service.logout(self.current_user_id, self.current_username)
 
+        self._cleanup_auth_dialog()
+        self._cleanup_server_select_dialog()
         self.bastion_manager.disconnect()
 
         self.current_user_id = None

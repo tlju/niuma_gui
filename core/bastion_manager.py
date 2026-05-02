@@ -194,6 +194,8 @@ class BastionManager(QObject):
         self._auth_retry_count = 0
         self._auth_info: dict = {}
         self._current_asset_ip: str = None
+        self._server_list: list = []
+        self._raw_output: str = ""
     
     def has_bastion_config(self) -> bool:
         return self.bastion_service.has_bastion_config()
@@ -286,6 +288,8 @@ class BastionManager(QObject):
         self.bastion_service.disconnect("default")
         self._auth_retry_count = 0
         self._current_asset_ip = None
+        self._server_list = []
+        self._raw_output = ""
         self.status_changed.emit(ConnectionStatus.DISCONNECTED.value, "已断开连接")
     
     def get_status(self) -> Dict[str, Any]:
@@ -300,6 +304,12 @@ class BastionManager(QObject):
     
     def get_current_asset_ip(self) -> Optional[str]:
         return self._current_asset_ip
+    
+    def get_server_list(self) -> tuple:
+        return self._server_list, self._raw_output
+    
+    def has_server_list(self) -> bool:
+        return len(self._server_list) > 0
     
     def execute_command(self, command: str, timeout: int = 30) -> Dict[str, Any]:
         if not self.is_connected():
@@ -360,6 +370,8 @@ class BastionManager(QObject):
     
     def _on_server_list_available(self, server_list: list, raw_output: str):
         logger.info(f"BastionManager: 服务器列表可用，共 {len(server_list)} 台")
+        self._server_list = server_list
+        self._raw_output = raw_output
         self._cleanup_auth_worker()
         self.server_list_available.emit(server_list, raw_output)
     
