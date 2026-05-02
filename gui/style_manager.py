@@ -87,18 +87,36 @@ def load_stylesheet(app: QApplication, style_name: str = None) -> None:
             app.setStyleSheet(content)
 
 
+_combined_styles_cache: str = ""
+_combined_names: set = set()
+
+
 def load_combined_stylesheet(app: QApplication, style_names: list) -> None:
+    global _combined_styles_cache, _combined_names
+    
     styles_dir = _get_resource_path("gui/styles")
-    combined_styles = ""
-
+    new_names = set(style_names) - _combined_names
+    
+    if not new_names and _combined_styles_cache:
+        app.setStyleSheet(_combined_styles_cache)
+        return
+    
     for style_name in style_names:
-        style_path = styles_dir / f"{style_name}.qss"
-        content = _load_qss(style_path)
-        if content:
-            combined_styles += content + "\n"
+        if style_name not in _combined_names:
+            style_path = styles_dir / f"{style_name}.qss"
+            content = _load_qss(style_path)
+            if content:
+                _combined_styles_cache += content + "\n"
+            _combined_names.add(style_name)
+    
+    if _combined_styles_cache:
+        app.setStyleSheet(_combined_styles_cache)
 
-    if combined_styles:
-        app.setStyleSheet(combined_styles)
+
+def clear_stylesheet_cache() -> None:
+    global _combined_styles_cache, _combined_names
+    _combined_styles_cache = ""
+    _combined_names.clear()
 
 
 def get_font() -> QFont:

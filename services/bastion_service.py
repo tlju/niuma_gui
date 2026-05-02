@@ -90,7 +90,8 @@ class BastionConnection:
         self.host = host
         self.port = port
         self.username = username
-        self.password = password
+        self._password_bytes = bytearray(password.encode('utf-8')) if password else bytearray()
+        self._password_used = False
         self.client: Optional[paramiko.SSHClient] = None
         self.transport: Optional[paramiko.Transport] = None
         self.channels: List[BastionChannel] = []
@@ -102,6 +103,26 @@ class BastionConnection:
         self._on_status_change: Optional[Callable[[ConnectionStatus, str], None]] = None
         self._auth_channel: Optional[paramiko.Channel] = None
         self._current_session_channel: Optional[BastionChannel] = None
+
+    @property
+    def password(self) -> str:
+        if self._password_used:
+            return ""
+        return self._password_bytes.decode('utf-8', errors='ignore')
+
+    def _consume_password(self) -> str:
+        pwd = self._password_bytes.decode('utf-8', errors='ignore')
+        self._clear_password()
+        return pwd
+
+    def _clear_password(self):
+        for i in range(len(self._password_bytes)):
+            self._password_bytes[i] = 0
+        self._password_bytes = bytearray()
+        self._password_used = True
+
+    def __del__(self):
+        self._clear_password()
 
     def set_status_callback(self, callback: Callable[[ConnectionStatus, str], None]):
         self._on_status_change = callback
@@ -153,7 +174,7 @@ class BastionConnection:
                 hostname=self.host,
                 port=self.port,
                 username=self.username,
-                password=self.password,
+                password=self._consume_password(),
                 timeout=timeout,
                 allow_agent=False,
                 look_for_keys=False,

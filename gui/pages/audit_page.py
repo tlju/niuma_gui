@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from datetime import datetime
-from core.workers import AuditLogLoadWorker
+from core.workers import GenericWorker
 from core.logger import get_logger
 from gui.icons import icons
 from gui.style_manager import load_combined_stylesheet
@@ -88,7 +88,7 @@ class AuditPage(QWidget):
             logger.warning("审计日志加载任务正在进行中，跳过")
             return
 
-        self.loading_worker = AuditLogLoadWorker(self.audit_service, action_type)
+        self.loading_worker = GenericWorker(self.audit_service.get_logs, action_type)
         self.loading_worker.finished.connect(self._on_logs_loaded)
         self.loading_worker.error.connect(self._on_load_error)
         self.loading_worker.start()

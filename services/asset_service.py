@@ -1,7 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case
 from models.server_asset import ServerAsset
-from models.data_dict_item import DataDictItem
 from services.crypto import CryptoManager
 from services.dict_service import DictService
 from services.audit_mixin import AuditMixin
@@ -17,10 +15,32 @@ logger = get_logger(__name__)
 
 
 class AssetService(AuditMixin):
+    _sort_cache: Dict[str, Dict[str, int]] = {}
+    _cache_valid: bool = False
+
     def __init__(self, db: Session, dict_service: Optional[DictService] = None):
         self.db = db
         self.crypto = CryptoManager(settings.CRYPTO_KEY)
         self.dict_service = dict_service or DictService(db)
+
+    def _refresh_sort_cache(self) -> None:
+        if self._cache_valid:
+            return
+        dict_codes = ["unit", "system", "location", "server_type"]
+        for code in dict_codes:
+            items = self.dict_service.get_dict_items(code)
+            self._sort_cache[code] = {item.item_code: (item.sort_order or 9999) for item in items}
+        self._cache_valid = True
+
+    def invalidate_sort_cache(self) -> None:
+        self._cache_valid = False
+        self._sort_cache.clear()
+
+    def _get_sort_order(self, dict_code: str, item_code: Optional[str]) -> int:
+        if not item_code:
+            return 9999
+        self._refresh_sort_cache()
+        return self._sort_cache.get(dict_code, {}).get(item_code, 9999)
 
     def create(
         self,
@@ -39,6 +59,13 @@ class AssetService(AuditMixin):
         vip: Optional[str] = None,
         user_id: Optional[int] = None
     ) -> Optional[int]:
+        if not unit_name or not isinstance(unit_name, str):
+            raise ValueError("单位名称不能为空")
+        if not system_name or not isinstance(system_name, str):
+            raise ValueError("系统名称不能为空")
+        if not username or not isinstance(username, str):
+            raise ValueError("用户名不能为空")
+
         password_cipher = self.crypto.encrypt(password) if password else ""
 
         asset = ServerAsset(
@@ -72,47 +99,24 @@ class AssetService(AuditMixin):
         return asset.id
 
     def get_all(self) -> List[ServerAsset]:
-        unit_sort = self.db.query(
-            DataDictItem.item_code,
-            DataDictItem.sort_order
-        ).filter(DataDictItem.dict_code == "unit").subquery()
-        
-        system_sort = self.db.query(
-            DataDictItem.item_code,
-            DataDictItem.sort_order
-        ).filter(DataDictItem.dict_code == "system").subquery()
-        
-        location_sort = self.db.query(
-            DataDictItem.item_code,
-            DataDictItem.sort_order
-        ).filter(DataDictItem.dict_code == "location").subquery()
-        
-        server_type_sort = self.db.query(
-            DataDictItem.item_code,
-            DataDictItem.sort_order
-        ).filter(DataDictItem.dict_code == "server_type").subquery()
-        
-        query = self.db.query(ServerAsset).outerjoin(
-            unit_sort, ServerAsset.unit_name == unit_sort.c.item_code
-        ).outerjoin(
-            system_sort, ServerAsset.system_name == system_sort.c.item_code
-        ).outerjoin(
-            location_sort, ServerAsset.location == location_sort.c.item_code
-        ).outerjoin(
-            server_type_sort, ServerAsset.server_type == server_type_sort.c.item_code
-        ).order_by(
-            func.coalesce(unit_sort.c.sort_order, 9999),
-            func.coalesce(system_sort.c.sort_order, 9999),
-            ServerAsset.ip,
-            ServerAsset.ipv6
-        )
-        
-        return query.all()
+        assets = self.db.query(ServerAsset).all()
+        self._refresh_sort_cache()
+        assets.sort(key=lambda a: (
+            self._sort_cache.get("unit", {}).get(a.unit_name, 9999),
+            self._sort_cache.get("system", {}).get(a.system_name, 9999),
+            a.ip or "",
+            a.ipv6 or ""
+        ))
+        return assets
 
     def get_by_id(self, asset_id: int) -> Optional[ServerAsset]:
+        if not isinstance(asset_id, int) or asset_id <= 0:
+            return None
         return self.db.query(ServerAsset).filter(ServerAsset.id == asset_id).first()
 
     def update(self, asset_id: int, user_id: Optional[int] = None, **kwargs) -> bool:
+        if not isinstance(asset_id, int) or asset_id <= 0:
+            return False
         asset = self.get_by_id(asset_id)
         if not asset:
             return False
@@ -137,6 +141,8 @@ class AssetService(AuditMixin):
         return True
 
     def delete(self, asset_id: int, user_id: int) -> bool:
+        if not isinstance(asset_id, int) or asset_id <= 0:
+            return False
         asset = self.get_by_id(asset_id)
         if not asset:
             return False

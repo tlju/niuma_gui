@@ -9,6 +9,7 @@ import os
 import re
 import sys
 from core.logger import get_logger
+from core.utils import replace_variables
 
 logger = get_logger(__name__)
 
@@ -128,51 +129,7 @@ class CommandNode(BaseNode):
         }
 
     def _replace_variables(self, content: str) -> str:
-        if not content:
-            return content
-        
-        def replace_var(match):
-            var_path = match.group(1)
-            parts = var_path.split('.')
-            
-            if len(parts) < 2:
-                return match.group(0)
-            
-            source_type = parts[0]
-            
-            try:
-                if source_type == "dict" and self.dict_service:
-                    if len(parts) >= 3:
-                        dict_code = parts[1]
-                        item_name = parts[2]
-                        items = self.dict_service.get_dict_items(dict_code)
-                        logger.debug(f"字典变量替换: 查找字典 '{dict_code}' 中的项 '{item_name}'，共 {len(items)} 个字典项")
-                        for item in items:
-                            logger.debug(f"  - 字典项: code='{item.item_code}', name='{item.item_name}'")
-                            if item.item_name == item_name:
-                                logger.debug(f"字典变量替换成功: @{var_path} -> {item.item_code}")
-                                return item.item_code
-                        logger.warning(f"字典变量替换失败: 未找到匹配的字典项 @{var_path}")
-                elif source_type == "dict" and not self.dict_service:
-                    logger.warning(f"字典变量替换失败: dict_service 未设置 @{var_path}")
-                elif source_type == "param" and self.param_service:
-                    param_code = parts[1]
-                    logger.debug(f"尝试替换参数变量: param_code={param_code}")
-                    param = self.param_service.get_param_by_code(param_code)
-                    if param:
-                        logger.debug(f"参数变量替换成功: @{var_path} -> {param.param_value}")
-                        return param.param_value
-                    else:
-                        logger.warning(f"参数变量替换失败: 未找到参数 @{var_path}")
-                elif source_type == "param" and not self.param_service:
-                    logger.warning(f"参数变量替换失败: param_service 未设置 @{var_path}")
-            except Exception as e:
-                logger.error(f"变量替换异常: @{var_path}, 错误: {str(e)}")
-            
-            return match.group(0)
-        
-        pattern = r'@([a-zA-Z_][a-zA-Z0-9_\.]*)'
-        return re.sub(pattern, replace_var, content)
+        return replace_variables(content, self.dict_service, self.param_service)
 
     def execute(self, inputs: Dict[str, Any] = None) -> NodeResult:
         inputs = inputs or {}
@@ -326,51 +283,7 @@ class ScriptNode(BaseNode):
         }
 
     def _replace_variables(self, content: str) -> str:
-        if not content:
-            return content
-        
-        def replace_var(match):
-            var_path = match.group(1)
-            parts = var_path.split('.')
-            
-            if len(parts) < 2:
-                return match.group(0)
-            
-            source_type = parts[0]
-            
-            try:
-                if source_type == "dict" and self.dict_service:
-                    if len(parts) >= 3:
-                        dict_code = parts[1]
-                        item_name = parts[2]
-                        items = self.dict_service.get_dict_items(dict_code)
-                        logger.debug(f"字典变量替换: 查找字典 '{dict_code}' 中的项 '{item_name}'，共 {len(items)} 个字典项")
-                        for item in items:
-                            logger.debug(f"  - 字典项: code='{item.item_code}', name='{item.item_name}'")
-                            if item.item_name == item_name:
-                                logger.debug(f"字典变量替换成功: @{var_path} -> {item.item_code}")
-                                return item.item_code
-                        logger.warning(f"字典变量替换失败: 未找到匹配的字典项 @{var_path}")
-                elif source_type == "dict" and not self.dict_service:
-                    logger.warning(f"字典变量替换失败: dict_service 未设置 @{var_path}")
-                elif source_type == "param" and self.param_service:
-                    param_code = parts[1]
-                    logger.debug(f"尝试替换参数变量: param_code={param_code}")
-                    param = self.param_service.get_param_by_code(param_code)
-                    if param:
-                        logger.debug(f"参数变量替换成功: @{var_path} -> {param.param_value}")
-                        return param.param_value
-                    else:
-                        logger.warning(f"参数变量替换失败: 未找到参数 @{var_path}")
-                elif source_type == "param" and not self.param_service:
-                    logger.warning(f"参数变量替换失败: param_service 未设置 @{var_path}")
-            except Exception as e:
-                logger.error(f"变量替换异常: @{var_path}, 错误: {str(e)}")
-            
-            return match.group(0)
-        
-        pattern = r'@([a-zA-Z_][a-zA-Z0-9_\.]*)'
-        return re.sub(pattern, replace_var, content)
+        return replace_variables(content, self.dict_service, self.param_service)
 
     def execute(self, inputs: Dict[str, Any] = None) -> NodeResult:
         inputs = inputs or {}
@@ -389,7 +302,10 @@ class ScriptNode(BaseNode):
             return self.result
 
         script_content = self._replace_variables(script_content)
+        temp_file = None
         command = self._build_command_for_language(script_content, script_language)
+        if script_language in ("python", "sql"):
+            temp_file = command.split()[-1] if command else None
 
         if inputs.get("output"):
             command = command.replace("${input}", str(inputs.get("output", "")))
@@ -472,9 +388,15 @@ class ScriptNode(BaseNode):
                 status=NodeStatus.FAILED,
                 error=str(e)
             )
+        finally:
+            if temp_file and os.path.exists(temp_file):
+                try:
+                    os.unlink(temp_file)
+                except OSError:
+                    pass
 
         return self.result
-    
+
     def _build_command_for_language(self, script_content: str, language: str) -> str:
         if language == "python":
             with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:

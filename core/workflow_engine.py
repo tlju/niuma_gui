@@ -31,6 +31,7 @@ class WorkflowExecutor:
         self.is_running = False
         self.is_cancelled = False
         self._lock = threading.Lock()
+        self._condition = threading.Condition(self._lock)
         self.script_service = script_service
         self.dict_service = dict_service
         self.param_service = param_service
@@ -93,7 +94,7 @@ class WorkflowExecutor:
         logger.info(f"[Workflow {self.workflow_id}] {message}")
 
     def _update_node_status(self, node_id: int, status: NodeStatus, result: NodeResult = None):
-        with self._lock:
+        with self._condition:
             if result:
                 self.node_outputs[node_id] = result
 
@@ -104,6 +105,7 @@ class WorkflowExecutor:
                     "output": result.output if result else "",
                     "error": result.error if result else ""
                 })
+            self._condition.notify_all()
 
     def _get_ready_nodes(self) -> List[int]:
         ready = []
@@ -267,7 +269,8 @@ class WorkflowExecutor:
                         if not any_running:
                             break
 
-                        threading.Event().wait(0.1)
+                        with self._condition:
+                            self._condition.wait(timeout=1.0)
                         continue
 
                     futures = {}

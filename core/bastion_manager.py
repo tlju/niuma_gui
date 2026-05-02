@@ -388,11 +388,11 @@ class BastionManager(QObject):
     def _cleanup_auth_worker(self):
         if self._auth_worker is not None:
             try:
-                self._auth_worker.status_changed.disconnect()
-                self._auth_worker.auth_success.disconnect()
-                self._auth_worker.auth_failed.disconnect()
-                self._auth_worker.otp_retry_required.disconnect()
-                self._auth_worker.server_list_available.disconnect()
+                self._auth_worker.status_changed.disconnect(self._on_status_changed)
+                self._auth_worker.auth_success.disconnect(self._on_auth_success)
+                self._auth_worker.auth_failed.disconnect(self._on_auth_failed)
+                self._auth_worker.otp_retry_required.disconnect(self._on_otp_retry_required)
+                self._auth_worker.server_list_available.disconnect(self._on_server_list_available)
             except TypeError:
                 pass
             if self._auth_worker.isRunning():

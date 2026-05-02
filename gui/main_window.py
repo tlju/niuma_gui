@@ -238,9 +238,9 @@ class MainWindow(QMainWindow):
     def _cleanup_auth_dialog(self):
         if hasattr(self, '_auth_dialog') and self._auth_dialog is not None:
             try:
-                self._auth_dialog.auth_submitted.disconnect()
-                self._auth_dialog.rejected.disconnect()
-                self._auth_dialog.finished.disconnect()
+                self._auth_dialog.auth_submitted.disconnect(self._on_auth_submitted)
+                self._auth_dialog.rejected.disconnect(self._on_auth_cancelled)
+                self._auth_dialog.finished.disconnect(self._on_auth_dialog_finished)
             except TypeError:
                 pass
             self._auth_dialog.deleteLater()
@@ -280,9 +280,9 @@ class MainWindow(QMainWindow):
     def _cleanup_server_select_dialog(self):
         if hasattr(self, '_server_select_dialog') and self._server_select_dialog is not None:
             try:
-                self._server_select_dialog.server_selected.disconnect()
-                self._server_select_dialog.rejected.disconnect()
-                self._server_select_dialog.finished.disconnect()
+                self._server_select_dialog.server_selected.disconnect(self._on_server_selected)
+                self._server_select_dialog.rejected.disconnect(self._on_server_select_cancelled)
+                self._server_select_dialog.finished.disconnect(self._on_server_select_finished)
             except TypeError:
                 pass
             self._server_select_dialog.deleteLater()

@@ -62,7 +62,7 @@ from gui.main_window import MainWindow
 from gui.login_dialog import LoginDialog
 from gui.style_manager import load_stylesheet, setup_app_fonts
 from core.logger import setup_logger
-from core.database import init_db, get_db_session
+from core.database import init_db, get_db_session, SessionLocal
 from services.auth_service import AuthService
 from gui.icons import icons
 
@@ -101,7 +101,7 @@ def main():
         load_stylesheet(app)
 
         init_db()
-        db = get_db_session()
+        db = SessionLocal()
         auth_service = AuthService(db)
 
         login_dialog = LoginDialog(auth_service)
@@ -112,7 +112,9 @@ def main():
         window = MainWindow(login_dialog.user_id, login_dialog.username, db)
         window.show()
 
-        sys.exit(app.exec())
+        ret = app.exec()
+        db.close()
+        sys.exit(ret)
     except Exception as e:
         error_msg = f"程序启动失败:\n{str(e)}\n\n详细信息:\n{traceback.format_exc()}"
         show_error_dialog("启动错误", error_msg)

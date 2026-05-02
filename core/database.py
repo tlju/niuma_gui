@@ -1,16 +1,18 @@
 import os
+from contextlib import contextmanager
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker, Session, scoped_session
 from core.config import settings
 from core.logger import get_logger
-from core.utils import get_local_now
+from core.utils import get_local_now, get_base_path
 from models.base import Base
 
 logger = get_logger(__name__)
 
 engine = create_engine(
     settings.DATABASE_URL,
-    connect_args={"check_same_thread": False} if settings.is_sqlite else {}
+    connect_args={"check_same_thread": False} if settings.is_sqlite else {},
+    pool_pre_ping=True,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -20,7 +22,24 @@ DEFAULT_ADMIN_PASSWORD = "admin123"
 DEFAULT_ADMIN_FULL_NAME = "系统管理员"
 
 
-def get_db() -> Session:
+@contextmanager
+def get_db():
+    """获取数据库会话的生成器模式，自动管理生命周期"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def get_thread_session() -> Session:
+    """获取工作线程专用的独立数据库会话，调用方负责关闭"""
+    return SessionLocal()
+
+
+@contextmanager
+def get_thread_db():
+    """获取工作线程专用的独立数据库会话（上下文管理器模式）"""
     db = SessionLocal()
     try:
         yield db
@@ -77,15 +96,12 @@ def init_db():
     _create_tables()
 
     if not db_exists:
-        db = SessionLocal()
-        try:
+        with get_db() as db:
             created = _create_admin_user(db)
             if created:
                 logger.info("初始化完成！")
-        finally:
-            db.close()
 
 
 def get_db_session() -> Session:
-    """获取数据库会话（同步）"""
+    """获取数据库会话（同步），建议优先使用 get_db() 生成器模式"""
     return SessionLocal()

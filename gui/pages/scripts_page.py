@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
     QFrame, QApplication, QComboBox
 )
 from PyQt5.QtCore import Qt
-from core.workers import ScriptLoadWorker
+from core.workers import GenericWorker
 from core.logger import get_logger
 from gui.icons import icons
 from gui.style_manager import load_combined_stylesheet
@@ -97,7 +97,7 @@ class ScriptsPage(QWidget):
             logger.warning("脚本加载任务正在进行中，跳过")
             return
 
-        self.loading_worker = ScriptLoadWorker(self.script_service)
+        self.loading_worker = GenericWorker(self.script_service.get_all)
         self.loading_worker.finished.connect(self._on_scripts_loaded)
         self.loading_worker.error.connect(self._on_load_error)
         self.loading_worker.start()

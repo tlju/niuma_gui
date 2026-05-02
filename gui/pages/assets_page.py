@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont
-from core.workers import AssetLoadWorker, AssetExportWorker, AssetImportWorker
+from core.workers import GenericWorker
 from core.logger import get_logger
 from gui.icons import icons
 from gui.style_manager import load_combined_stylesheet
@@ -182,7 +182,7 @@ class AssetsPage(QWidget):
 
         self.refresh_btn.setEnabled(False)
         self.refresh_btn.setText("加载中...")
-        self.loading_worker = AssetLoadWorker(self.asset_service)
+        self.loading_worker = GenericWorker(self.asset_service.get_all)
         self.loading_worker.finished.connect(self._on_assets_loaded)
         self.loading_worker.error.connect(self._on_load_error)
         self.loading_worker.start()
@@ -425,8 +425,8 @@ class AssetsPage(QWidget):
                     self.filtered_assets[i].id for i in range(self.table.rowCount())
                 ]
                 
-                self.export_worker = AssetExportWorker(
-                    self.asset_service,
+                self.export_worker = GenericWorker(
+                    self.asset_service.export_assets,
                     asset_ids=asset_ids,
                     include_password=options["include_password"]
                 )
@@ -481,8 +481,8 @@ class AssetsPage(QWidget):
                     with open(file_path, 'rb') as f:
                         file_data = f.read()
                     
-                    self.import_worker = AssetImportWorker(
-                        self.asset_service,
+                    self.import_worker = GenericWorker(
+                        self.asset_service.import_assets,
                         file_data=file_data,
                         update_existing=options["update_existing"],
                         skip_errors=options["skip_errors"]

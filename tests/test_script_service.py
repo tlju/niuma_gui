@@ -37,7 +37,14 @@ def test_create_script(script_service):
 def test_create_script_with_server(script_service):
     from services.asset_service import AssetService
     asset_service = AssetService(script_service.db)
-    server_id = asset_service.create("Test Server", "192.168.1.1", 22, "admin", "password")
+    server_id = asset_service.create(
+        unit_name="TestUnit",
+        system_name="TestSystem",
+        username="admin",
+        password="password",
+        ip="192.168.1.1",
+        port=22
+    )
 
     script_id = script_service.create(
         name="test_script",

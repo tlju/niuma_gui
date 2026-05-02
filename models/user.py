@@ -1,11 +1,13 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
 from models.base import Base
-from enum import Enum
+from enum import IntEnum
 
-class UserStatus:
-    ACTIVE = 1
+
+class UserStatus(IntEnum):
     INACTIVE = 0
+    ACTIVE = 1
     LOCKED = 2
+
 
 class User(Base):
     __tablename__ = "users"
