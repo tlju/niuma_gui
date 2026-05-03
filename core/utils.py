@@ -1,12 +1,46 @@
 import sys
 import os
 import re
+import shutil
+import subprocess
 from datetime import datetime
 from typing import Optional, Dict, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from services.dict_service import DictService
     from services.param_service import ParamService
+
+
+def get_python_executable() -> str:
+    """
+    获取Python解释器路径
+    在PyInstaller打包环境中，sys.executable指向打包后的可执行文件，
+    需要通过sys._base_executable或PATH查找真正的Python解释器
+    """
+    if not getattr(sys, 'frozen', False):
+        return sys.executable
+
+    base_exec = getattr(sys, '_base_executable', None)
+    if base_exec and os.path.isfile(base_exec) and 'python' in os.path.basename(base_exec).lower():
+        return base_exec
+
+    for name in ('python', 'python3', 'python.exe', 'python3.exe'):
+        found = shutil.which(name)
+        if found:
+            return found
+
+    return sys.executable
+
+
+def get_subprocess_kwargs(**kwargs) -> dict:
+    """
+    获取subprocess调用的通用参数
+    在Windows编译版中添加CREATE_NO_WINDOW标志，防止控制台窗口闪现
+    """
+    if sys.platform == 'win32':
+        creation_flags = kwargs.pop('creationflags', 0)
+        kwargs['creationflags'] = creation_flags | subprocess.CREATE_NO_WINDOW
+    return kwargs
 
 
 def get_base_path() -> str:

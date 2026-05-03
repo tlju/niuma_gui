@@ -9,7 +9,7 @@ import os
 import re
 import sys
 from core.logger import get_logger
-from core.utils import replace_variables
+from core.utils import replace_variables, get_python_executable, get_subprocess_kwargs
 
 logger = get_logger(__name__)
 
@@ -192,7 +192,8 @@ class CommandNode(BaseNode):
                     capture_output=True,
                     text=True,
                     timeout=timeout,
-                    cwd=working_dir
+                    cwd=working_dir,
+                    **get_subprocess_kwargs()
                 )
                 if result.returncode == 0:
                     self.status = NodeStatus.SUCCESS
@@ -360,7 +361,8 @@ class ScriptNode(BaseNode):
                     capture_output=True,
                     text=True,
                     timeout=timeout,
-                    cwd=working_dir
+                    cwd=working_dir,
+                    **get_subprocess_kwargs()
                 )
                 if result.returncode == 0:
                     self.status = NodeStatus.SUCCESS
@@ -402,7 +404,8 @@ class ScriptNode(BaseNode):
             with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
                 f.write(script_content)
                 temp_file = f.name
-            return f'"{sys.executable}" {temp_file}'
+            python_exec = get_python_executable()
+            return f'"{python_exec}" {temp_file}'
         elif language == "sql":
             with tempfile.NamedTemporaryFile(mode='w', suffix='.sql', delete=False) as f:
                 f.write(script_content)
