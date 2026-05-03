@@ -82,7 +82,7 @@ jobs:
             echo "Downloaded assets/$name"
           done
 
-      - name: Ensure tag exists on Gitee, then create/get release and upload assets
+      - name: Ensure tag/release on Gitee and upload assets
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           GITEE_OWNER: tlju
@@ -99,7 +99,6 @@ jobs:
           echo "Checking whether tag $TAG exists on Gitee ($GITEE_OWNER/$GITEE_REPO)..."
 
           TFILE=$(mktemp)
-          # fetch up to 100 tags, adjust per_page if needed
           HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" "$API/repos/$GITEE_OWNER/$GITEE_REPO/tags?per_page=100&access_token=$GITEE_TOKEN")
           TAGS_JSON=$(cat "$TFILE"); rm -f "$TFILE"
           echo "Gitee tags list HTTP code: $HTTP_CODE"
@@ -113,9 +112,8 @@ jobs:
           if [ "$TAG_EXISTS" -ge 0 ]; then
             echo "Tag $TAG already exists on Gitee."
           else
-            echo "Tag $TAG does not exist on Gitee — creating tag."
-
-            # determine commit sha to point tag to (from GitHub release.target_commitish or repo default)
+            echo "Tag $TAG does not exist on Gitee — will attempt to create it (best-effort)."
+            # get target_commitish and release body from GitHub
             TFILE=$(mktemp)
             GH_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO/releases/tags/$TAG")
             GH_REL_JSON=$(cat "$TFILE"); rm -f "$TFILE"
@@ -123,10 +121,7 @@ jobs:
               echo "Failed to fetch GitHub release info for tag $TAG: $GH_REL_JSON"
               exit 1
             fi
-
             TARGET_COMMITISH=$(echo "$GH_REL_JSON" | jq -r '.target_commitish // empty')
-            RELEASE_BODY=$(echo "$GH_REL_JSON" | jq -r '.body // empty')
-
             if [ -z "$TARGET_COMMITISH" ]; then
               TFILE=$(mktemp)
               RB_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO")
@@ -135,40 +130,60 @@ jobs:
               echo "No target_commitish in release; fallback to default branch: $TARGET_COMMITISH"
             fi
 
-            # Get commit sha for target_commitish
+            # Try to resolve commit SHA for TARGET_COMMITISH
             TFILE=$(mktemp)
             C_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO/commits/$TARGET_COMMITISH")
             C_JSON=$(cat "$TFILE"); rm -f "$TFILE"
             if [ "$C_CODE" -ne 200 ]; then
               echo "Failed to resolve commit for $TARGET_COMMITISH on GitHub: $C_JSON"
-              exit 1
-            fi
-            COMMIT_SHA=$(echo "$C_JSON" | jq -r '.sha // empty')
-            if [ -z "$COMMIT_SHA" ]; then
-              echo "Could not determine commit SHA for $TARGET_COMMITISH"
-              exit 1
-            fi
-            echo "Will create tag $TAG on Gitee pointing to commit $COMMIT_SHA"
-
-            # Attempt to create git ref (tag) on Gitee
-            TFILE=$(mktemp)
-            REF_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -X POST \
-              "$API/repos/$GITEE_OWNER/$GITEE_REPO/git/refs?access_token=$GITEE_TOKEN" \
-              -d "ref=refs/tags/$TAG" -d "sha=$COMMIT_SHA")
-            REF_BODY=$(cat "$TFILE"); rm -f "$TFILE"
-            echo "Create tag HTTP code: $REF_CODE"
-            echo "Create tag body: $REF_BODY"
-
-            if [ "$REF_CODE" -eq 201 ] || [ "$REF_CODE" -eq 200 ]; then
-              echo "Tag $TAG created on Gitee."
+              # continue; we can still try release creation (Gitee can create tag)
             else
-              echo "Creating tag via refs API failed (maybe not supported). Will proceed to create release directly (Gitee may create tag during release creation)."
-              echo "Refs API response: $REF_BODY"
+              COMMIT_SHA=$(echo "$C_JSON" | jq -r '.sha // empty')
+              if [ -n "${COMMIT_SHA:-}" ]; then
+                echo "Resolved commit SHA for $TARGET_COMMITISH: $COMMIT_SHA"
+                # Try to create tag ref on Gitee (best-effort)
+                TFILE=$(mktemp)
+                REF_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -X POST \
+                  "$API/repos/$GITEE_OWNER/$GITEE_REPO/git/refs?access_token=$GITEE_TOKEN" \
+                  -d "ref=refs/tags/$TAG" -d "sha=$COMMIT_SHA")
+                REF_BODY=$(cat "$TFILE"); rm -f "$TFILE"
+                echo "Create tag HTTP code: $REF_CODE"
+                echo "Create tag body: $REF_BODY"
+                if [ "$REF_CODE" -eq 201 ] || [ "$REF_CODE" -eq 200 ]; then
+                  echo "Tag $TAG created on Gitee."
+                else
+                  echo "Creating tag via refs API failed or returned non-2xx; continuing to release creation (Gitee may create tag during release creation)."
+                fi
+              fi
             fi
           fi
 
-          # Now create/get release on Gitee (use target_commitish and body)
-          echo "Creating or getting Gitee release for tag $TAG"
+          # Prepare release body and target_commitish for release creation
+          # Fetch GitHub release info to get body/target_commitish (again, safe)
+          TFILE=$(mktemp)
+          GH_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO/releases/tags/$TAG")
+          GH_REL_JSON=$(cat "$TFILE"); rm -f "$TFILE"
+          if [ "$GH_CODE" -ne 200 ]; then
+            echo "Failed to fetch GitHub release info for release creation: $GH_REL_JSON"
+            exit 1
+          fi
+          TARGET_COMMITISH_FINAL=$(echo "$GH_REL_JSON" | jq -r '.target_commitish // empty')
+          RELEASE_BODY=$(echo "$GH_REL_JSON" | jq -r '.body // empty')
+
+          if [ -z "$TARGET_COMMITISH_FINAL" ]; then
+            TFILE=$(mktemp)
+            RB_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO")
+            RB_JSON=$(cat "$TFILE"); rm -f "$TFILE"
+            TARGET_COMMITISH_FINAL=$(echo "$RB_JSON" | jq -r '.default_branch // "main"')
+          fi
+
+          # Ensure release body non-empty
+          if [ -z "${RELEASE_BODY}" ]; then
+            RELEASE_BODY="Synchronized from GitHub release ${TAG}"
+            echo "Release body was empty; using fallback message."
+          fi
+
+          echo "Creating or getting Gitee release for tag $TAG with target_commitish=$TARGET_COMMITISH_FINAL"
 
           TFILE=$(mktemp)
           HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases/tags/$TAG?access_token=$GITEE_TOKEN")
@@ -176,32 +191,13 @@ jobs:
           REL_ID=$(echo "$REL_JSON" | jq -r '.id // empty')
 
           if [ -z "$REL_ID" ]; then
-            echo "Gitee release not found — creating one"
-
-            # ensure we have RELEASE_BODY and TARGET_COMMITISH (from earlier)
-            if [ -z "${TARGET_COMMITISH:-}" ] || [ -z "${RELEASE_BODY:-}" ]; then
-              # fetch from GitHub release if missing
-              TFILE=$(mktemp)
-              GH_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO/releases/tags/$TAG")
-              GH_REL_JSON=$(cat "$TFILE"); rm -f "$TFILE"
-              TARGET_COMMITISH=$(echo "$GH_REL_JSON" | jq -r '.target_commitish // empty')
-              RELEASE_BODY=$(echo "$GH_REL_JSON" | jq -r '.body // empty')
-            fi
-            if [ -z "$TARGET_COMMITISH" ]; then
-              # fallback to default branch
-              TFILE=$(mktemp)
-              RB_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO")
-              RB_JSON=$(cat "$TFILE"); rm -f "$TFILE"
-              TARGET_COMMITISH=$(echo "$RB_JSON" | jq -r '.default_branch // "main"')
-            fi
-
             TFILE=$(mktemp)
             HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -X POST \
               "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases?access_token=$GITEE_TOKEN" \
               -F "tag_name=$TAG" \
               -F "name=$TAG" \
-              --data-urlencode "body=${RELEASE_BODY:-}" \
-              -F "target_commitish=$TARGET_COMMITISH")
+              --data-urlencode "body=$RELEASE_BODY" \
+              -F "target_commitish=$TARGET_COMMITISH_FINAL")
             CREATE_BODY=$(cat "$TFILE"); rm -f "$TFILE"
             echo "Create release HTTP code: $HTTP_CODE"
             echo "Create release body: $CREATE_BODY"
