@@ -188,7 +188,15 @@ jobs:
           TFILE=$(mktemp)
           HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases/tags/$TAG?access_token=$GITEE_TOKEN")
           REL_JSON=$(cat "$TFILE"); rm -f "$TFILE"
-          REL_ID=$(echo "$REL_JSON" | jq -r '.id // empty')
+          echo "Get release by tag HTTP code: $HTTP_CODE"
+          echo "Get release by tag response: $REL_JSON"
+          
+          if [ "$HTTP_CODE" -eq 200 ]; then
+            REL_ID=$(echo "$REL_JSON" | jq -r '.id // empty')
+          else
+            echo "Release not found for tag $TAG on Gitee (HTTP $HTTP_CODE), will create new release"
+            REL_ID=""
+          fi
 
           if [ -z "$REL_ID" ]; then
             TFILE=$(mktemp)
