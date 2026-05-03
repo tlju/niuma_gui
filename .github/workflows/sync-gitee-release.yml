@@ -199,16 +199,26 @@ jobs:
           fi
 
           if [ -z "$REL_ID" ]; then
+            echo "Attempting to create Gitee release for tag $TAG..."
+            
+            BODY_FILE=$(mktemp)
+            printf '%s' "$RELEASE_BODY" > "$BODY_FILE"
+            
             TFILE=$(mktemp)
             HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -X POST \
               "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases?access_token=$GITEE_TOKEN" \
               -F "tag_name=$TAG" \
               -F "name=$TAG" \
-              --data-urlencode "body=$RELEASE_BODY" \
-              -F "target_commitish=$TARGET_COMMITISH_FINAL")
-            CREATE_BODY=$(cat "$TFILE"); rm -f "$TFILE"
+              -F "body=<$BODY_FILE" \
+              -F "target_commitish=$TARGET_COMMITISH_FINAL" || true)
+            CREATE_BODY=$(cat "$TFILE" 2>/dev/null || echo ""); rm -f "$TFILE" "$BODY_FILE"
             echo "Create release HTTP code: $HTTP_CODE"
             echo "Create release body: $CREATE_BODY"
+
+            if [ -z "$HTTP_CODE" ]; then
+              echo "curl command failed entirely"
+              exit 1
+            fi
 
             if [ "$HTTP_CODE" -ne 201 ] && [ "$HTTP_CODE" -ne 200 ]; then
               echo "Failed to create Gitee release (HTTP $HTTP_CODE). Response:"
@@ -216,7 +226,7 @@ jobs:
               exit 1
             fi
 
-            REL_ID=$(echo "$CREATE_BODY" | jq -r '.id // empty')
+            REL_ID=$(echo "$CREATE_BODY" | jq -r '.id // empty' 2>/dev/null || echo "")
             if [ -z "$REL_ID" ]; then
               echo "Create response did not contain release id; aborting"
               exit 1
