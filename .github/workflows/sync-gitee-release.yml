@@ -237,36 +237,42 @@ jobs:
 
           echo "Using Gitee release id: $REL_ID"
 
-          # Upload each asset with retries
-          for f in assets/*; do
-            [ -f "$f" ] || continue
-            fname=$(basename "$f")
-            echo "Uploading $fname ..."
-            retries=0
-            success=0
+          upload_asset() {
+            local f="$1"
+            local fname=$(basename "$f")
+            local retries=0
             while [ $retries -lt 3 ]; do
-              TFILE=$(mktemp)
-              HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -X POST \
+              local TFILE=$(mktemp)
+              local HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -X POST \
                 "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases/$REL_ID/assets?access_token=$GITEE_TOKEN" \
                 -F "attachment=@$f" \
                 -F "name=$fname")
-              UP_BODY=$(cat "$TFILE"); rm -f "$TFILE"
-              echo "Upload HTTP code: $HTTP_CODE"
-              echo "Upload response: $UP_BODY"
+              local UP_BODY=$(cat "$TFILE"); rm -f "$TFILE"
               if [ "$HTTP_CODE" -eq 201 ] || [ "$HTTP_CODE" -eq 200 ]; then
                 echo "Uploaded $fname successfully"
-                success=1
-                break
+                return 0
               fi
               retries=$((retries+1))
-              echo "Upload attempt $retries failed for $fname. Retrying in 5s..."
+              echo "Upload attempt $retries failed for $fname (HTTP $HTTP_CODE). Retrying in 5s..."
               sleep 5
             done
-            if [ $success -ne 1 ]; then
-              echo "Failed to upload $fname after $retries attempts"
-              exit 1
-            fi
+            echo "Failed to upload $fname after $retries attempts"
+            return 1
+          }
+
+          ASSET_COUNT=$(find assets -maxdepth 1 -type f | wc -l)
+          echo "Uploading $ASSET_COUNT asset(s) in parallel..."
+          FAIL=0
+          for f in assets/*; do
+            [ -f "$f" ] || continue
+            upload_asset "$f" || FAIL=1 &
           done
+          wait
+
+          if [ $FAIL -ne 0 ]; then
+            echo "One or more assets failed to upload"
+            exit 1
+          fi
 
       - name: Done
         run: echo "Sync to Gitee complete"
