@@ -1,0 +1,94 @@
+name: Sync Release Assets to Gitee
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag to sync (e.g. v1.2.3)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  upload-to-gitee:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Download release assets from GitHub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p assets
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.event.repository.name }}"
+          TAG="${TAG}"
+
+          echo "Fetching release info for $OWNER/$REPO tag $TAG"
+          RELEASE_JSON=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO/releases/tags/$TAG")
+          RELEASE_ID=$(echo "$RELEASE_JSON" | jq -r '.id')
+          if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
+            echo "Release not found for tag $TAG"
+            exit 1
+          fi
+
+          ASSET_COUNT=$(echo "$RELEASE_JSON" | jq '.assets | length')
+          if [ "$ASSET_COUNT" -eq 0 ]; then
+            echo "No assets to download"
+            exit 0
+          fi
+
+          echo "Found $ASSET_COUNT asset(s). Downloading..."
+          echo "$RELEASE_JSON" | jq -r '.assets[] | @base64' | while read -r asset; do
+            _jq() { echo "$asset" | base64 --decode | jq -r "${1}"; }
+            name=$(_jq '.name')
+            url=$(_jq '.browser_download_url')
+            echo "Downloading $name"
+            curl -L -H "Authorization: token $GITHUB_TOKEN" -o "assets/$name" "$url"
+          done
+
+      - name: Upload assets to Gitee release
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_OWNER: tlju
+          GITEE_REPO: niuma_gui
+          RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          API="https://gitee.com/api/v5"
+          echo "Checking Gitee release for tag $RELEASE_TAG in $GITEE_OWNER/$GITEE_REPO"
+
+          REL_JSON=$(curl -s -H "Authorization: token $GITEE_TOKEN" "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases/tags/$RELEASE_TAG")
+          REL_ID=$(echo "$REL_JSON" | jq -r '.id')
+
+          if [ -z "$REL_ID" ] || [ "$REL_ID" = "null" ]; then
+            echo "Gitee release not found — creating one"
+            REL_ID=$(curl -s -H "Authorization: token $GITEE_TOKEN" -X POST "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases" \
+              -d "tag_name=$RELEASE_TAG" -d "name=$RELEASE_TAG" | jq -r '.id')
+            if [ -z "$REL_ID" ] || [ "$REL_ID" = "null" ]; then
+              echo "Failed to create Gitee release"
+              echo "$REL_ID"
+              exit 1
+            fi
+          fi
+
+          echo "Using Gitee release id: $REL_ID"
+
+          for f in assets/*; do
+            [ -f "$f" ] || continue
+            fname=$(basename "$f")
+            echo "Uploading $fname ..."
+            curl -s -X POST "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases/$REL_ID/assets" \
+              -H "Authorization: token $GITEE_TOKEN" \
+              -F "attachment=@$f" \
+              -F "name=$fname" \
+              -w "\nUploaded $fname, HTTP_CODE:%{http_code}\n"
+          done
+
+      - name: Done
+        run: echo "Sync to Gitee complete"
