@@ -139,7 +139,6 @@ jobs:
             echo "Creating Gitee release with tag $TAG, target_commitish=$TARGET_COMMITISH"
 
             TFILE=$(mktemp)
-            # Use --data-urlencode for body to preserve newlines/special chars
             HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -X POST \
               "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases?access_token=$GITEE_TOKEN" \
               -F "tag_name=$TAG" \
@@ -165,5 +164,36 @@ jobs:
 
           echo "Using Gitee release id: $REL_ID"
 
-          # Upload](#)
-
+          # Upload each asset with retries
+          for f in assets/*; do
+            [ -f "$f" ] || continue
+            fname=$(basename "$f")
+            echo "Uploading $fname ..."
+            retries=0
+            success=0
+            while [ $retries -lt 3 ]; do
+              TFILE=$(mktemp)
+              HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -X POST \
+                "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases/$REL_ID/assets?access_token=$GITEE_TOKEN" \
+                -F "attachment=@$f" \
+                -F "name=$fname")
+              UP_BODY=$(cat "$TFILE"); rm -f "$TFILE"
+              echo "Upload HTTP code: $HTTP_CODE"
+              echo "Upload response: $UP_BODY"
+              if [ "$HTTP_CODE" -eq 201 ] || [ "$HTTP_CODE" -eq 200 ]; then
+                echo "Uploaded $fname successfully"
+                success=1
+                break
+              fi
+              retries=$((retries+1))
+              echo "Upload attempt $retries failed for $fname. Retrying in 5s..."
+              sleep 5
+            done
+            if [ $success -ne 1 ]; then
+              echo "Failed to upload $fname after $retries attempts"
+              exit 1
+            fi
+          done
+
+      - name: Done
+        run: echo "Sync to Gitee complete"
