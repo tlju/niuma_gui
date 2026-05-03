@@ -191,11 +191,11 @@ jobs:
           echo "Get release by tag HTTP code: $HTTP_CODE"
           echo "Get release by tag response: $REL_JSON"
           
-          if [ "$HTTP_CODE" -eq 200 ]; then
-            REL_ID=$(echo "$REL_JSON" | jq -r '.id // empty')
+          REL_ID=""
+          if [ "$HTTP_CODE" -eq 200 ] && [ "$REL_JSON" != "null" ] && [ -n "$REL_JSON" ]; then
+            REL_ID=$(echo "$REL_JSON" | jq -r '.id // empty' 2>/dev/null || echo "")
           else
-            echo "Release not found for tag $TAG on Gitee (HTTP $HTTP_CODE), will create new release"
-            REL_ID=""
+            echo "Release not found for tag $TAG on Gitee, will create new release"
           fi
 
           if [ -z "$REL_ID" ]; then
