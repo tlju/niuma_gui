@@ -35,7 +35,6 @@ jobs:
             echo "$BODY"
             exit 1
           fi
-          # print limited user info
           GLOGIN=$(echo "$BODY" | jq -r '.login // empty')
           GNAME=$(echo "$BODY" | jq -r '.name // empty')
           echo "Gitee token valid for user: ${GLOGIN} ${GNAME}"
@@ -51,7 +50,7 @@ jobs:
           REPO="${{ github.event.repository.name }}"
           TAG="${TAG}"
 
-          echo "Fetching release info for $OWNER/$REPO tag $TAG"
+          echo "Fetching release info for $OWNER/$REPO tag $TAG from GitHub"
           TFILE=$(mktemp)
           HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO/releases/tags/$TAG")
           RELEASE_JSON=$(cat "$TFILE"); rm -f "$TFILE"
@@ -80,7 +79,6 @@ jobs:
             name=$(_jq '.name')
             url=$(_jq '.browser_download_url')
             echo "Downloading $name"
-            # Use Authorization header so private repos work; follow redirects
             curl -L -H "Authorization: token $GITHUB_TOKEN" -o "assets/$name" "$url"
             echo "Downloaded assets/$name"
           done
@@ -91,26 +89,63 @@ jobs:
           GITEE_OWNER: tlju
           GITEE_REPO: niuma_gui
           RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           API="https://gitee.com/api/v5"
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.event.repository.name }}"
+          TAG="${RELEASE_TAG}"
+
           echo "Checking Gitee release for tag $RELEASE_TAG in $GITEE_OWNER/$GITEE_REPO"
 
-          # Query release (using access_token parameter)
+          # Query release on Gitee
           TFILE=$(mktemp)
-          HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases/tags/$RELEASE_TAG?access_token=$GITEE_TOKEN")
+          HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases/tags/$TAG?access_token=$GITEE_TOKEN")
           REL_JSON=$(cat "$TFILE"); rm -f "$TFILE"
           echo "Get release HTTP code: $HTTP_CODE"
           echo "Get release body: $REL_JSON"
 
           REL_ID=$(echo "$REL_JSON" | jq -r '.id // empty')
 
+          # If not found on Gitee, prepare body & target_commitish from GitHub and create
           if [ -z "$REL_ID" ]; then
-            echo "Gitee release not found — creating one"
+            echo "Gitee release not found — preparing to create one"
+
+            # Get release info from GitHub to obtain body and target_commitish
             TFILE=$(mktemp)
+            GH_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO/releases/tags/$TAG")
+            GH_REL_JSON=$(cat "$TFILE"); rm -f "$TFILE"
+            echo "GitHub release fetch HTTP code: $GH_CODE"
+            if [ "$GH_CODE" -ne 200 ]; then
+              echo "Failed to fetch release info from GitHub for creating Gitee release:"
+              echo "$GH_REL_JSON"
+              exit 1
+            fi
+
+            TARGET_COMMITISH=$(echo "$GH_REL_JSON" | jq -r '.target_commitish // empty')
+            RELEASE_BODY=$(echo "$GH_REL_JSON" | jq -r '.body // empty')
+
+            # If target_commitish empty, fallback to repo default branch
+            if [ -z "$TARGET_COMMITISH" ]; then
+              TFILE=$(mktemp)
+              RB_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO")
+              RB_JSON=$(cat "$TFILE"); rm -f "$TFILE"
+              DEFAULT_BRANCH=$(echo "$RB_JSON" | jq -r '.default_branch // "main"')
+              echo "Fallback default branch: $DEFAULT_BRANCH"
+              TARGET_COMMITISH="$DEFAULT_BRANCH"
+            fi
+
+            echo "Creating Gitee release with tag $TAG, target_commitish=$TARGET_COMMITISH"
+
+            TFILE=$(mktemp)
+            # Use --data-urlencode for body to preserve newlines/special chars
             HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -X POST \
               "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases?access_token=$GITEE_TOKEN" \
-              -d "tag_name=$RELEASE_TAG" -d "name=$RELEASE_TAG")
+              -F "tag_name=$TAG" \
+              -F "name=$TAG" \
+              --data-urlencode "body=$RELEASE_BODY" \
+              -F "target_commitish=$TARGET_COMMITISH")
             CREATE_BODY=$(cat "$TFILE"); rm -f "$TFILE"
             echo "Create release HTTP code: $HTTP_CODE"
             echo "Create release body: $CREATE_BODY"
@@ -130,36 +165,5 @@ jobs:
 
           echo "Using Gitee release id: $REL_ID"
 
-          # Upload each asset with retries
-          for f in assets/*; do
-            [ -f "$f" ] || continue
-            fname=$(basename "$f")
-            echo "Uploading $fname ..."
-            retries=0
-            success=0
-            while [ $retries -lt 3 ]; do
-              TFILE=$(mktemp)
-              HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -X POST \
-                "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases/$REL_ID/assets?access_token=$GITEE_TOKEN" \
-                -F "attachment=@$f" \
-                -F "name=$fname")
-              UP_BODY=$(cat "$TFILE"); rm -f "$TFILE"
-              echo "Upload HTTP code: $HTTP_CODE"
-              echo "Upload response: $UP_BODY"
-              if [ "$HTTP_CODE" -eq 201 ] || [ "$HTTP_CODE" -eq 200 ]; then
-                echo "Uploaded $fname successfully"
-                success=1
-                break
-              fi
-              retries=$((retries+1))
-              echo "Upload attempt $retries failed for $fname. Retrying in 5s..."
-              sleep 5
-            done
-            if [ $success -ne 1 ]; then
-              echo "Failed to upload $fname after $retries attempts"
-              exit 1
-            fi
-          done
-
-      - name: Done
-        run: echo "Sync to Gitee complete"
+          # Upload](#)
+
