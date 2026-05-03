@@ -15,8 +15,30 @@ jobs:
   upload-to-gitee:
     runs-on: ubuntu-latest
     steps:
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq curl
+
+      - name: Validate GITEE_TOKEN
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          set -euo pipefail
+          API="https://gitee.com/api/v5"
+          TFILE=$(mktemp)
+          HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" "$API/user?access_token=$GITEE_TOKEN")
+          BODY=$(cat "$TFILE"); rm -f "$TFILE"
+          echo "Gitee token validation HTTP code: $HTTP_CODE"
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "Gitee token appears invalid or lacks permission. Response:"
+            echo "$BODY"
+            exit 1
+          fi
+          # print limited user info
+          GLOGIN=$(echo "$BODY" | jq -r '.login // empty')
+          GNAME=$(echo "$BODY" | jq -r '.name // empty')
+          echo "Gitee token valid for user: ${GLOGIN} ${GNAME}"
 
       - name: Download release assets from GitHub
         env:
@@ -30,9 +52,18 @@ jobs:
           TAG="${TAG}"
 
           echo "Fetching release info for $OWNER/$REPO tag $TAG"
-          RELEASE_JSON=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO/releases/tags/$TAG")
-          RELEASE_ID=$(echo "$RELEASE_JSON" | jq -r '.id')
-          if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
+          TFILE=$(mktemp)
+          HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO/releases/tags/$TAG")
+          RELEASE_JSON=$(cat "$TFILE"); rm -f "$TFILE"
+          echo "GitHub releases API HTTP code: $HTTP_CODE"
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "Failed to fetch release info from GitHub. Response:"
+            echo "$RELEASE_JSON"
+            exit 1
+          fi
+
+          RELEASE_ID=$(echo "$RELEASE_JSON" | jq -r '.id // empty')
+          if [ -z "$RELEASE_ID" ]; then
             echo "Release not found for tag $TAG"
             exit 1
           fi
@@ -49,10 +80,12 @@ jobs:
             name=$(_jq '.name')
             url=$(_jq '.browser_download_url')
             echo "Downloading $name"
+            # Use Authorization header so private repos work; follow redirects
             curl -L -H "Authorization: token $GITHUB_TOKEN" -o "assets/$name" "$url"
+            echo "Downloaded assets/$name"
           done
 
-      - name: Upload assets to Gitee release
+      - name: Create/Get Gitee release and upload assets
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           GITEE_OWNER: tlju
@@ -63,31 +96,69 @@ jobs:
           API="https://gitee.com/api/v5"
           echo "Checking Gitee release for tag $RELEASE_TAG in $GITEE_OWNER/$GITEE_REPO"
 
-          REL_JSON=$(curl -s -H "Authorization: token $GITEE_TOKEN" "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases/tags/$RELEASE_TAG")
-          REL_ID=$(echo "$REL_JSON" | jq -r '.id')
+          # Query release (using access_token parameter)
+          TFILE=$(mktemp)
+          HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases/tags/$RELEASE_TAG?access_token=$GITEE_TOKEN")
+          REL_JSON=$(cat "$TFILE"); rm -f "$TFILE"
+          echo "Get release HTTP code: $HTTP_CODE"
+          echo "Get release body: $REL_JSON"
 
-          if [ -z "$REL_ID" ] || [ "$REL_ID" = "null" ]; then
+          REL_ID=$(echo "$REL_JSON" | jq -r '.id // empty')
+
+          if [ -z "$REL_ID" ]; then
             echo "Gitee release not found — creating one"
-            REL_ID=$(curl -s -H "Authorization: token $GITEE_TOKEN" -X POST "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases" \
-              -d "tag_name=$RELEASE_TAG" -d "name=$RELEASE_TAG" | jq -r '.id')
-            if [ -z "$REL_ID" ] || [ "$REL_ID" = "null" ]; then
-              echo "Failed to create Gitee release"
-              echo "$REL_ID"
+            TFILE=$(mktemp)
+            HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -X POST \
+              "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases?access_token=$GITEE_TOKEN" \
+              -d "tag_name=$RELEASE_TAG" -d "name=$RELEASE_TAG")
+            CREATE_BODY=$(cat "$TFILE"); rm -f "$TFILE"
+            echo "Create release HTTP code: $HTTP_CODE"
+            echo "Create release body: $CREATE_BODY"
+
+            if [ "$HTTP_CODE" -ne 201 ] && [ "$HTTP_CODE" -ne 200 ]; then
+              echo "Failed to create Gitee release (HTTP $HTTP_CODE). Response:"
+              echo "$CREATE_BODY"
+              exit 1
+            fi
+
+            REL_ID=$(echo "$CREATE_BODY" | jq -r '.id // empty')
+            if [ -z "$REL_ID" ]; then
+              echo "Create response did not contain release id; aborting"
               exit 1
             fi
           fi
 
           echo "Using Gitee release id: $REL_ID"
 
+          # Upload each asset with retries
           for f in assets/*; do
             [ -f "$f" ] || continue
             fname=$(basename "$f")
             echo "Uploading $fname ..."
-            curl -s -X POST "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases/$REL_ID/assets" \
-              -H "Authorization: token $GITEE_TOKEN" \
-              -F "attachment=@$f" \
-              -F "name=$fname" \
-              -w "\nUploaded $fname, HTTP_CODE:%{http_code}\n"
+            retries=0
+            success=0
+            while [ $retries -lt 3 ]; do
+              TFILE=$(mktemp)
+              HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -X POST \
+                "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases/$REL_ID/assets?access_token=$GITEE_TOKEN" \
+                -F "attachment=@$f" \
+                -F "name=$fname")
+              UP_BODY=$(cat "$TFILE"); rm -f "$TFILE"
+              echo "Upload HTTP code: $HTTP_CODE"
+              echo "Upload response: $UP_BODY"
+              if [ "$HTTP_CODE" -eq 201 ] || [ "$HTTP_CODE" -eq 200 ]; then
+                echo "Uploaded $fname successfully"
+                success=1
+                break
+              fi
+              retries=$((retries+1))
+              echo "Upload attempt $retries failed for $fname. Retrying in 5s..."
+              sleep 5
+            done
+            if [ $success -ne 1 ]; then
+              echo "Failed to upload $fname after $retries attempts"
+              exit 1
+            fi
           done
 
       - name: Done
