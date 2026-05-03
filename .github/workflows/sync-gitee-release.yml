@@ -36,8 +36,7 @@ jobs:
             exit 1
           fi
           GLOGIN=$(echo "$BODY" | jq -r '.login // empty')
-          GNAME=$(echo "$BODY" | jq -r '.name // empty')
-          echo "Gitee token valid for user: ${GLOGIN} ${GNAME}"
+          echo "Gitee token valid for user: ${GLOGIN}"
 
       - name: Download release assets from GitHub
         env:
@@ -63,7 +62,7 @@ jobs:
 
           RELEASE_ID=$(echo "$RELEASE_JSON" | jq -r '.id // empty')
           if [ -z "$RELEASE_ID" ]; then
-            echo "Release not found for tag $TAG"
+            echo "Release not found for tag $TAG on GitHub"
             exit 1
           fi
 
@@ -83,7 +82,7 @@ jobs:
             echo "Downloaded assets/$name"
           done
 
-      - name: Create/Get Gitee release and upload assets
+      - name: Ensure tag exists on Gitee, then create/get release and upload assets
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           GITEE_OWNER: tlju
@@ -97,53 +96,111 @@ jobs:
           REPO="${{ github.event.repository.name }}"
           TAG="${RELEASE_TAG}"
 
-          echo "Checking Gitee release for tag $RELEASE_TAG in $GITEE_OWNER/$GITEE_REPO"
+          echo "Checking whether tag $TAG exists on Gitee ($GITEE_OWNER/$GITEE_REPO)..."
 
-          # Query release on Gitee
           TFILE=$(mktemp)
-          HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases/tags/$TAG?access_token=$GITEE_TOKEN")
-          REL_JSON=$(cat "$TFILE"); rm -f "$TFILE"
-          echo "Get release HTTP code: $HTTP_CODE"
-          echo "Get release body: $REL_JSON"
+          # fetch up to 100 tags, adjust per_page if needed
+          HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" "$API/repos/$GITEE_OWNER/$GITEE_REPO/tags?per_page=100&access_token=$GITEE_TOKEN")
+          TAGS_JSON=$(cat "$TFILE"); rm -f "$TFILE"
+          echo "Gitee tags list HTTP code: $HTTP_CODE"
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "Failed to fetch tags from Gitee. Response:"
+            echo "$TAGS_JSON"
+            exit 1
+          fi
 
-          REL_ID=$(echo "$REL_JSON" | jq -r '.id // empty')
+          TAG_EXISTS=$(echo "$TAGS_JSON" | jq -r --arg TAG "$TAG" 'map(.name) | index($TAG) // -1')
+          if [ "$TAG_EXISTS" -ge 0 ]; then
+            echo "Tag $TAG already exists on Gitee."
+          else
+            echo "Tag $TAG does not exist on Gitee — creating tag."
 
-          # If not found on Gitee, prepare body & target_commitish from GitHub and create
-          if [ -z "$REL_ID" ]; then
-            echo "Gitee release not found — preparing to create one"
-
-            # Get release info from GitHub to obtain body and target_commitish
+            # determine commit sha to point tag to (from GitHub release.target_commitish or repo default)
             TFILE=$(mktemp)
             GH_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO/releases/tags/$TAG")
             GH_REL_JSON=$(cat "$TFILE"); rm -f "$TFILE"
-            echo "GitHub release fetch HTTP code: $GH_CODE"
             if [ "$GH_CODE" -ne 200 ]; then
-              echo "Failed to fetch release info from GitHub for creating Gitee release:"
-              echo "$GH_REL_JSON"
+              echo "Failed to fetch GitHub release info for tag $TAG: $GH_REL_JSON"
               exit 1
             fi
 
             TARGET_COMMITISH=$(echo "$GH_REL_JSON" | jq -r '.target_commitish // empty')
             RELEASE_BODY=$(echo "$GH_REL_JSON" | jq -r '.body // empty')
 
-            # If target_commitish empty, fallback to repo default branch
             if [ -z "$TARGET_COMMITISH" ]; then
               TFILE=$(mktemp)
               RB_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO")
               RB_JSON=$(cat "$TFILE"); rm -f "$TFILE"
-              DEFAULT_BRANCH=$(echo "$RB_JSON" | jq -r '.default_branch // "main"')
-              echo "Fallback default branch: $DEFAULT_BRANCH"
-              TARGET_COMMITISH="$DEFAULT_BRANCH"
+              TARGET_COMMITISH=$(echo "$RB_JSON" | jq -r '.default_branch // "main"')
+              echo "No target_commitish in release; fallback to default branch: $TARGET_COMMITISH"
             fi
 
-            echo "Creating Gitee release with tag $TAG, target_commitish=$TARGET_COMMITISH"
+            # Get commit sha for target_commitish
+            TFILE=$(mktemp)
+            C_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO/commits/$TARGET_COMMITISH")
+            C_JSON=$(cat "$TFILE"); rm -f "$TFILE"
+            if [ "$C_CODE" -ne 200 ]; then
+              echo "Failed to resolve commit for $TARGET_COMMITISH on GitHub: $C_JSON"
+              exit 1
+            fi
+            COMMIT_SHA=$(echo "$C_JSON" | jq -r '.sha // empty')
+            if [ -z "$COMMIT_SHA" ]; then
+              echo "Could not determine commit SHA for $TARGET_COMMITISH"
+              exit 1
+            fi
+            echo "Will create tag $TAG on Gitee pointing to commit $COMMIT_SHA"
+
+            # Attempt to create git ref (tag) on Gitee
+            TFILE=$(mktemp)
+            REF_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -X POST \
+              "$API/repos/$GITEE_OWNER/$GITEE_REPO/git/refs?access_token=$GITEE_TOKEN" \
+              -d "ref=refs/tags/$TAG" -d "sha=$COMMIT_SHA")
+            REF_BODY=$(cat "$TFILE"); rm -f "$TFILE"
+            echo "Create tag HTTP code: $REF_CODE"
+            echo "Create tag body: $REF_BODY"
+
+            if [ "$REF_CODE" -eq 201 ] || [ "$REF_CODE" -eq 200 ]; then
+              echo "Tag $TAG created on Gitee."
+            else
+              echo "Creating tag via refs API failed (maybe not supported). Will proceed to create release directly (Gitee may create tag during release creation)."
+              echo "Refs API response: $REF_BODY"
+            fi
+          fi
+
+          # Now create/get release on Gitee (use target_commitish and body)
+          echo "Creating or getting Gitee release for tag $TAG"
+
+          TFILE=$(mktemp)
+          HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases/tags/$TAG?access_token=$GITEE_TOKEN")
+          REL_JSON=$(cat "$TFILE"); rm -f "$TFILE"
+          REL_ID=$(echo "$REL_JSON" | jq -r '.id // empty')
+
+          if [ -z "$REL_ID" ]; then
+            echo "Gitee release not found — creating one"
+
+            # ensure we have RELEASE_BODY and TARGET_COMMITISH (from earlier)
+            if [ -z "${TARGET_COMMITISH:-}" ] || [ -z "${RELEASE_BODY:-}" ]; then
+              # fetch from GitHub release if missing
+              TFILE=$(mktemp)
+              GH_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO/releases/tags/$TAG")
+              GH_REL_JSON=$(cat "$TFILE"); rm -f "$TFILE"
+              TARGET_COMMITISH=$(echo "$GH_REL_JSON" | jq -r '.target_commitish // empty')
+              RELEASE_BODY=$(echo "$GH_REL_JSON" | jq -r '.body // empty')
+            fi
+            if [ -z "$TARGET_COMMITISH" ]; then
+              # fallback to default branch
+              TFILE=$(mktemp)
+              RB_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$OWNER/$REPO")
+              RB_JSON=$(cat "$TFILE"); rm -f "$TFILE"
+              TARGET_COMMITISH=$(echo "$RB_JSON" | jq -r '.default_branch // "main"')
+            fi
 
             TFILE=$(mktemp)
             HTTP_CODE=$(curl -s -o "$TFILE" -w "%{http_code}" -X POST \
               "$API/repos/$GITEE_OWNER/$GITEE_REPO/releases?access_token=$GITEE_TOKEN" \
               -F "tag_name=$TAG" \
               -F "name=$TAG" \
-              --data-urlencode "body=$RELEASE_BODY" \
+              --data-urlencode "body=${RELEASE_BODY:-}" \
               -F "target_commitish=$TARGET_COMMITISH")
             CREATE_BODY=$(cat "$TFILE"); rm -f "$TFILE"
             echo "Create release HTTP code: $HTTP_CODE"
@@ -160,6 +217,8 @@ jobs:
               echo "Create response did not contain release id; aborting"
               exit 1
             fi
+          else
+            echo "Found existing Gitee release id: $REL_ID"
           fi
 
           echo "Using Gitee release id: $REL_ID"
