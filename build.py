@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import zipfile
 
 
 def build():
@@ -85,12 +86,22 @@ def compress_output(output_dist, output_name, system):
     print("开始压缩...")
 
     if system == 'windows':
-        archive_path = os.path.join('dist', f'{output_name}.7z')
-        subprocess.run([
-            '7z', 'a', '-t7z', '-mx=9', '-m0=lzma2',
-            '-mfb=64', '-md=32m', '-ms=on',
-            archive_path, output_name
-        ], cwd='dist', check=True)
+        if shutil.which('7z'):
+            archive_path = os.path.join('dist', f'{output_name}.7z')
+            subprocess.run([
+                '7z', 'a', '-t7z', '-mx=9', '-m0=lzma2',
+                '-mfb=64', '-md=32m', '-ms=on',
+                archive_path, output_name
+            ], cwd='dist', check=True)
+        else:
+            archive_path = os.path.join('dist', f'{output_name}.zip')
+            print("未找到 7z，使用 zip 格式压缩...")
+            with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+                for root, dirs, files in os.walk(output_dist):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.relpath(file_path, 'dist')
+                        zf.write(file_path, arcname)
     else:
         archive_path = os.path.join('dist', f'{output_name}.tar.gz')
         with tarfile.open(archive_path, 'w:gz', compresslevel=9) as tar:
