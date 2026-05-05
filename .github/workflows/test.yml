@@ -200,11 +200,11 @@ jobs:
           pip3 --version
 
           echo "=== 安装测试依赖 ==="
-          pip3 install pytest pytest-cov
+          python3 -m pip install pytest pytest-cov
 
           echo "=== 运行单元测试 ==="
           cd /workspace
-          pytest tests/ -v --tb=short --cov=core --cov=schemas --cov=services --cov=models --cov-report=term-missing
+          python3 -m pytest tests/ -v --tb=short --cov=core --cov=schemas --cov=services --cov=models --cov-report=term-missing
         '
 
         echo "=== 清理容器 ==="
