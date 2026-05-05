@@ -41,11 +41,11 @@ jobs:
       uses: actions/cache@v4
       id: cache-docker-image
       with:
-        path: docker-image-test-${{ matrix.arch }}.tar
-        key: ${{ env.CACHE_VERSION }}-docker-image-test-${{ matrix.arch }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
+        path: docker-image-${{ matrix.arch }}.tar
+        key: ${{ env.CACHE_VERSION }}-docker-image-${{ matrix.arch }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
         restore-keys: |
-          ${{ env.CACHE_VERSION }}-docker-image-test-${{ matrix.arch }}-${{ env.PYTHON_VERSION }}-
-          ${{ env.CACHE_VERSION }}-docker-image-test-${{ matrix.arch }}-
+          ${{ env.CACHE_VERSION }}-docker-image-${{ matrix.arch }}-${{ env.PYTHON_VERSION }}-
+          ${{ env.CACHE_VERSION }}-docker-image-${{ matrix.arch }}-
 
     - name: 创建 Docker 镜像 (Linux)
       if: matrix.platform == 'linux' && steps.cache-docker-image.outputs.cache-hit != 'true'
@@ -67,13 +67,33 @@ jobs:
           apt-get update
           apt-get install -y \
             gcc g++ make wget \
+            qt5-default qtbase5-dev qtchooser qttools5-dev-tools \
+            libqt5gui5 libqt5core5a libqt5dbus5 \
+            libxrender-dev libxext-dev libx11-dev libx11-xcb-dev \
+            libxcb1-dev libxkbcommon-dev \
+            libxcb-* \
+            libgl1-mesa-dev libegl1-mesa-dev \
+            libxkbcommon-x11-dev \
             libssl-dev \
             bzip2 libbz2-dev \
             libffi-dev \
             zlib1g-dev \
             liblzma-dev \
             libsqlite3-dev \
-            libreadline-dev
+            libreadline-dev \
+            tk-dev \
+            libgdbm-dev \
+            libxkbcommon-x11-0 \
+            libxcb-cursor0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render-util0 \
+            libxcb-shape0 \
+            libxcb-xfixes0 \
+            libxcb-xinerama0 \
+            libxcb-xkb1
 
           echo "=== 编译 Python ${{ env.PYTHON_VERSION }} ==="
           cd /tmp
@@ -99,6 +119,18 @@ jobs:
           echo "=== 安装 Python 包管理工具 ==="
           python3 -m pip install --upgrade pip setuptools wheel
 
+          echo "=== 安装 PyQt5 ==="
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            echo "=== ARM64: 编译安装 PyQt5 ==="
+            pip3 install --no-binary=:all: sip
+            pip3 install --no-binary=:all: PyQt5-sip
+            pip3 install PyQt-builder
+            pip3 install pyqt5 --config-settings --confirm-license= --verbose
+          else
+            echo "=== x64: 安装预编译版本 ==="
+            pip3 install --only-binary=:all: PyQt5 PyQt5-Qt5 PyQt5-sip
+          fi
+
           echo "=== 清理临时文件 ==="
           cd /
           rm -rf /tmp/Python-3.11.15*
@@ -112,8 +144,8 @@ jobs:
         docker exec $CONTAINER_ID pip3 install pytest pytest-cov
 
         echo "=== 提交容器为镜像 ==="
-        docker commit $CONTAINER_ID niuma-test-${{ matrix.arch }}:latest
-        docker save -o docker-image-test-${{ matrix.arch }}.tar niuma-test-${{ matrix.arch }}:latest
+        docker commit $CONTAINER_ID niuma-build-${{ matrix.arch }}:latest
+        docker save -o docker-image-${{ matrix.arch }}.tar niuma-build-${{ matrix.arch }}:latest
         docker rm -f $CONTAINER_ID
       shell: bash
 
@@ -121,8 +153,8 @@ jobs:
       if: matrix.platform == 'linux' && steps.cache-docker-image.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
-        path: docker-image-test-${{ matrix.arch }}.tar
-        key: ${{ env.CACHE_VERSION }}-docker-image-test-${{ matrix.arch }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
+        path: docker-image-${{ matrix.arch }}.tar
+        key: ${{ env.CACHE_VERSION }}-docker-image-${{ matrix.arch }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
 
     - name: 设置 Python (Windows)
       if: matrix.platform == 'windows'
@@ -151,13 +183,13 @@ jobs:
       if: matrix.platform == 'linux'
       run: |
         echo "=== 加载 Docker 镜像 ==="
-        docker load -i docker-image-test-${{ matrix.arch }}.tar
+        docker load -i docker-image-${{ matrix.arch }}.tar
 
         CONTAINER_ID=$(docker run -d \
           --platform ${{ matrix.platform_name }} \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
-          niuma-test-${{ matrix.arch }}:latest \
+          niuma-build-${{ matrix.arch }}:latest \
           tail -f /dev/null)
 
         docker exec $CONTAINER_ID bash -c '
@@ -166,6 +198,9 @@ jobs:
           echo "=== 验证环境 ==="
           python3 --version
           pip3 --version
+
+          echo "=== 安装测试依赖 ==="
+          pip3 install pytest pytest-cov
 
           echo "=== 运行单元测试 ==="
           cd /workspace
