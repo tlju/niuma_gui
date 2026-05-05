@@ -199,12 +199,16 @@ jobs:
           python3 --version
           pip3 --version
 
+          echo "=== 安装 xvfb (虚拟显示器) ==="
+          apt-get update
+          apt-get install -y xvfb
+
           echo "=== 安装测试依赖 ==="
           python3 -m pip install pytest pytest-cov
 
           echo "=== 运行单元测试 ==="
           cd /workspace
-          python3 -m pytest tests/ -v --tb=short --cov=core --cov=schemas --cov=services --cov=models --cov-report=term-missing
+          xvfb-run -a --server-args="-screen 0 1024x768x24" python3 -m pytest tests/ -v --tb=short --cov=core --cov=schemas --cov=services --cov=models --cov-report=term-missing
         '
 
         echo "=== 清理容器 ==="
