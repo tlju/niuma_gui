@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from models.base import Base
+
 
 class Script(Base):
     __tablename__ = "scripts"
@@ -18,3 +21,6 @@ class Script(Base):
     updated_at = Column(DateTime(timezone=True))
 
     server = relationship("ServerAsset", back_populates="scripts")
+
+    def __repr__(self) -> str:
+        return f"<Script(id={self.id}, name='{self.name}', language='{self.language}')>"

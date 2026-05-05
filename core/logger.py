@@ -1,27 +1,24 @@
-"""
-日志配置模块
-提供统一的日志记录功能
-"""
+from __future__ import annotations
+
 import logging
 import os
 import sys
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
 from core.utils import get_base_path
+from core.config import settings
 
 _logger_initialized = False
 
 
-def setup_logger(log_level: int = logging.INFO) -> logging.Logger:
-    """
-    配置日志系统
-
-    Args:
-        log_level: 日志级别，默认为INFO
-    """
+def setup_logger(log_level: int = None) -> logging.Logger:
     global _logger_initialized
     if _logger_initialized:
         return logging.getLogger()
+
+    if log_level is None:
+        level_name = settings.LOG_LEVEL.upper()
+        log_level = getattr(logging, level_name, logging.WARNING)
 
     base_path = get_base_path()
     log_dir = os.path.join(base_path, 'logs')
@@ -48,8 +45,8 @@ def setup_logger(log_level: int = logging.INFO) -> logging.Logger:
 
     file_handler = RotatingFileHandler(
         log_file,
-        maxBytes=10 * 1024 * 1024,
-        backupCount=5,
+        maxBytes=settings.LOG_MAX_BYTES,
+        backupCount=settings.LOG_BACKUP_COUNT,
         encoding='utf-8'
     )
     file_handler.setLevel(log_level)
@@ -61,13 +58,4 @@ def setup_logger(log_level: int = logging.INFO) -> logging.Logger:
 
 
 def get_logger(name: str) -> logging.Logger:
-    """
-    获取指定名称的日志记录器
-
-    Args:
-        name: 日志记录器名称（通常是模块名）
-
-    Returns:
-        Logger对象
-    """
     return logging.getLogger(name)

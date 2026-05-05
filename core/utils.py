@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import sys
 import os
 import re
 import shutil
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -56,7 +58,13 @@ def get_base_path() -> str:
 
 
 def get_local_now() -> datetime:
-    return datetime.now()
+    return datetime.now(timezone.utc).astimezone()
+
+
+def escape_like_wildcards(keyword: str) -> str:
+    if not keyword:
+        return keyword
+    return keyword.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
 
 
 def format_datetime(dt: Optional[datetime], fmt: str = "%Y-%m-%d %H:%M:%S") -> str:

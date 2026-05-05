@@ -1,16 +1,9 @@
+from __future__ import annotations
+
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from models.base import Base
+from core.constants import TodoStatus, RecurrenceType
 
-class TodoStatus(str):
-    PENDING = "pending"
-    IN_PROGRESS = "in"
-    COMPLETED = "completed"
-
-class RecurrenceType(str):
-    NONE = "none"
-    DAILY = "daily"
-    WEEKLY = "weekly"
-    MONTHLY = "monthly"
 
 class Todo(Base):
     __tablename__ = "todos"
@@ -26,3 +19,6 @@ class Todo(Base):
     recurrence_interval = Column(Integer, default=1)
     created_at = Column(DateTime(timezone=True))
     completed_at = Column(DateTime(timezone=True))
+
+    def __repr__(self) -> str:
+        return f"<Todo(id={self.id}, title='{self.title}', status='{self.status}')>"

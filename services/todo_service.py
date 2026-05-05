@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 from sqlalchemy.orm import Session
 from models.todo import Todo, TodoStatus, RecurrenceType
 from services.audit_mixin import AuditMixin
 from typing import List, Optional
 from datetime import datetime, timedelta
 from core.logger import get_logger
-from core.utils import get_local_now
+from core.utils import get_local_now, escape_like_wildcards
 
 logger = get_logger(__name__)
 
@@ -169,7 +171,8 @@ class TodoService(AuditMixin):
         return current_due_date
 
     def search_todos(self, keyword: str) -> List[Todo]:
+        escaped = escape_like_wildcards(keyword)
         return self.db.query(Todo).filter(
-            Todo.title.like(f"%{keyword}%") |
-            Todo.description.like(f"%{keyword}%")
+            Todo.title.like(f"%{escaped}%", escape='\\') |
+            Todo.description.like(f"%{escaped}%", escape='\\')
         ).all()

@@ -323,8 +323,8 @@ def test_import_assets_skip_errors(asset_service):
 
 
 def test_import_export_roundtrip(asset_service):
-    asset_service.create("Unit1", "System1", "admin", "pass123", "192.168.1.1", 22)
-    asset_service.create("Unit2", "System2", "root", "pass456", "192.168.1.2", 2222)
+    asset_service.create("Unit1", "System1", "admin", "pass123", ip="192.168.1.1", port=22)
+    asset_service.create("Unit2", "System2", "root", "pass456", ip="192.168.1.2", port=2222)
 
     file_data = asset_service.export_assets(include_password=True)
 

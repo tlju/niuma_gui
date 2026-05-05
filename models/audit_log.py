@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from models.base import Base
+
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
@@ -15,3 +18,6 @@ class AuditLog(Base):
     details = Column(Text)
 
     created_at = Column(DateTime(timezone=True))
+
+    def __repr__(self) -> str:
+        return f"<AuditLog(id={self.id}, user_id={self.user_id}, action='{self.action_type}', resource='{self.resource_type}')>"

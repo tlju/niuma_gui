@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from sqlalchemy.orm import Session
 from models.system_param import SystemParam
 from typing import List, Optional
 from core.logger import get_logger
+from core.utils import escape_like_wildcards
 
 logger = get_logger(__name__)
 
@@ -72,8 +75,9 @@ class ParamService:
         return False
 
     def search_params(self, keyword: str) -> List[SystemParam]:
+        escaped = escape_like_wildcards(keyword)
         return self.db.query(SystemParam).filter(
-            SystemParam.param_name.like(f"%{keyword}%") |
-            SystemParam.param_code.like(f"%{keyword}%") |
-            SystemParam.description.like(f"%{keyword}%")
+            SystemParam.param_name.like(f"%{escaped}%", escape='\\') |
+            SystemParam.param_code.like(f"%{escaped}%", escape='\\') |
+            SystemParam.description.like(f"%{escaped}%", escape='\\')
         ).all()

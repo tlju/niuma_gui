@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from models.base import Base
+
 
 class ServerAsset(Base):
     __tablename__ = "server_assets"
@@ -22,3 +25,6 @@ class ServerAsset(Base):
     created_at = Column(DateTime)
 
     scripts = relationship("Script", back_populates="server")
+
+    def __repr__(self) -> str:
+        return f"<ServerAsset(id={self.id}, unit='{self.unit_name}', system='{self.system_name}', ip='{self.ip}')>"

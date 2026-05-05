@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import paramiko
 import threading
 import time
@@ -7,6 +9,7 @@ from enum import Enum
 from sqlalchemy.orm import Session
 from services.param_service import ParamService
 from core.logger import get_logger
+from core.secure_string import SecureString
 
 logger = get_logger(__name__)
 
@@ -90,8 +93,7 @@ class BastionConnection:
         self.host = host
         self.port = port
         self.username = username
-        self._password_bytes = bytearray(password.encode('utf-8')) if password else bytearray()
-        self._password_used = False
+        self._secure_password = SecureString(password)
         self.client: Optional[paramiko.SSHClient] = None
         self.transport: Optional[paramiko.Transport] = None
         self.channels: List[BastionChannel] = []
@@ -106,23 +108,10 @@ class BastionConnection:
 
     @property
     def password(self) -> str:
-        if self._password_used:
-            return ""
-        return self._password_bytes.decode('utf-8', errors='ignore')
+        return self._secure_password.value
 
     def _consume_password(self) -> str:
-        pwd = self._password_bytes.decode('utf-8', errors='ignore')
-        self._clear_password()
-        return pwd
-
-    def _clear_password(self):
-        for i in range(len(self._password_bytes)):
-            self._password_bytes[i] = 0
-        self._password_bytes = bytearray()
-        self._password_used = True
-
-    def __del__(self):
-        self._clear_password()
+        return self._secure_password.consume()
 
     def set_status_callback(self, callback: Callable[[ConnectionStatus, str], None]):
         self._on_status_change = callback

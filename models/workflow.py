@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import relationship
 from models.base import Base
@@ -18,6 +20,9 @@ class Workflow(Base):
     nodes = relationship("WorkflowNode", back_populates="workflow", cascade="all, delete-orphan")
     executions = relationship("WorkflowExecution", back_populates="workflow", cascade="all, delete-orphan")
 
+    def __repr__(self) -> str:
+        return f"<Workflow(id={self.id}, name='{self.name}', active={self.is_active})>"
+
 
 class WorkflowNode(Base):
     __tablename__ = "workflow_nodes"
@@ -32,6 +37,9 @@ class WorkflowNode(Base):
     created_at = Column(DateTime(timezone=True))
 
     workflow = relationship("Workflow", back_populates="nodes")
+
+    def __repr__(self) -> str:
+        return f"<WorkflowNode(id={self.id}, name='{self.name}', type='{self.node_type}')>"
 
 
 class WorkflowExecution(Base):
@@ -49,6 +57,9 @@ class WorkflowExecution(Base):
     workflow = relationship("Workflow", back_populates="executions")
     node_executions = relationship("WorkflowNodeExecution", back_populates="execution", cascade="all, delete-orphan")
 
+    def __repr__(self) -> str:
+        return f"<WorkflowExecution(id={self.id}, workflow_id={self.workflow_id}, status='{self.status}')>"
+
 
 class WorkflowNodeExecution(Base):
     __tablename__ = "workflow_node_executions"
@@ -64,3 +75,6 @@ class WorkflowNodeExecution(Base):
     error_message = Column(Text, nullable=True)
 
     execution = relationship("WorkflowExecution", back_populates="node_executions")
+
+    def __repr__(self) -> str:
+        return f"<WorkflowNodeExecution(id={self.id}, node='{self.node_name}', status='{self.status}')>"

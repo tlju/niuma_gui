@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 from sqlalchemy.orm import Session
 from models.data_dict import DataDict
 from models.data_dict_item import DataDictItem
 from typing import List, Optional
 from core.logger import get_logger
-from core.utils import get_local_now
+from core.utils import get_local_now, escape_like_wildcards
 
 logger = get_logger(__name__)
 
@@ -127,9 +129,10 @@ class DictService:
         return False
 
     def search_dicts(self, keyword: str) -> List[DataDict]:
+        escaped = escape_like_wildcards(keyword)
         return self.db.query(DataDict).filter(
-            DataDict.name.like(f"%{keyword}%") |
-            DataDict.code.like(f"%{keyword}%")
+            DataDict.name.like(f"%{escaped}%", escape='\\') |
+            DataDict.code.like(f"%{escaped}%", escape='\\')
         ).all()
 
     def get_item_name_by_code(self, dict_code: str, item_code: str) -> Optional[str]:

@@ -1,12 +1,8 @@
+from __future__ import annotations
+
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
 from models.base import Base
-from enum import IntEnum
-
-
-class UserStatus(IntEnum):
-    INACTIVE = 0
-    ACTIVE = 1
-    LOCKED = 2
+from core.constants import UserStatus
 
 
 class User(Base):
@@ -21,3 +17,6 @@ class User(Base):
     is_superuser = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True))
     updated_at = Column(DateTime(timezone=True))
+
+    def __repr__(self) -> str:
+        return f"<User(id={self.id}, username='{self.username}', status={self.status})>"

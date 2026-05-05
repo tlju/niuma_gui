@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from sqlalchemy.orm import Session
 from models.script import Script
 from services.audit_mixin import AuditMixin

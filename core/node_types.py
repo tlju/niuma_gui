@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 from dataclasses import dataclass, field
@@ -10,6 +12,7 @@ import re
 import sys
 from core.logger import get_logger
 from core.utils import replace_variables, get_python_executable, get_subprocess_kwargs
+from core.expression_parser import safe_eval, ExpressionParseError
 
 logger = get_logger(__name__)
 
@@ -476,12 +479,18 @@ class ConditionNode(BaseNode):
         try:
             self.status = NodeStatus.RUNNING
             context = {"input": inputs.get("output", ""), "data": inputs.get("data", {})}
-            result = eval(condition, {"__builtins__": {}}, context)
+            result = safe_eval(condition, context)
             self.status = NodeStatus.SUCCESS
             self.result = NodeResult(
                 status=NodeStatus.SUCCESS,
                 output=f"条件判断结果: {result}",
                 data={"condition_result": bool(result)}
+            )
+        except ExpressionParseError as e:
+            self.status = NodeStatus.FAILED
+            self.result = NodeResult(
+                status=NodeStatus.FAILED,
+                error=f"条件表达式语法错误: {str(e)}"
             )
         except Exception as e:
             self.status = NodeStatus.FAILED

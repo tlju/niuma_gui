@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from sqlalchemy.orm import Session
 from models.server_asset import ServerAsset
 from services.crypto import CryptoManager
@@ -7,6 +9,7 @@ from typing import List, Optional, Dict, Any, Tuple
 from core.config import settings
 from core.logger import get_logger
 from core.utils import get_local_now
+from schemas.schemas import AssetCreateRequest, AssetUpdateRequest
 import xlsxwriter
 from io import BytesIO
 from datetime import datetime
@@ -59,29 +62,29 @@ class AssetService(AuditMixin):
         vip: Optional[str] = None,
         user_id: Optional[int] = None
     ) -> Optional[int]:
-        if not unit_name or not isinstance(unit_name, str):
-            raise ValueError("单位名称不能为空")
-        if not system_name or not isinstance(system_name, str):
-            raise ValueError("系统名称不能为空")
-        if not username or not isinstance(username, str):
-            raise ValueError("用户名不能为空")
+        req = AssetCreateRequest(
+            unit_name=unit_name, system_name=system_name, username=username,
+            password=password, ip=ip, ipv6=ipv6, port=port,
+            host_name=host_name, notes=notes, business_service=business_service,
+            location=location, server_type=server_type, vip=vip
+        )
 
-        password_cipher = self.crypto.encrypt(password) if password else ""
+        password_cipher = self.crypto.encrypt(req.password) if req.password else ""
 
         asset = ServerAsset(
-            unit_name=unit_name,
-            system_name=system_name,
-            ip=ip,
-            ipv6=ipv6,
-            port=port,
-            host_name=host_name,
-            username=username,
+            unit_name=req.unit_name,
+            system_name=req.system_name,
+            ip=req.ip,
+            ipv6=req.ipv6,
+            port=req.port,
+            host_name=req.host_name,
+            username=req.username,
             password_cipher=password_cipher,
-            notes=notes,
-            business_service=business_service,
-            location=location,
-            server_type=server_type,
-            vip=vip,
+            notes=req.notes,
+            business_service=req.business_service,
+            location=req.location,
+            server_type=req.server_type,
+            vip=req.vip,
             created_at=get_local_now()
         )
         self.db.add(asset)

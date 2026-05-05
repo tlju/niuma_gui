@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from contextlib import contextmanager
 from sqlalchemy import create_engine
@@ -16,10 +18,6 @@ engine = create_engine(
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-DEFAULT_ADMIN_USERNAME = "admin"
-DEFAULT_ADMIN_PASSWORD = "admin123"
-DEFAULT_ADMIN_FULL_NAME = "系统管理员"
 
 
 @contextmanager
@@ -60,27 +58,26 @@ def _create_tables():
 
 
 def _create_admin_user(db: Session) -> bool:
-    """创建默认管理员用户"""
     from models.user import User, UserStatus
     from services.crypto import hash_password
 
-    existing = db.query(User).filter(User.username == DEFAULT_ADMIN_USERNAME).first()
+    existing = db.query(User).filter(User.username == settings.DEFAULT_ADMIN_USERNAME).first()
     if existing:
-        logger.info(f"管理员用户 '{DEFAULT_ADMIN_USERNAME}' 已存在")
+        logger.info(f"管理员用户 '{settings.DEFAULT_ADMIN_USERNAME}' 已存在")
         return False
 
-    hashed_password = hash_password(DEFAULT_ADMIN_PASSWORD)
+    hashed_password = hash_password(settings.DEFAULT_ADMIN_PASSWORD)
     admin = User(
-        username=DEFAULT_ADMIN_USERNAME,
+        username=settings.DEFAULT_ADMIN_USERNAME,
         hashed_password=hashed_password,
-        full_name=DEFAULT_ADMIN_FULL_NAME,
+        full_name=settings.DEFAULT_ADMIN_FULL_NAME,
         status=UserStatus.ACTIVE,
         is_superuser=True,
         created_at=get_local_now()
     )
     db.add(admin)
     db.commit()
-    logger.info(f"管理员用户 '{DEFAULT_ADMIN_USERNAME}' 创建成功")
+    logger.info(f"管理员用户 '{settings.DEFAULT_ADMIN_USERNAME}' 创建成功")
     return True
 
 

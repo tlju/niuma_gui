@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 import paramiko
 import threading
 from typing import Optional, Callable
 from dataclasses import dataclass
 from core.logger import get_logger
+from core.database import get_db
 
 logger = get_logger(__name__)
+
 
 @dataclass
 class SSHSession:
@@ -44,6 +48,7 @@ class SSHSession:
                 pass
         self.status = "closed"
 
+
 class SessionManager:
     def __init__(self):
         self.sessions: dict[str, SSHSession] = {}
@@ -65,47 +70,45 @@ class SessionManager:
             return None
 
         from models.server_asset import ServerAsset
-        from core.database import get_db_session
-        db = get_db_session()
 
-        server = db.query(ServerAsset).filter(
-            ServerAsset.id == server_id
-        ).first()
-        db.close()
+        with get_db() as db:
+            server = db.query(ServerAsset).filter(
+                ServerAsset.id == server_id
+            ).first()
 
-        if not server:
-            logger.warning(f"服务器不存在: server_id={server_id}")
-            return None
+            if not server:
+                logger.warning(f"服务器不存在: server_id={server_id}")
+                return None
 
-        try:
-            client = paramiko.SSHClient()
-            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            client.connect(
-                hostname=server.ip,
-                port=server.port,
-                username=server.username,
-                password=password,
-                timeout=30
-            )
-            channel = client.invoke_shell()
+            try:
+                client = paramiko.SSHClient()
+                client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                client.connect(
+                    hostname=server.ip,
+                    port=server.port,
+                    username=server.username,
+                    password=password,
+                    timeout=30
+                )
+                channel = client.invoke_shell()
 
-            session = SSHSession(
-                session_id=session_id,
-                user_id=user_id,
-                server_id=server_id,
-                client=client,
-                channel=channel
-            )
+                session = SSHSession(
+                    session_id=session_id,
+                    user_id=user_id,
+                    server_id=server_id,
+                    client=client,
+                    channel=channel
+                )
 
-            with self.lock:
-                self.sessions[session_id] = session
+                with self.lock:
+                    self.sessions[session_id] = session
 
-            logger.info(f"SSH会话创建成功: session_id={session_id}, server={server.ip}")
-            return session
+                logger.info(f"SSH会话创建成功: session_id={session_id}, server={server.ip}")
+                return session
 
-        except Exception as e:
-            logger.error(f"SSH连接失败: {e}")
-            return None
+            except Exception as e:
+                logger.error(f"SSH连接失败: {e}")
+                return None
 
     def get_session(self, session_id: str) -> Optional[SSHSession]:
         with self.lock:

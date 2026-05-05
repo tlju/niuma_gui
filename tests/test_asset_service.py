@@ -35,8 +35,8 @@ def test_create_asset(asset_service):
     assert asset.ip == "192.168.1.100"
 
 def test_list_assets(asset_service):
-    asset_service.create("Unit1", "System1", "admin", "pass", "192.168.1.1", 22)
-    asset_service.create("Unit2", "System2", "admin", "pass", "192.168.1.2", 22)
+    asset_service.create("Unit1", "System1", "admin", "pass", ip="192.168.1.1", port=22)
+    asset_service.create("Unit2", "System2", "admin", "pass", ip="192.168.1.2", port=22)
 
     assets = asset_service.get_all()
     assert len(assets) >= 2

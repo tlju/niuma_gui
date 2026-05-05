@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 from sqlalchemy.orm import Session
 from models.document import Document
 from services.audit_mixin import AuditMixin
 from typing import List, Optional
 from core.logger import get_logger
-from core.utils import get_local_now
+from core.utils import get_local_now, escape_like_wildcards
 
 logger = get_logger(__name__)
 
@@ -90,9 +92,10 @@ class DocumentService(AuditMixin):
         return False
 
     def search_documents(self, keyword: str) -> List[Document]:
+        escaped = escape_like_wildcards(keyword)
         return self.db.query(Document).filter(
-            Document.title.like(f"%{keyword}%") |
-            Document.content.like(f"%{keyword}%")
+            Document.title.like(f"%{escaped}%", escape='\\') |
+            Document.content.like(f"%{escaped}%", escape='\\')
         ).all()
 
     def get_categories(self) -> List[str]:

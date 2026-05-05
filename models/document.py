@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from models.base import Base
+
 
 class Document(Base):
     __tablename__ = "documents"
@@ -12,3 +15,6 @@ class Document(Base):
     created_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True))
     updated_at = Column(DateTime(timezone=True))
+
+    def __repr__(self) -> str:
+        return f"<Document(id={self.id}, title='{self.title}', category='{self.category}')>"
