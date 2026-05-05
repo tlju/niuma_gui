@@ -978,16 +978,6 @@ class RemoteExecutionNode(BaseNode):
         return self.result
 
 
-class BastionNode(RemoteExecutionNode):
-    node_type = "bastion"
-    category = "environment"
-    display_name = "堡垒机连接"
-    description = "切换到远程执行环境（兼容旧版节点）"
-
-
-
-
-
 class LocalExecutionNode(BaseNode):
     node_type = "local_execution"
     category = "environment"

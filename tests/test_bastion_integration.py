@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from services.bastion_service import BastionService, ConnectionStatus, BastionChannel
 from core.bastion_manager import BastionManager, BastionConnectionWorker
-from core.node_types import BastionNode, NodeStatus
+from core.node_types import RemoteExecutionNode, NodeStatus
 from gui.bastion_dialog import SecondaryAuthDialog
 
 
@@ -67,19 +67,19 @@ class TestBastionManager(unittest.TestCase):
         self.assertEqual(status["status"], ConnectionStatus.DISCONNECTED.value)
 
 
-class TestBastionNode(unittest.TestCase):
+class TestRemoteExecutionNode(unittest.TestCase):
     
     def setUp(self):
         self.mock_db = Mock()
-        self.node = BastionNode(node_id=1, name="测试堡垒机节点")
+        self.node = RemoteExecutionNode(node_id=1, name="测试远程执行节点")
         self.node.set_services(db=self.mock_db)
     
     def test_node_properties(self):
-        self.assertEqual(BastionNode.node_type, "bastion")
-        self.assertEqual(BastionNode.category, "environment")
-        self.assertEqual(BastionNode.display_name, "堡垒机连接")
-        self.assertEqual(BastionNode.input_ports, 1)
-        self.assertEqual(BastionNode.output_ports, 1)
+        self.assertEqual(RemoteExecutionNode.node_type, "remote_execution")
+        self.assertEqual(RemoteExecutionNode.category, "environment")
+        self.assertEqual(RemoteExecutionNode.display_name, "远程执行")
+        self.assertEqual(RemoteExecutionNode.input_ports, 1)
+        self.assertEqual(RemoteExecutionNode.output_ports, 1)
     
     def test_get_config_schema(self):
         schema = self.node.get_config_schema()
@@ -94,7 +94,7 @@ class TestBastionNode(unittest.TestCase):
         self.assertIn("未指定目标主机地址", result.error)
     
     def test_execute_missing_db(self):
-        node = BastionNode(node_id=2, name="无数据库节点")
+        node = RemoteExecutionNode(node_id=2, name="无数据库节点")
         node.config = {"operation": "connect_host"}
         result = node.execute()
         

@@ -554,3 +554,200 @@ class TestBastionService:
         
         mock_conn.disconnect.assert_called_once()
         assert "conn1" not in bastion_service._connections
+
+
+class TestProcessServerList:
+    def test_process_server_list_filter_host_prefix(self):
+        conn = BastionConnection("192.168.1.100", 22, "admin", "password")
+        
+        servers = [
+            {"index": "1", "ip": "10.9.50.52", "name": "6273baac120b1"},
+            {"index": "2", "ip": "10.9.50.52", "name": "host_1946189736078188544"},
+            {"index": "3", "ip": "10.92.210.58", "name": "60448537b3e17"},
+            {"index": "4", "ip": "10.92.210.59", "name": "host_12345"},
+        ]
+        
+        processed = conn._process_server_list(servers)
+        
+        assert len(processed) == 2
+        assert processed[0]["ip"] == "10.9.50.52"
+        assert processed[1]["ip"] == "10.92.210.58"
+        for server in processed:
+            assert "host_" not in server["name"]
+
+    def test_process_server_list_deduplicate_by_ip(self):
+        conn = BastionConnection("192.168.1.100", 22, "admin", "password")
+        
+        servers = [
+            {"index": "1", "ip": "10.9.50.52", "name": "server1"},
+            {"index": "2", "ip": "10.9.50.52", "name": "server2"},
+            {"index": "3", "ip": "10.92.210.58", "name": "server3"},
+        ]
+        
+        processed = conn._process_server_list(servers)
+        
+        assert len(processed) == 2
+        ips = [s["ip"] for s in processed]
+        assert ips.count("10.9.50.52") == 1
+        assert ips.count("10.92.210.58") == 1
+
+    def test_process_server_list_combined_filter_and_dedup(self):
+        conn = BastionConnection("192.168.1.100", 22, "admin", "password")
+        
+        servers = [
+            {"index": "1", "ip": "10.9.50.52", "name": "valid_server1"},
+            {"index": "2", "ip": "10.9.50.52", "name": "valid_server2"},
+            {"index": "3", "ip": "10.92.210.58", "name": "host_invalid"},
+            {"index": "4", "ip": "10.92.210.59", "name": "valid_server3"},
+        ]
+        
+        processed = conn._process_server_list(servers)
+        
+        assert len(processed) == 2
+        assert processed[0]["ip"] == "10.9.50.52"
+        assert processed[1]["ip"] == "10.92.210.59"
+
+    def test_process_server_list_empty(self):
+        conn = BastionConnection("192.168.1.100", 22, "admin", "password")
+        
+        servers = []
+        processed = conn._process_server_list(servers)
+        
+        assert len(processed) == 0
+
+    def test_process_server_list_all_filtered(self):
+        conn = BastionConnection("192.168.1.100", 22, "admin", "password")
+        
+        servers = [
+            {"index": "1", "ip": "10.9.50.52", "name": "host_123"},
+            {"index": "2", "ip": "10.92.210.58", "name": "host_456"},
+        ]
+        
+        processed = conn._process_server_list(servers)
+        
+        assert len(processed) == 0
+
+
+class TestGlobalServerList:
+    def test_set_and_get_global_server_list(self):
+        servers = [
+            {"index": "1", "ip": "10.9.50.52", "name": "server1"},
+            {"index": "2", "ip": "10.92.210.58", "name": "server2"},
+        ]
+        
+        BastionService.set_global_server_list(servers)
+        
+        result = BastionService.get_global_server_list()
+        
+        assert len(result) == 2
+        assert result[0]["ip"] == "10.9.50.52"
+        
+        BastionService.clear_global_server_list()
+
+    def test_has_global_server_list(self):
+        BastionService.clear_global_server_list()
+        
+        assert BastionService.has_global_server_list() == False
+        
+        servers = [{"index": "1", "ip": "10.9.50.52", "name": "server1"}]
+        BastionService.set_global_server_list(servers)
+        
+        assert BastionService.has_global_server_list() == True
+        
+        BastionService.clear_global_server_list()
+
+    def test_clear_global_server_list(self):
+        servers = [{"index": "1", "ip": "10.9.50.52", "name": "server1"}]
+        BastionService.set_global_server_list(servers)
+        
+        BastionService.clear_global_server_list()
+        
+        assert BastionService.has_global_server_list() == False
+        assert len(BastionService.get_global_server_list()) == 0
+
+    def test_global_server_list_isolation(self):
+        servers = [{"index": "1", "ip": "10.9.50.52", "name": "server1"}]
+        BastionService.set_global_server_list(servers)
+        
+        result = BastionService.get_global_server_list()
+        result.append({"index": "2", "ip": "10.92.210.58", "name": "server2"})
+        
+        original = BastionService.get_global_server_list()
+        
+        assert len(original) == 1
+        
+        BastionService.clear_global_server_list()
+
+
+class TestDetectAuthPromptSimplified:
+    @patch('services.bastion_service.paramiko.SSHClient')
+    def test_detect_2nd_password_only(self, mock_ssh_client_class):
+        mock_client = Mock()
+        mock_transport = Mock()
+        mock_client.get_transport.return_value = mock_transport
+        mock_ssh_client_class.return_value = mock_client
+        
+        conn = BastionConnection("192.168.1.100", 22, "admin", "password")
+        conn.connect(timeout=30)
+        
+        mock_channel = Mock()
+        mock_channel.recv_ready.return_value = False
+        mock_client.invoke_shell.return_value = mock_channel
+        
+        with patch.object(conn, '_read_channel_output', return_value="2nd Password:"):
+            auth_info = conn.detect_auth_prompt(timeout=5)
+        
+        assert auth_info["needs_otp"] == True
+        assert auth_info["needs_password"] == False
+
+    @patch('services.bastion_service.paramiko.SSHClient')
+    def test_detect_menu_after_otp(self, mock_ssh_client_class):
+        mock_client = Mock()
+        mock_transport = Mock()
+        mock_client.get_transport.return_value = mock_transport
+        mock_ssh_client_class.return_value = mock_client
+        
+        conn = BastionConnection("192.168.1.100", 22, "admin", "password")
+        conn.connect(timeout=30)
+        
+        mock_channel = Mock()
+        mock_channel.recv_ready.return_value = False
+        mock_client.invoke_shell.return_value = mock_channel
+        
+        output = """
+********************************************************************************
+*                             齐治交互终端 v3.3.10                             *
+********************************************************************************
+
+已选择：未分类资产
+目标资产列表
+序号: IP 地址                                  名称(说明) *
+   1: 10.92.210.58                             60448537b3e17
+-- 共 255 条记录。Ctrl-F：下一页 --
+请选择目标资产：
+"""
+        with patch.object(conn, '_read_channel_output', return_value=output):
+            auth_info = conn.detect_auth_prompt(timeout=5)
+        
+        assert auth_info["needs_menu"] == True
+        assert auth_info["has_menu"] == True
+
+    @patch('services.bastion_service.paramiko.SSHClient')
+    def test_no_password_detection(self, mock_ssh_client_class):
+        mock_client = Mock()
+        mock_transport = Mock()
+        mock_client.get_transport.return_value = mock_transport
+        mock_ssh_client_class.return_value = mock_client
+        
+        conn = BastionConnection("192.168.1.100", 22, "admin", "password")
+        conn.connect(timeout=30)
+        
+        mock_channel = Mock()
+        mock_channel.recv_ready.return_value = False
+        mock_client.invoke_shell.return_value = mock_channel
+        
+        with patch.object(conn, '_read_channel_output', return_value="Password:"):
+            auth_info = conn.detect_auth_prompt(timeout=5)
+        
+        assert auth_info["needs_password"] == False
+        assert auth_info["needs_otp"] == False

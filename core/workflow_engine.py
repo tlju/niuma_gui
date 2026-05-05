@@ -6,7 +6,7 @@ from collections import defaultdict
 from core.logger import get_logger
 from core.node_types import (
     BaseNode, NodeStatus, NodeResult,
-    get_node_class, StartNode, EndNode, ConditionNode, ParallelNode, MergeNode, ScriptNode, CommandNode, MinioNode, BastionNode, RemoteExecutionNode, LocalExecutionNode
+    get_node_class, StartNode, EndNode, ConditionNode, ParallelNode, MergeNode, ScriptNode, CommandNode, MinioNode, RemoteExecutionNode, LocalExecutionNode
 )
 
 logger = get_logger(__name__)
@@ -66,7 +66,7 @@ class WorkflowExecutor:
             
             if isinstance(node, (ScriptNode, CommandNode)):
                 node.set_services(self.dict_service, self.param_service)
-            elif isinstance(node, (MinioNode, BastionNode, RemoteExecutionNode)):
+            elif isinstance(node, (MinioNode, RemoteExecutionNode)):
                 node.set_services(db=self.db, bastion_manager=self.bastion_manager)
             
             self.nodes[node_id] = node
@@ -141,15 +141,29 @@ class WorkflowExecutor:
             logger.error(f"检查堡垒机连接状态失败: {e}")
             return False
 
+    def _check_global_server_list(self) -> bool:
+        from services.bastion_service import BastionService
+        return BastionService.has_global_server_list()
+
     def _execute_node(self, node_id: int) -> NodeResult:
         if self.is_cancelled:
             return NodeResult(status=NodeStatus.SKIPPED, output="执行已取消")
 
         node = self.nodes[node_id]
         
-        if isinstance(node, (BastionNode, RemoteExecutionNode)):
+        if isinstance(node, RemoteExecutionNode):
             if not self._check_bastion_connection():
                 error_msg = "堡垒机连接未建立，工作流执行失败"
+                node.status = NodeStatus.FAILED
+                result = NodeResult(status=NodeStatus.FAILED, error=error_msg)
+                node.result = result
+                self._update_node_status(node_id, NodeStatus.FAILED, result)
+                self._emit_log("ERROR", error_msg, node_id)
+                self.is_cancelled = True
+                return result
+            
+            if not self._check_global_server_list():
+                error_msg = "堡垒机未成功连接或服务器列表未获取，请先完成堡垒机登录认证"
                 node.status = NodeStatus.FAILED
                 result = NodeResult(status=NodeStatus.FAILED, error=error_msg)
                 node.result = result
@@ -214,7 +228,7 @@ class WorkflowExecutor:
             node.status = result.status
             node.result = result
             
-            if isinstance(node, (BastionNode, RemoteExecutionNode)) and result.status == NodeStatus.SUCCESS:
+            if isinstance(node, RemoteExecutionNode) and result.status == NodeStatus.SUCCESS:
                 self.execution_environment = ExecutionEnvironment.REMOTE_BASTION
                 self.bastion_connected = True
                 if result.data:

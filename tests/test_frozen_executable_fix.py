@@ -91,12 +91,12 @@ class TestGetPythonExecutable:
 class TestGetSubprocessKwargs:
     """测试get_subprocess_kwargs函数"""
 
+    @pytest.mark.skipif(sys.platform != 'win32', reason="Windows特定测试")
     def test_windows_adds_create_no_window(self):
         """Windows环境下添加CREATE_NO_WINDOW标志"""
-        with patch.object(sys, 'platform', 'win32'):
-            kwargs = get_subprocess_kwargs()
-            assert 'creationflags' in kwargs
-            assert kwargs['creationflags'] & subprocess.CREATE_NO_WINDOW
+        kwargs = get_subprocess_kwargs()
+        assert 'creationflags' in kwargs
+        assert kwargs['creationflags'] & subprocess.CREATE_NO_WINDOW
 
     def test_linux_no_creationflags(self):
         """Linux环境下不添加creationflags"""
@@ -104,13 +104,13 @@ class TestGetSubprocessKwargs:
             kwargs = get_subprocess_kwargs()
             assert 'creationflags' not in kwargs
 
+    @pytest.mark.skipif(sys.platform != 'win32', reason="Windows特定测试")
     def test_preserves_existing_flags(self):
         """保留已有的creationflags标志"""
-        with patch.object(sys, 'platform', 'win32'):
-            existing_flag = subprocess.CREATE_NEW_PROCESS_GROUP
-            kwargs = get_subprocess_kwargs(creationflags=existing_flag)
-            assert kwargs['creationflags'] & subprocess.CREATE_NO_WINDOW
-            assert kwargs['creationflags'] & existing_flag
+        existing_flag = subprocess.CREATE_NEW_PROCESS_GROUP
+        kwargs = get_subprocess_kwargs(creationflags=existing_flag)
+        assert kwargs['creationflags'] & subprocess.CREATE_NO_WINDOW
+        assert kwargs['creationflags'] & existing_flag
 
     def test_other_kwargs_preserved(self):
         """其他参数被保留"""

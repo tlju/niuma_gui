@@ -230,14 +230,7 @@ class BastionConnection:
                 auth_info["needs_otp"] = True
                 logger.info("检测到 '2nd Password' 提示，需要二次认证")
             
-            if "密码" in output or "password" in output.lower() or "口令" in output:
-                if not auth_info["needs_otp"]:
-                    auth_info["needs_password"] = True
-            
-            if "验证码" in output or "OTP" in output.upper() or "动态口令" in output or "令牌" in output:
-                auth_info["needs_otp"] = True
-            
-            if "菜单" in output or "menu" in output.lower() or "选择" in output or "请输入" in output:
+            if "请选择" in output or "选择目标" in output or "Ctrl+F" in output or "目标资产列表" in output:
                 auth_info["needs_menu"] = True
                 auth_info["has_menu"] = True
             
@@ -245,7 +238,7 @@ class BastionConnection:
                         f"needs_otp={auth_info['needs_otp']}, needs_menu={auth_info['needs_menu']}, "
                         f"has_menu={auth_info['has_menu']}")
             
-            if not auth_info["needs_otp"] and not auth_info["needs_password"] and not auth_info["needs_menu"]:
+            if not auth_info["needs_otp"] and not auth_info["needs_menu"]:
                 if self._auth_channel:
                     self._auth_channel.close()
                     self._auth_channel = None
@@ -256,8 +249,8 @@ class BastionConnection:
             logger.error(f"检测认证提示失败: {e}")
             self._auth_channel = None
             return {
-                "needs_password": True,
-                "needs_otp": False,
+                "needs_password": False,
+                "needs_otp": True,
                 "needs_menu": False,
                 "prompt_text": "",
                 "has_menu": False
@@ -316,7 +309,6 @@ class BastionConnection:
 
         try:
             logger.info(f"开始处理二次认证: auth_type={auth_type}, "
-                        f"has_secondary_password={secondary_password is not None}, "
                         f"has_otp_code={otp_code is not None}, "
                         f"has_menu_selection={menu_selection is not None}, timeout={timeout}")
             
@@ -359,35 +351,6 @@ class BastionConnection:
                     self._auth_channel = None
                     raise Exception("动态口令验证失败")
             
-            elif "密码" in output or "password" in output.lower() or "口令" in output:
-                if secondary_password:
-                    logger.info("检测到密码提示，发送二次密码")
-                    channel.send(secondary_password + "\n")
-                    time.sleep(0.5)
-                    output = self._read_channel_output(channel, timeout)
-                    logger.info(f"二次认证-密码认证后输出(前500字符): {output[:500]}")
-                    
-                    if self._is_otp_prompt(output):
-                        if otp_code:
-                            logger.info("密码认证后检测到OTP提示，发送验证码")
-                            channel.send(otp_code + "\n")
-                            time.sleep(1.0)
-                            output = self._read_channel_output(channel, timeout, max_read_time=15.0)
-                            logger.info(f"二次认证-密码+OTP后输出(前500字符): {output[:500]}")
-                            
-                            if self._is_otp_prompt(output):
-                                logger.warning("OTP验证失败，堡垒机再次要求输入")
-                                raise Exception("OTP_RETRY")
-                        else:
-                            channel.close()
-                            self._auth_channel = None
-                            raise Exception("需要OTP验证码但未提供")
-                    
-                    if "错误" in output or "error" in output.lower() or "失败" in output or "incorrect" in output.lower():
-                        channel.close()
-                        self._auth_channel = None
-                        raise Exception("二次认证失败，密码错误")
-            
             result = {
                 "authenticated": False,
                 "has_server_list": False,
@@ -396,12 +359,14 @@ class BastionConnection:
             }
             
             if "请选择" in output or "选择目标" in output or "Ctrl+F" in output or "目标资产列表" in output:
-                logger.info("检测到服务器列表菜单，解析服务器列表")
-                servers = self._parse_server_list(output)
+                logger.info("检测到服务器列表菜单，开始获取完整服务器列表")
+                all_servers = self._fetch_all_servers_with_pagination(channel, timeout)
+                processed_servers = self._process_server_list(all_servers)
+                
                 result["authenticated"] = True
                 result["has_server_list"] = True
-                result["server_list"] = servers
-                logger.info(f"解析到 {len(servers)} 台服务器")
+                result["server_list"] = processed_servers
+                logger.info(f"获取并处理服务器列表完成，共 {len(processed_servers)} 台服务器")
                 
                 if menu_selection:
                     logger.info(f"发送菜单选择: {menu_selection}")
@@ -454,6 +419,74 @@ class BastionConnection:
                 self._auth_channel.close()
                 self._auth_channel = None
             raise Exception(error_msg)
+
+    def _fetch_all_servers_with_pagination(self, channel, timeout: int = 30) -> List[Dict[str, str]]:
+        all_servers = []
+        seen_servers = set()
+        max_pages = 20
+        page_count = 0
+        
+        output = self._read_channel_output(channel, timeout=2, max_read_time=5.0)
+        current_servers = self._parse_server_list(output)
+        for server in current_servers:
+            server_key = f"{server['ip']}_{server['name']}"
+            if server_key not in seen_servers:
+                seen_servers.add(server_key)
+                all_servers.append(server)
+        
+        logger.info(f"第1页解析到 {len(current_servers)} 台服务器，累计 {len(all_servers)} 台")
+        
+        while page_count < max_pages:
+            if "Ctrl-F" not in output and "下一页" not in output:
+                logger.info("没有更多页面，停止翻页")
+                break
+            
+            logger.info(f"发送Ctrl+F翻页，当前第 {page_count + 2} 页")
+            channel.send("\x06")
+            time.sleep(1.0)
+            
+            output = self._read_channel_output(channel, timeout=3, max_read_time=10.0)
+            page_count += 1
+            
+            current_servers = self._parse_server_list(output)
+            new_count = 0
+            for server in current_servers:
+                server_key = f"{server['ip']}_{server['name']}"
+                if server_key not in seen_servers:
+                    seen_servers.add(server_key)
+                    all_servers.append(server)
+                    new_count += 1
+            
+            logger.info(f"第{page_count + 1}页解析到 {len(current_servers)} 台服务器，新增 {new_count} 台，累计 {len(all_servers)} 台")
+            
+            if new_count == 0:
+                logger.info("本页没有新增服务器，可能已到最后一页")
+                break
+        
+        logger.info(f"翻页完成，共获取 {len(all_servers)} 台服务器")
+        return all_servers
+
+    def _process_server_list(self, servers: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        processed = []
+        seen_ips = set()
+        
+        for server in servers:
+            ip = server.get("ip", "")
+            name = server.get("name", "")
+            
+            if "host_" in name:
+                logger.debug(f"排除包含'host_'的服务器: {ip} - {name}")
+                continue
+            
+            if ip in seen_ips:
+                logger.debug(f"去重: IP {ip} 已存在")
+                continue
+            
+            seen_ips.add(ip)
+            processed.append(server)
+        
+        logger.info(f"服务器列表处理完成: 原始 {len(servers)} 台，处理后 {len(processed)} 台")
+        return processed
 
     def _read_channel_output(self, channel, timeout: float = 2.0, max_read_time: float = 10.0) -> str:
         output = ""
@@ -818,11 +851,36 @@ class BastionConnection:
 
 
 class BastionService:
+    _global_server_list: List[Dict[str, str]] = []
+    _global_server_list_lock = threading.Lock()
+    
     def __init__(self, db: Session):
         self.db = db
         self.param_service = ParamService(db)
         self._connections: Dict[str, BastionConnection] = {}
         self._lock = threading.Lock()
+
+    @classmethod
+    def get_global_server_list(cls) -> List[Dict[str, str]]:
+        with cls._global_server_list_lock:
+            return cls._global_server_list.copy()
+    
+    @classmethod
+    def set_global_server_list(cls, servers: List[Dict[str, str]]):
+        with cls._global_server_list_lock:
+            cls._global_server_list = servers.copy()
+            logger.info(f"全局服务器列表已更新，共 {len(servers)} 台服务器")
+    
+    @classmethod
+    def clear_global_server_list(cls):
+        with cls._global_server_list_lock:
+            cls._global_server_list = []
+            logger.info("全局服务器列表已清空")
+    
+    @classmethod
+    def has_global_server_list(cls) -> bool:
+        with cls._global_server_list_lock:
+            return len(cls._global_server_list) > 0
 
     def get_bastion_config(self) -> Dict[str, str]:
         host_param = self.param_service.get_param_by_code("BASTION_HOST")
@@ -922,12 +980,17 @@ class BastionService:
         if not connection:
             raise ValueError(f"未找到连接: {connection_id}")
         
-        return connection.handle_secondary_auth(
+        result = connection.handle_secondary_auth(
             auth_type=auth_type,
             secondary_password=secondary_password,
             otp_code=otp_code,
             menu_selection=menu_selection
         )
+        
+        if result.get("has_server_list") and result.get("server_list"):
+            BastionService.set_global_server_list(result["server_list"])
+        
+        return result
 
     def connect_to_asset(self, connection_id: str = "default",
                          target_ip: str = "",
