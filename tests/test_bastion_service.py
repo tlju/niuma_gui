@@ -470,19 +470,6 @@ class TestBastionConnection:
 
 class TestBastionService:
     @pytest.fixture
-    def db_session(self):
-        from sqlalchemy import create_engine
-        from sqlalchemy.orm import sessionmaker
-        from models.base import Base
-        
-        engine = create_engine("sqlite:///:memory:")
-        Base.metadata.create_all(bind=engine)
-        Session = sessionmaker(bind=engine)
-        session = Session()
-        yield session
-        session.close()
-
-    @pytest.fixture
     def bastion_service(self, db_session):
         return BastionService(db_session)
 

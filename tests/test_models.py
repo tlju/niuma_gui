@@ -1,18 +1,6 @@
 import pytest
 from models.user import User, UserStatus
 from models.server_asset import ServerAsset
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from models import Base
-
-@pytest.fixture
-def db_session():
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(bind=engine)
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    yield session
-    session.close()
 
 def test_create_user(db_session):
     user = User(

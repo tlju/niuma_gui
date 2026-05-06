@@ -38,14 +38,3 @@ def db_session(engine):
     session.close()
     transaction.rollback()
     connection.close()
-
-
-@pytest.fixture()
-def db_session_committed(engine):
-    Session = sessionmaker(bind=engine)
-    session = Session()
-
-    yield session
-
-    session.rollback()
-    session.close()

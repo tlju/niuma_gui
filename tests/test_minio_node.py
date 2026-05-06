@@ -1,21 +1,8 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from models.base import Base
 from models.system_param import SystemParam
 from services.param_service import ParamService
 from core.node_types import MinioNode, NodeStatus
-
-
-@pytest.fixture
-def db_session():
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(bind=engine)
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    yield session
-    session.close()
 
 
 @pytest.fixture

@@ -51,11 +51,6 @@ class AuthError(AppError):
         super().__init__(message, ErrorCode.AUTH_FAILED, details)
 
 
-class PermissionError(AppError):
-    def __init__(self, message: str = "权限不足", details: Optional[dict] = None):
-        super().__init__(message, ErrorCode.PERMISSION_DENIED, details)
-
-
 class NotFoundError(AppError):
     def __init__(self, resource: str = "资源", resource_id: Any = None):
         msg = f"{resource}不存在"
@@ -75,18 +70,3 @@ class AlreadyExistsError(AppError):
 class DatabaseError(AppError):
     def __init__(self, message: str = "数据库操作失败", details: Optional[dict] = None):
         super().__init__(message, ErrorCode.DB_ERROR, details)
-
-
-class ConnectionError(AppError):
-    def __init__(self, message: str = "连接失败", details: Optional[dict] = None):
-        super().__init__(message, ErrorCode.CONNECTION_ERROR, details)
-
-
-class TimeoutError(AppError):
-    def __init__(self, message: str = "操作超时", details: Optional[dict] = None):
-        super().__init__(message, ErrorCode.TIMEOUT_ERROR, details)
-
-
-class BusinessError(AppError):
-    def __init__(self, message: str, details: Optional[dict] = None):
-        super().__init__(message, ErrorCode.BUSINESS_ERROR, details)

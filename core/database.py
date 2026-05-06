@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from contextlib import contextmanager
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session, scoped_session
+from sqlalchemy.orm import sessionmaker, Session
 from core.config import settings
 from core.logger import get_logger
 from core.utils import get_local_now, get_base_path
@@ -28,11 +28,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-
-def get_thread_session() -> Session:
-    """获取工作线程专用的独立数据库会话，调用方负责关闭"""
-    return SessionLocal()
 
 
 @contextmanager

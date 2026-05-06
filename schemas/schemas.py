@@ -108,21 +108,6 @@ class AssetUpdateRequest(BaseModel):
     vip: Optional[str] = Field(None, max_length=200)
 
 
-class ScriptCreateRequest(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100, description="脚本名称")
-    content: str = Field(..., min_length=1, description="脚本内容")
-    description: Optional[str] = Field(None, description="描述")
-    language: Optional[str] = Field("bash", max_length=20, description="脚本语言")
-    server_id: Optional[int] = Field(None, gt=0, description="关联服务器ID")
-
-
-class ScriptUpdateRequest(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    content: Optional[str] = Field(None, min_length=1)
-    description: Optional[str] = None
-    language: Optional[str] = Field(None, max_length=20)
-
-
 class DictCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="字典名称")
     code: str = Field(..., min_length=1, max_length=50, description="字典编码")
@@ -134,20 +119,6 @@ class DictCreateRequest(BaseModel):
         v = v.strip()
         if not re.match(r'^[a-zA-Z0-9_]+$', v):
             raise ValueError("字典编码只能包含字母、数字和下划线")
-        return v
-
-
-class DictItemCreateRequest(BaseModel):
-    item_name: str = Field(..., min_length=1, max_length=100, description="项名称")
-    item_code: str = Field(..., min_length=1, max_length=50, description="项编码")
-    sort_order: Optional[int] = Field(None, ge=0, description="排序")
-
-    @field_validator("item_code")
-    @classmethod
-    def validate_code(cls, v: str) -> str:
-        v = v.strip()
-        if not re.match(r'^[a-zA-Z0-9_]+$', v):
-            raise ValueError("项编码只能包含字母、数字和下划线")
         return v
 
 
@@ -184,63 +155,4 @@ class TodoCreateRequest(BaseModel):
     def validate_recurrence(cls, v: str) -> str:
         if v not in ("none", "daily", "weekly", "monthly"):
             raise ValueError("重复类型必须是 none/daily/weekly/monthly")
-        return v
-
-
-class TodoUpdateRequest(BaseModel):
-    title: Optional[str] = Field(None, min_length=1, max_length=200)
-    description: Optional[str] = None
-    status: Optional[str] = None
-    priority: Optional[str] = None
-
-    @field_validator("status")
-    @classmethod
-    def validate_status(cls, v: Optional[str]) -> Optional[str]:
-        if v and v not in ("pending", "in", "completed"):
-            raise ValueError("状态必须是 pending/in/completed")
-        return v
-
-    @field_validator("priority")
-    @classmethod
-    def validate_priority(cls, v: Optional[str]) -> Optional[str]:
-        if v and v not in ("low", "medium", "high"):
-            raise ValueError("优先级必须是 low/medium/high")
-        return v
-
-
-class DocumentCreateRequest(BaseModel):
-    title: str = Field(..., min_length=1, max_length=200, description="标题")
-    content: str = Field("", description="内容")
-    category: Optional[str] = Field(None, max_length=50, description="分类")
-    tags: Optional[str] = Field(None, max_length=200, description="标签")
-
-
-class DocumentUpdateRequest(BaseModel):
-    title: Optional[str] = Field(None, min_length=1, max_length=200)
-    content: Optional[str] = None
-    category: Optional[str] = Field(None, max_length=50)
-    tags: Optional[str] = Field(None, max_length=200)
-
-
-class PasswordChangeRequest(BaseModel):
-    old_password: str = Field(..., min_length=1, description="旧密码")
-    new_password: str = Field(..., min_length=6, max_length=128, description="新密码")
-
-
-class BastionAuthRequest(BaseModel):
-    otp_code: Optional[str] = Field(None, min_length=1, max_length=10, description="OTP验证码")
-    menu_selection: Optional[str] = Field(None, min_length=1, max_length=10, description="菜单选择")
-
-
-class AssetConnectRequest(BaseModel):
-    target_ip: str = Field(..., min_length=1, max_length=45, description="目标IP")
-    asset_username: str = Field(..., min_length=1, max_length=100, description="资产用户名")
-    asset_password: str = Field(..., min_length=1, max_length=128, description="资产密码")
-
-    @field_validator("target_ip")
-    @classmethod
-    def validate_target_ip(cls, v: str) -> str:
-        v = v.strip()
-        if not v:
-            raise ValueError("目标IP不能为空")
         return v

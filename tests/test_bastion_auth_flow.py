@@ -102,19 +102,6 @@ class TestBastionManager:
     """测试堡垒机管理器"""
     
     @pytest.fixture
-    def db_session(self):
-        from sqlalchemy import create_engine
-        from sqlalchemy.orm import sessionmaker
-        from models.base import Base
-        
-        engine = create_engine("sqlite:///:memory:")
-        Base.metadata.create_all(bind=engine)
-        Session = sessionmaker(bind=engine)
-        session = Session()
-        yield session
-        session.close()
-    
-    @pytest.fixture
     def bastion_manager(self, db_session):
         return BastionManager(db_session)
     
@@ -231,19 +218,6 @@ class TestBastionManager:
 
 class TestBastionManagerSignalChain:
     """测试堡垒机管理器信号链"""
-    
-    @pytest.fixture
-    def db_session(self):
-        from sqlalchemy import create_engine
-        from sqlalchemy.orm import sessionmaker
-        from models.base import Base
-        
-        engine = create_engine("sqlite:///:memory:")
-        Base.metadata.create_all(bind=engine)
-        Session = sessionmaker(bind=engine)
-        session = Session()
-        yield session
-        session.close()
     
     @pytest.fixture
     def bastion_manager(self, db_session):

@@ -6,19 +6,6 @@ from models.system_param import SystemParam
 
 class TestRemoteExecutionNode:
     @pytest.fixture
-    def db_session(self):
-        from sqlalchemy import create_engine
-        from sqlalchemy.orm import sessionmaker
-        from models.base import Base
-        
-        engine = create_engine("sqlite:///:memory:")
-        Base.metadata.create_all(bind=engine)
-        Session = sessionmaker(bind=engine)
-        session = Session()
-        yield session
-        session.close()
-
-    @pytest.fixture
     def remote_execution_node(self):
         return RemoteExecutionNode(1, "测试远程执行节点")
 

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from services.param_service import ParamService
 from core.logger import get_logger
 from core.secure_string import SecureString
+from core.config import settings
 
 logger = get_logger(__name__)
 
@@ -126,7 +127,9 @@ class BastionConnection:
                 logger.error(f"状态回调异常: {e}")
 
     def connect_with_retry(self, max_retries: int = 3, retry_interval: int = 5, 
-                           timeout: int = 30, on_retry: Callable[[int, str], None] = None) -> bool:
+                           timeout: int = None, on_retry: Callable[[int, str], None] = None) -> bool:
+        if timeout is None:
+            timeout = settings.SSH_SESSION_TIMEOUT
         last_error = None
         
         logger.info(f"堡垒机连接开始: host={self.host}, port={self.port}, username={self.username}, "
@@ -153,7 +156,9 @@ class BastionConnection:
         self._update_status(ConnectionStatus.FAILED, f"连接失败: {last_error}")
         raise Exception(f"堡垒机连接失败，已重试{max_retries}次: {last_error}")
 
-    def connect(self, timeout: int = 30) -> bool:
+    def connect(self, timeout: int = None) -> bool:
+        if timeout is None:
+            timeout = settings.SSH_SESSION_TIMEOUT
         try:
             self.client = paramiko.SSHClient()
             self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -880,7 +885,7 @@ class BastionService:
             "host": host_param.param_value if host_param else None,
             "username": user_param.param_value if user_param else None,
             "password": password_param.param_value if password_param else None,
-            "port": 22
+            "port": settings.SSH_DEFAULT_PORT
         }
         
         if config["host"] and ":" in config["host"]:
@@ -904,13 +909,15 @@ class BastionService:
                            host: str = None, port: int = None,
                            username: str = None, password: str = None,
                            max_retries: int = 3, retry_interval: int = 5,
-                           timeout: int = 30,
+                           timeout: int = None,
                            on_retry: Callable[[int, str], None] = None,
                            on_status_change: Callable[[ConnectionStatus, str], None] = None) -> BastionConnection:
+        if timeout is None:
+            timeout = settings.SSH_SESSION_TIMEOUT
         if host and username and password:
             config = {
                 "host": host,
-                "port": port or 22,
+                "port": port or settings.SSH_DEFAULT_PORT,
                 "username": username,
                 "password": password
             }
@@ -945,7 +952,7 @@ class BastionService:
     def connect(self, connection_id: str = "default", 
                 host: str = None, port: int = None,
                 username: str = None, password: str = None,
-                timeout: int = 30) -> BastionConnection:
+                timeout: int = None) -> BastionConnection:
         return self.connect_with_retry(
             connection_id=connection_id,
             host=host, port=port,

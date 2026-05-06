@@ -12,13 +12,10 @@ from PyQt5.QtGui import (
     QPainter, QPen, QBrush, QColor, QFont, QIcon,
     QKeySequence, QStandardItemModel, QStandardItem
 )
-import pyqtgraph as pg
-from pyqtgraph import GraphicsLayoutWidget, PlotItem
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 import json
 import os
-import json as json_module
 
 from gui.workflow_items import WorkflowNodeItem, ConnectionItem, TempConnectionItem
 from core.node_types import get_all_node_types, NODE_TYPES
@@ -223,7 +220,7 @@ class NodeConfigDialog(QDialog):
         try:
             if os.path.exists(HOST_HISTORY_FILE):
                 with open(HOST_HISTORY_FILE, 'r', encoding='utf-8') as f:
-                    return json_module.load(f)
+                    return json.load(f)
         except Exception as e:
             logger.warning(f"加载主机历史记录失败: {e}")
         return []
@@ -240,7 +237,7 @@ class NodeConfigDialog(QDialog):
             history.insert(0, host)
             history = history[:20]
             with open(HOST_HISTORY_FILE, 'w', encoding='utf-8') as f:
-                json_module.dump(history, f, ensure_ascii=False, indent=2)
+                json.dump(history, f, ensure_ascii=False, indent=2)
         except Exception as e:
             logger.warning(f"保存主机历史记录失败: {e}")
             

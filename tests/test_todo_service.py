@@ -4,19 +4,6 @@ from models.todo import TodoStatus, RecurrenceType
 from datetime import datetime, timedelta
 
 @pytest.fixture
-def db_session():
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-    from models.base import Base
-
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(bind=engine)
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    yield session
-    session.close()
-
-@pytest.fixture
 def todo_service(db_session):
     return TodoService(db_session)
 

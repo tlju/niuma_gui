@@ -9,19 +9,6 @@ class TestBastionManagerServerListStorage:
     """测试堡垒机管理器服务器列表存储功能"""
 
     @pytest.fixture
-    def db_session(self):
-        from sqlalchemy import create_engine
-        from sqlalchemy.orm import sessionmaker
-        from models.base import Base
-
-        engine = create_engine("sqlite:///:memory:")
-        Base.metadata.create_all(bind=engine)
-        Session = sessionmaker(bind=engine)
-        session = Session()
-        yield session
-        session.close()
-
-    @pytest.fixture
     def bastion_manager(self, db_session):
         return BastionManager(db_session)
 
@@ -77,28 +64,17 @@ class TestMainWindowServerSelectNonModal:
     """测试主窗口服务器选择对话框非模态显示"""
 
     @pytest.fixture
-    def db_session(self):
-        from sqlalchemy import create_engine
-        from sqlalchemy.orm import sessionmaker
-        from models.base import Base
+    def db_with_user(self, db_session):
         from models.user import User
-        from models.system_param import SystemParam
-
-        engine = create_engine("sqlite:///:memory:")
-        Base.metadata.create_all(bind=engine)
-        Session = sessionmaker(bind=engine)
-        session = Session()
-
         user = User(username="testuser", hashed_password="hash")
-        session.add(user)
-        session.commit()
-        yield session
-        session.close()
+        db_session.add(user)
+        db_session.commit()
+        return db_session
 
     @pytest.fixture
-    def main_window(self, db_session, qapp):
+    def main_window(self, db_with_user, qapp):
         from gui.main_window import MainWindow
-        window = MainWindow(user_id=1, username="testuser", db=db_session)
+        window = MainWindow(user_id=1, username="testuser", db=db_with_user)
         yield window
         window.close()
 

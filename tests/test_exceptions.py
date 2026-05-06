@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import pytest
 from core.exceptions import (
-    AppError, ValidationError, AuthError, PermissionError,
-    NotFoundError, AlreadyExistsError, DatabaseError,
-    ConnectionError, TimeoutError, BusinessError, ErrorCode
+    AppError, ValidationError, AuthError,
+    NotFoundError, AlreadyExistsError, DatabaseError, ErrorCode
 )
 from core.error_handler import handle_service_errors, safe_execute
 
@@ -32,10 +31,6 @@ class TestExceptions:
         err = AuthError()
         assert err.code == ErrorCode.AUTH_FAILED
 
-    def test_permission_error(self):
-        err = PermissionError()
-        assert err.code == ErrorCode.PERMISSION_DENIED
-
     def test_not_found_error(self):
         err = NotFoundError("用户", 42)
         assert err.code == ErrorCode.NOT_FOUND
@@ -50,18 +45,6 @@ class TestExceptions:
     def test_database_error(self):
         err = DatabaseError("连接失败")
         assert err.code == ErrorCode.DB_ERROR
-
-    def test_connection_error(self):
-        err = ConnectionError("SSH连接失败")
-        assert err.code == ErrorCode.CONNECTION_ERROR
-
-    def test_timeout_error(self):
-        err = TimeoutError()
-        assert err.code == ErrorCode.TIMEOUT_ERROR
-
-    def test_business_error(self):
-        err = BusinessError("余额不足")
-        assert err.code == ErrorCode.BUSINESS_ERROR
 
 
 class TestErrorHandler:
@@ -107,7 +90,7 @@ class TestErrorHandler:
 
     def test_safe_execute_app_error(self):
         result = safe_execute(
-            lambda: (_ for _ in ()).throw(BusinessError("业务错误")),
+            lambda: (_ for _ in ()).throw(AppError("业务错误")),
             default=None,
             log_error=False
         )

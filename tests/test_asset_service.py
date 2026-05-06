@@ -2,19 +2,6 @@ import pytest
 from services.asset_service import AssetService
 
 @pytest.fixture
-def db_session():
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-    from models.base import Base
-
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(bind=engine)
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    yield session
-    session.close()
-
-@pytest.fixture
 def asset_service(db_session):
     return AssetService(db_session)
 
