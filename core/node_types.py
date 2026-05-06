@@ -913,6 +913,7 @@ class RemoteExecutionNode(BaseNode):
 
     def execute(self, inputs: Dict[str, Any] = None) -> NodeResult:
         from services.bastion_service import BastionService, ConnectionStatus
+        from services.asset_service import AssetService
         
         inputs = inputs or {}
         
@@ -938,6 +939,7 @@ class RemoteExecutionNode(BaseNode):
         try:
             self.status = NodeStatus.RUNNING
             bastion_service = BastionService(db=self.db)
+            asset_service = AssetService(db=self.db)
             
             connection_id = "default"
             
@@ -945,15 +947,35 @@ class RemoteExecutionNode(BaseNode):
             if not status.get("authenticated"):
                 raise Exception("堡垒机未连接或未完成认证，请先在主界面连接堡垒机")
             
-            channel = bastion_service.connect_to_host(
+            assets = asset_service.get_all()
+            target_asset = None
+            for asset in assets:
+                if asset.ip == target_host or asset.ipv6 == target_host:
+                    target_asset = asset
+                    break
+            
+            if not target_asset:
+                raise Exception(f"未找到目标主机 {target_host} 对应的资产信息")
+            
+            asset_username = target_asset.username
+            asset_password = asset_service.get_password(target_asset.id)
+            
+            if not asset_username:
+                raise Exception(f"资产 {target_host} 未配置用户名")
+            
+            if not asset_password:
+                raise Exception(f"资产 {target_host} 未配置密码")
+            
+            result = bastion_service.connect_to_asset(
                 connection_id=connection_id,
-                host=target_host,
-                username=None,
-                password=None,
-                timeout=30
+                target_ip=target_host,
+                asset_username=asset_username,
+                asset_password=asset_password,
+                timeout=60
             )
             
-            if channel:
+            if result.get("success") and result.get("channel"):
+                channel = result["channel"]
                 output_msg = f"已切换到远程执行环境，目标主机: {target_host}"
                 result_data = {
                     "target_host": target_host,
@@ -969,7 +991,8 @@ class RemoteExecutionNode(BaseNode):
                     data=result_data
                 )
             else:
-                raise Exception(f"连接目标主机 {target_host} 失败")
+                error_msg = result.get("error", "连接目标主机失败")
+                raise Exception(f"连接目标主机 {target_host} 失败: {error_msg}")
             
         except ValueError as e:
             self.status = NodeStatus.FAILED

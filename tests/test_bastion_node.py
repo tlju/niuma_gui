@@ -50,16 +50,33 @@ class TestRemoteExecutionNode:
         assert result.status == NodeStatus.FAILED
         assert "未指定目标主机地址" in result.error
 
+    @patch('services.asset_service.AssetService')
     @patch('services.bastion_service.BastionService')
-    def test_execute_success(self, mock_bastion_service_class, remote_execution_node, db_session):
-        mock_service = Mock()
-        mock_bastion_service_class.return_value = mock_service
-        mock_service.get_connection_status.return_value = {
+    def test_execute_success(self, mock_bastion_service_class, mock_asset_service_class, remote_execution_node, db_session):
+        mock_bastion_service = Mock()
+        mock_bastion_service_class.return_value = mock_bastion_service
+        mock_bastion_service.get_connection_status.return_value = {
             "authenticated": True
         }
+        
+        mock_asset_service = Mock()
+        mock_asset_service_class.return_value = mock_asset_service
+        
+        mock_asset = Mock()
+        mock_asset.ip = "192.168.1.200"
+        mock_asset.ipv6 = None
+        mock_asset.username = "testuser"
+        mock_asset.id = 1
+        mock_asset_service.get_all.return_value = [mock_asset]
+        mock_asset_service.get_password.return_value = "testpassword"
+        
         mock_channel = Mock()
         mock_channel.channel_id = 1
-        mock_service.connect_to_host.return_value = mock_channel
+        mock_bastion_service.connect_to_asset.return_value = {
+            "success": True,
+            "channel": mock_channel,
+            "output": ""
+        }
         
         remote_execution_node.set_services(db=db_session)
         remote_execution_node.config = {
@@ -71,7 +88,7 @@ class TestRemoteExecutionNode:
         assert result.status == NodeStatus.SUCCESS
         assert "已切换到远程执行环境" in result.output
         assert result.data["target_host"] == "192.168.1.200"
-        mock_service.connect_to_host.assert_called_once()
+        mock_bastion_service.connect_to_asset.assert_called_once()
 
     @patch('services.bastion_service.BastionService')
     def test_execute_without_bastion_connection(self, mock_bastion_service_class, remote_execution_node, db_session):
@@ -91,14 +108,30 @@ class TestRemoteExecutionNode:
         assert result.status == NodeStatus.FAILED
         assert "堡垒机未连接" in result.error
 
+    @patch('services.asset_service.AssetService')
     @patch('services.bastion_service.BastionService')
-    def test_execute_connect_host_failure(self, mock_bastion_service_class, remote_execution_node, db_session):
-        mock_service = Mock()
-        mock_bastion_service_class.return_value = mock_service
-        mock_service.get_connection_status.return_value = {
+    def test_execute_connect_host_failure(self, mock_bastion_service_class, mock_asset_service_class, remote_execution_node, db_session):
+        mock_bastion_service = Mock()
+        mock_bastion_service_class.return_value = mock_bastion_service
+        mock_bastion_service.get_connection_status.return_value = {
             "authenticated": True
         }
-        mock_service.connect_to_host.return_value = None
+        
+        mock_asset_service = Mock()
+        mock_asset_service_class.return_value = mock_asset_service
+        
+        mock_asset = Mock()
+        mock_asset.ip = "192.168.1.200"
+        mock_asset.ipv6 = None
+        mock_asset.username = "testuser"
+        mock_asset.id = 1
+        mock_asset_service.get_all.return_value = [mock_asset]
+        mock_asset_service.get_password.return_value = "testpassword"
+        
+        mock_bastion_service.connect_to_asset.return_value = {
+            "success": False,
+            "error": "连接失败"
+        }
         
         remote_execution_node.set_services(db=db_session)
         remote_execution_node.config = {

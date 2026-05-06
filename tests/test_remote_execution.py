@@ -45,17 +45,34 @@ class TestRemoteExecutionNode:
         assert result.status == NodeStatus.FAILED
         assert "未指定目标主机地址" in result.error
     
+    @patch('services.asset_service.AssetService')
     @patch('services.bastion_service.BastionService')
-    def test_execute_success(self, mock_bastion_service_class):
+    def test_execute_success(self, mock_bastion_service_class, mock_asset_service_class):
         """测试成功执行远程执行节点"""
         mock_db = Mock()
         mock_bastion_service = Mock()
         mock_bastion_service_class.return_value = mock_bastion_service
         
         mock_bastion_service.get_connection_status.return_value = {"authenticated": True}
+        
+        mock_asset_service = Mock()
+        mock_asset_service_class.return_value = mock_asset_service
+        
+        mock_asset = Mock()
+        mock_asset.ip = "192.168.1.100"
+        mock_asset.ipv6 = None
+        mock_asset.username = "testuser"
+        mock_asset.id = 1
+        mock_asset_service.get_all.return_value = [mock_asset]
+        mock_asset_service.get_password.return_value = "testpassword"
+        
         mock_channel = Mock()
         mock_channel.channel_id = 123
-        mock_bastion_service.connect_to_host.return_value = mock_channel
+        mock_bastion_service.connect_to_asset.return_value = {
+            "success": True,
+            "channel": mock_channel,
+            "output": ""
+        }
         
         node = RemoteExecutionNode(1, "测试远程执行", {"target_host": "192.168.1.100"})
         node.db = mock_db
@@ -202,17 +219,36 @@ class TestWorkflowExecutorEnvironmentContext:
         assert executor.current_channel_id is None
     
     @patch('core.workflow_engine.WorkflowExecutor._check_bastion_connection')
+    @patch('core.workflow_engine.WorkflowExecutor._check_global_server_list')
+    @patch('services.asset_service.AssetService')
     @patch('services.bastion_service.BastionService')
-    def test_environment_switch_to_remote(self, mock_bastion_service_class, mock_check_connection):
+    def test_environment_switch_to_remote(self, mock_bastion_service_class, mock_asset_service_class, mock_check_global, mock_check_connection):
         """测试切换到远程执行环境"""
         mock_check_connection.return_value = True
+        mock_check_global.return_value = True
         
         mock_bastion_service = Mock()
         mock_bastion_service_class.return_value = mock_bastion_service
         mock_bastion_service.get_connection_status.return_value = {"authenticated": True}
+        
+        mock_asset_service = Mock()
+        mock_asset_service_class.return_value = mock_asset_service
+        
+        mock_asset = Mock()
+        mock_asset.ip = "192.168.1.100"
+        mock_asset.ipv6 = None
+        mock_asset.username = "testuser"
+        mock_asset.id = 1
+        mock_asset_service.get_all.return_value = [mock_asset]
+        mock_asset_service.get_password.return_value = "testpassword"
+        
         mock_channel = Mock()
         mock_channel.channel_id = 123
-        mock_bastion_service.connect_to_host.return_value = mock_channel
+        mock_bastion_service.connect_to_asset.return_value = {
+            "success": True,
+            "channel": mock_channel,
+            "output": ""
+        }
         
         nodes = [
             {"id": 1, "node_type": "start", "name": "开始"},

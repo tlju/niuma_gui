@@ -23,6 +23,7 @@ import json as json_module
 from gui.workflow_items import WorkflowNodeItem, ConnectionItem, TempConnectionItem
 from core.node_types import get_all_node_types, NODE_TYPES
 from core.logger import get_logger
+from services.bastion_service import BastionService
 
 logger = get_logger(__name__)
 
@@ -180,7 +181,7 @@ class NodeConfigDialog(QDialog):
                 bastion_connected = status.get("authenticated", False)
                 
                 if bastion_connected:
-                    server_list = self.bastion_manager.get_service().get_all_connected_hosts()
+                    server_list = BastionService.get_global_server_list()
                     
                     if server_list:
                         for host in server_list:
