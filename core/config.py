@@ -13,7 +13,7 @@ load_dotenv()
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///niuma.db"
-    CRYPTO_KEY: str = "default-crypto-key-32-bytes-long-change-me"
+    CRYPTO_KEY: str = ""  # 必须通过 .env 文件或环境变量配置，不允许使用默认值
     SESSION_TIMEOUT: int = 1800
     MAX_SESSIONS_PER_USER: int = 5
     LOG_LEVEL: str = "WARNING"
@@ -45,6 +45,19 @@ class Settings(BaseSettings):
             db_name = self.DATABASE_URL.split("///")[-1]
             db_path = os.path.join(get_base_path(), db_name)
             self.DATABASE_URL = f"sqlite:///{db_path}"
+        return self
+
+    @model_validator(mode='after')
+    def _validate_crypto_key(self) -> 'Settings':
+        """强制要求配置 CRYPTO_KEY，禁止使用空值或默认弱密钥"""
+        if not self.CRYPTO_KEY:
+            raise ValueError(
+                "CRYPTO_KEY 未配置！请在 .env 文件中设置 CRYPTO_KEY 环境变量，"
+                "或通过系统环境变量 CRYPTO_KEY 传入。"
+                "可使用以下命令生成随机密钥: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+            )
+        if len(self.CRYPTO_KEY.encode()) < 16:
+            raise ValueError("CRYPTO_KEY 长度过短（至少16字节），请使用更长的随机密钥")
         return self
 
     @property

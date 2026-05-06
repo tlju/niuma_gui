@@ -170,17 +170,17 @@ class _Parser:
             raise ExpressionParseError(f"意外的标记: {token[1]}")
 
     def _resolve_identifier(self, name: str) -> Any:
+        """解析标识符，仅支持字典访问，禁止通过属性访问对象内部属性以防止沙箱逃逸"""
         parts = name.split('.')
         obj = self.context
         for part in parts:
+            # 禁止访问以下划线开头的属性，防止访问 Python 内省属性
+            if part.startswith('_'):
+                return ""
             if isinstance(obj, dict):
-                if part in obj:
-                    obj = obj[part]
-                else:
-                    return ""
-            elif hasattr(obj, part):
-                obj = getattr(obj, part)
+                obj = obj.get(part, "")
             else:
+                # 不再支持通过 hasattr/getattr 访问对象属性，仅允许字典上下文
                 return ""
         return obj
 

@@ -22,7 +22,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 @contextmanager
 def get_db():
-    """获取数据库会话的生成器模式，自动管理生命周期"""
+    """获取数据库会话的上下文管理器，自动管理生命周期，线程安全"""
     db = SessionLocal()
     try:
         yield db
@@ -30,14 +30,8 @@ def get_db():
         db.close()
 
 
-@contextmanager
-def get_thread_db():
-    """获取工作线程专用的独立数据库会话（上下文管理器模式）"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# get_thread_db 已合并到 get_db，保留别名以兼容现有调用
+get_thread_db = get_db
 
 
 def _create_tables():
@@ -72,7 +66,8 @@ def _create_admin_user(db: Session) -> bool:
     )
     db.add(admin)
     db.commit()
-    logger.info(f"管理员用户 '{settings.DEFAULT_ADMIN_USERNAME}' 创建成功")
+    # 不再打印明文密码到日志
+    logger.info(f"管理员用户 '{settings.DEFAULT_ADMIN_USERNAME}' 创建成功，请登录后立即修改默认密码")
     return True
 
 
@@ -95,5 +90,11 @@ def init_db():
 
 
 def get_db_session() -> Session:
-    """获取数据库会话（同步），建议优先使用 get_db() 生成器模式"""
+    """获取数据库会话（同步），建议优先使用 get_db() 上下文管理器模式"""
+    import warnings
+    warnings.warn(
+        "get_db_session() 已弃用，请使用 get_db() 上下文管理器以自动管理会话生命周期",
+        DeprecationWarning,
+        stacklevel=2
+    )
     return SessionLocal()

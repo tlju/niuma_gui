@@ -11,14 +11,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sqlalchemy.orm import Session
 from core.database import engine, Base, SessionLocal
 from core.logger import setup_logger, get_logger
+from core.config import settings
 from models.user import User, UserStatus
 from services.crypto import hash_password
 
 logger = get_logger(__name__)
-
-DEFAULT_ADMIN_USERNAME = "admin"
-DEFAULT_ADMIN_PASSWORD = "admin123"
-DEFAULT_ADMIN_FULL_NAME = "系统管理员"
 
 
 def create_tables():
@@ -34,23 +31,30 @@ def create_tables():
 
 
 def create_admin_user(db: Session) -> bool:
-    """创建默认管理员用户"""
-    existing = db.query(User).filter(User.username == DEFAULT_ADMIN_USERNAME).first()
+    """创建默认管理员用户，使用 settings 中的统一配置"""
+    # 统一使用 settings 中的配置，避免重复定义默认密码
+    admin_username = settings.DEFAULT_ADMIN_USERNAME
+    admin_password = settings.DEFAULT_ADMIN_PASSWORD
+    admin_full_name = settings.DEFAULT_ADMIN_FULL_NAME
+
+    existing = db.query(User).filter(User.username == admin_username).first()
     if existing:
-        logger.info(f"管理员用户 '{DEFAULT_ADMIN_USERNAME}' 已存在")
+        logger.info(f"管理员用户 '{admin_username}' 已存在")
         return False
 
-    hashed_password = hash_password(DEFAULT_ADMIN_PASSWORD)
+    hashed_password = hash_password(admin_password)
     admin = User(
-        username=DEFAULT_ADMIN_USERNAME,
+        username=admin_username,
         hashed_password=hashed_password,
-        full_name=DEFAULT_ADMIN_FULL_NAME,
+        full_name=admin_full_name,
         status=UserStatus.ACTIVE,
         is_superuser=True
     )
     db.add(admin)
     db.commit()
-    logger.info(f"管理员用户 '{DEFAULT_ADMIN_USERNAME}' 创建成功")
+    logger.info(f"管理员用户 '{admin_username}' 创建成功")
+    # 不再打印明文密码到日志
+    logger.info("请登录后立即修改默认密码！")
     return True
 
 
@@ -65,9 +69,8 @@ def init_database():
     try:
         created = create_admin_user(db)
         if created:
-            logger.info(f"默认管理员账号: {DEFAULT_ADMIN_USERNAME}")
-            logger.info(f"默认管理员密码: {DEFAULT_ADMIN_PASSWORD}")
-            logger.info("请登录后立即修改密码！")
+            logger.info(f"默认管理员账号: {settings.DEFAULT_ADMIN_USERNAME}")
+            logger.info("请登录后立即修改默认密码！")
     finally:
         db.close()
 

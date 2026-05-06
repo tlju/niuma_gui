@@ -32,7 +32,7 @@ class BastionChannel:
         self.created_at = time.time()
         self.last_activity = time.time()
         self.is_active = True
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     def send(self, data: str) -> bool:
         with self._lock:
@@ -100,7 +100,7 @@ class BastionConnection:
         self.channels: List[BastionChannel] = []
         self.status = ConnectionStatus.DISCONNECTED
         self.error_message: str = ""
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._keepalive_thread: Optional[threading.Thread] = None
         self._keepalive_running = False
         self._on_status_change: Optional[Callable[[ConnectionStatus, str], None]] = None
@@ -118,8 +118,10 @@ class BastionConnection:
         self._on_status_change = callback
 
     def _update_status(self, status: ConnectionStatus, message: str = ""):
-        self.status = status
-        self.error_message = message
+        """更新连接状态，线程安全"""
+        with self._lock:
+            self.status = status
+            self.error_message = message
         if self._on_status_change:
             try:
                 self._on_status_change(status, message)
@@ -164,11 +166,13 @@ class BastionConnection:
             self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             
             logger.info(f"正在连接堡垒机 {self.host}:{self.port}, 用户: {self.username}, 超时: {timeout}秒")
+            # 使用 self.password 而非 self._consume_password()，
+            # 避免首次连接失败后重试时密码已被消费导致空密码连接
             self.client.connect(
                 hostname=self.host,
                 port=self.port,
                 username=self.username,
-                password=self._consume_password(),
+                password=self.password,
                 timeout=timeout,
                 allow_agent=False,
                 look_for_keys=False,
@@ -242,12 +246,14 @@ class BastionConnection:
         except Exception as e:
             logger.error(f"检测认证提示失败: {e}")
             self._auth_channel = None
+            # 异常时不再猜测需要 OTP，而是返回错误状态让调用者处理
             return {
                 "needs_password": False,
-                "needs_otp": True,
+                "needs_otp": False,
                 "needs_menu": False,
                 "prompt_text": "",
-                "has_menu": False
+                "has_menu": False,
+                "error": f"检测认证提示失败: {e}"
             }
 
     def _is_otp_prompt(self, output: str) -> bool:
@@ -387,7 +393,9 @@ class BastionConnection:
                         break
                 
                 if not result["authenticated"]:
-                    result["authenticated"] = True
+                    # 无法确认认证成功时，不假设成功，返回未认证状态让调用者判断
+                    result["authenticated"] = False
+                    logger.warning("二次认证结果无法确认，未匹配到任何成功模式")
             
             if result["authenticated"]:
                 self._update_status(ConnectionStatus.AUTHENTICATED, "认证成功")

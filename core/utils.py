@@ -99,6 +99,38 @@ def replace_variables(
     if not content or not isinstance(content, str):
         return content or ""
 
+    # 预收集所有需要查找的变量，避免 N+1 查询问题
+    pattern = r'@([a-zA-Z_][a-zA-Z0-9_\.]*)'
+    all_vars = re.findall(pattern, content)
+
+    if not all_vars:
+        return content
+
+    # 预加载字典数据：收集所有需要的 dict_code，批量查询
+    dict_cache: Dict[str, Dict[str, str]] = {}  # {dict_code: {item_name: item_code}}
+    if dict_service:
+        needed_dict_codes = set()
+        for var_path in all_vars:
+            parts = var_path.split('.')
+            if len(parts) >= 3 and parts[0] == "dict":
+                needed_dict_codes.add(parts[1])
+        for dict_code in needed_dict_codes:
+            items = dict_service.get_dict_items(dict_code)
+            dict_cache[dict_code] = {item.item_name: item.item_code for item in items}
+
+    # 预加载参数数据：收集所有需要的 param_code，批量查询
+    param_cache: Dict[str, str] = {}  # {param_code: param_value}
+    if param_service:
+        needed_param_codes = set()
+        for var_path in all_vars:
+            parts = var_path.split('.')
+            if len(parts) >= 2 and parts[0] == "param":
+                needed_param_codes.add(parts[1])
+        for param_code in needed_param_codes:
+            param = param_service.get_param_by_code(param_code)
+            if param:
+                param_cache[param_code] = param.param_value
+
     def _replace_var(match: re.Match) -> str:
         var_path = match.group(1)
         parts = var_path.split('.')
@@ -113,19 +145,17 @@ def replace_variables(
                 if len(parts) >= 3:
                     dict_code = parts[1]
                     item_name = parts[2]
-                    items = dict_service.get_dict_items(dict_code)
-                    for item in items:
-                        if item.item_name == item_name:
-                            return item.item_code
+                    # 从缓存中查找，避免重复查询数据库
+                    if dict_code in dict_cache and item_name in dict_cache[dict_code]:
+                        return dict_cache[dict_code][item_name]
             elif source_type == "param" and param_service:
                 param_code = parts[1]
-                param = param_service.get_param_by_code(param_code)
-                if param:
-                    return param.param_value
+                # 从缓存中查找，避免重复查询数据库
+                if param_code in param_cache:
+                    return param_cache[param_code]
         except Exception:
             pass
 
         return match.group(0)
 
-    pattern = r'@([a-zA-Z_][a-zA-Z0-9_\.]*)'
     return re.sub(pattern, _replace_var, content)

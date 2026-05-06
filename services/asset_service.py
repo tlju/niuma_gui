@@ -18,13 +18,20 @@ logger = get_logger(__name__)
 
 
 class AssetService(AuditMixin):
-    _sort_cache: Dict[str, Dict[str, int]] = {}
-    _cache_valid: bool = False
+    # 允许通过 update() 方法更新的字段白名单，防止任意属性被设置
+    UPDATABLE_FIELDS = frozenset({
+        "unit_name", "system_name", "ip", "ipv6", "port",
+        "host_name", "username", "notes", "business_service",
+        "location", "server_type", "vip"
+    })
 
     def __init__(self, db: Session, dict_service: Optional[DictService] = None):
         self.db = db
         self.crypto = CryptoManager(settings.CRYPTO_KEY)
         self.dict_service = dict_service or DictService(db)
+        # 实例级别缓存，避免跨实例数据污染
+        self._sort_cache: Dict[str, Dict[str, int]] = {}
+        self._cache_valid: bool = False
 
     def _refresh_sort_cache(self) -> None:
         if self._cache_valid:
@@ -69,27 +76,32 @@ class AssetService(AuditMixin):
             location=location, server_type=server_type, vip=vip
         )
 
-        password_cipher = self.crypto.encrypt(req.password) if req.password else ""
+        try:
+            password_cipher = self.crypto.encrypt(req.password) if req.password else ""
 
-        asset = ServerAsset(
-            unit_name=req.unit_name,
-            system_name=req.system_name,
-            ip=req.ip,
-            ipv6=req.ipv6,
-            port=req.port,
-            host_name=req.host_name,
-            username=req.username,
-            password_cipher=password_cipher,
-            notes=req.notes,
-            business_service=req.business_service,
-            location=req.location,
-            server_type=req.server_type,
-            vip=req.vip,
-            created_at=get_local_now()
-        )
-        self.db.add(asset)
-        self.db.commit()
-        self.db.refresh(asset)
+            asset = ServerAsset(
+                unit_name=req.unit_name,
+                system_name=req.system_name,
+                ip=req.ip,
+                ipv6=req.ipv6,
+                port=req.port,
+                host_name=req.host_name,
+                username=req.username,
+                password_cipher=password_cipher,
+                notes=req.notes,
+                business_service=req.business_service,
+                location=req.location,
+                server_type=req.server_type,
+                vip=req.vip,
+                created_at=get_local_now()
+            )
+            self.db.add(asset)
+            self.db.commit()
+            self.db.refresh(asset)
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"创建资产失败: {e}")
+            raise
 
         self.log_audit(
             user_id=user_id,
@@ -124,14 +136,22 @@ class AssetService(AuditMixin):
         if not asset:
             return False
 
+        # 仅允许白名单中的字段更新，防止 id 等关键字段被篡改
         for key, value in kwargs.items():
-            if hasattr(asset, key) and value is not None:
+            if key in self.UPDATABLE_FIELDS:
                 if key == "password":
-                    setattr(asset, f"{key}_cipher", self.crypto.encrypt(value))
-                else:
+                    # 密码字段特殊处理：加密存储到 password_cipher
+                    if value is not None:
+                        setattr(asset, "password_cipher", self.crypto.encrypt(value))
+                elif value is not None:
                     setattr(asset, key, value)
 
-        self.db.commit()
+        try:
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"更新资产失败: {e}")
+            raise
 
         self.log_audit(
             user_id=user_id,
@@ -158,8 +178,13 @@ class AssetService(AuditMixin):
             details=f"删除资产: {asset.unit_name} - {asset.system_name} ({asset.ip or asset.ipv6})"
         )
 
-        self.db.delete(asset)
-        self.db.commit()
+        try:
+            self.db.delete(asset)
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"删除资产失败: {e}")
+            raise
         return True
 
     def get_password(self, asset_id: int) -> Optional[str]:

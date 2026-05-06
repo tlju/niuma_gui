@@ -5,6 +5,14 @@ from core.config import settings
 
 
 class TestConfig:
+    def test_crypto_key_is_set(self):
+        """CRYPTO_KEY 必须已配置，不能为空或默认值"""
+        assert settings.CRYPTO_KEY, "CRYPTO_KEY 未配置"
+        assert settings.CRYPTO_KEY not in (
+            "default-crypto-key-32-bytes-long-change-me",
+            "your-secret-crypto-key-32-bytes-long"
+        ), "CRYPTO_KEY 使用了不安全的默认值"
+
     def test_default_admin_username(self):
         assert settings.DEFAULT_ADMIN_USERNAME == "admin"
 

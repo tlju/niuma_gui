@@ -8,6 +8,20 @@ import shutil
 import platform
 import tempfile
 
+# 在导入任何应用模块之前，先验证关键配置（如 CRYPTO_KEY）
+try:
+    from core.config import settings
+except ValueError as e:
+    # CRYPTO_KEY 等配置校验失败时，无法使用 QMessageBox（Qt 尚未初始化），
+    # 直接输出到控制台
+    print(f"配置错误: {e}")
+    input("按回车键退出...")
+    sys.exit(1)
+except Exception as e:
+    print(f"加载配置失败: {e}")
+    input("按回车键退出...")
+    sys.exit(1)
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
@@ -58,16 +72,8 @@ def setup_linux_env():
         os.environ["QT_IM_MODULE"] = "fcitx"
 
 
-from gui.main_window import MainWindow
-from gui.login_dialog import LoginDialog
-from gui.style_manager import load_stylesheet, setup_app_fonts
-from core.logger import setup_logger
-from core.database import init_db, get_db_session, SessionLocal
-from services.auth_service import AuthService
-from gui.icons import icons
-
-
 def show_error_dialog(title: str, message: str):
+    """显示错误对话框，如无法创建 Qt 对话框则输出到控制台"""
     try:
         app = QApplication.instance()
         if app is None:
@@ -80,6 +86,8 @@ def show_error_dialog(title: str, message: str):
 def main():
     try:
         setup_linux_env()
+
+        from core.logger import setup_logger
         setup_logger()
 
         QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -90,6 +98,7 @@ def main():
         app.setApplicationVersion("1.0.0")
         app.setOrganizationName("Niuma")
 
+        from gui.icons import icons
         app.setWindowIcon(icons.app_icon())
 
         if sys.platform == "win32":
@@ -97,27 +106,37 @@ def main():
             app_id = "Niuma.运维辅助工具.1.0.0"
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
 
+        from gui.style_manager import load_stylesheet, setup_app_fonts
         setup_app_fonts(app)
         load_stylesheet(app)
 
+        from core.database import init_db, SessionLocal
         init_db()
         db = SessionLocal()
+
+        from services.auth_service import AuthService
         auth_service = AuthService(db)
 
+        from gui.login_dialog import LoginDialog
         login_dialog = LoginDialog(auth_service)
         if login_dialog.exec() != LoginDialog.DialogCode.Accepted:
             db.close()
             sys.exit(0)
 
+        from gui.main_window import MainWindow
         window = MainWindow(login_dialog.user_id, login_dialog.username, db)
         window.show()
 
         ret = app.exec()
         db.close()
         sys.exit(ret)
+    except ValueError as e:
+        error_msg = f"配置错误:\n{str(e)}"
+        show_error_dialog("配置错误", error_msg)
+        sys.exit(1)
     except Exception as e:
-        error_msg = f"程序启动失败:\n{str(e)}\n\n详细信息:\n{traceback.format_exc()}"
-        show_error_dialog("启动错误", error_msg)
+        error_msg = f"程序运行失败:\n{str(e)}\n\n详细信息:\n{traceback.format_exc()}"
+        show_error_dialog("运行错误", error_msg)
         sys.exit(1)
 
 

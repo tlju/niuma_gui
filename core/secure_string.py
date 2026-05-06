@@ -5,9 +5,11 @@ from typing import Optional
 
 
 class SecureString:
-    _lock = threading.Lock()
+    """安全字符串，用于在内存中保护敏感数据（如密码），支持一次性消费模式"""
 
     def __init__(self, value: str = ""):
+        # 使用实例级别锁，避免多个 SecureString 实例之间的不必要竞争
+        self._lock = threading.Lock()
         self._data = bytearray(value.encode('utf-8')) if value else bytearray()
         self._consumed = False
 

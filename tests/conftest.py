@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import pytest
 import sys
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+# 在导入 models 之前设置测试环境变量，确保 CRYPTO_KEY 有值
+os.environ.setdefault("CRYPTO_KEY", "test-crypto-key-for-unit-tests-only-32b")
 
 from models.base import Base
 

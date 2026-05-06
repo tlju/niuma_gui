@@ -17,6 +17,11 @@ logger = get_logger(__name__)
 
 
 class WorkflowService(AuditMixin):
+    # 允许通过 update() 方法更新的字段白名单
+    UPDATABLE_FIELDS = frozenset({
+        "name", "description", "graph_data"
+    })
+
     def __init__(self, db: Session, script_service=None, dict_service=None, param_service=None, bastion_manager=None):
         self.db = db
         self.script_service = script_service
@@ -59,13 +64,19 @@ class WorkflowService(AuditMixin):
         if not workflow:
             return None
 
+        # 仅允许白名单中的字段更新
         for key, value in kwargs.items():
-            if hasattr(workflow, key):
+            if key in self.UPDATABLE_FIELDS:
                 setattr(workflow, key, value)
 
         workflow.updated_at = get_local_now()
-        self.db.commit()
-        self.db.refresh(workflow)
+        try:
+            self.db.commit()
+            self.db.refresh(workflow)
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"更新工作流失败: {e}")
+            raise
         logger.info(f"更新工作流: {workflow.name}, ID: {workflow_id}")
 
         self.log_update(
