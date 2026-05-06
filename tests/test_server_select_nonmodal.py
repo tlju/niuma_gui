@@ -10,7 +10,7 @@ class TestBastionManagerServerListStorage:
 
     @pytest.fixture
     def bastion_manager(self, db_session):
-        return BastionManager(db_session)
+        return BastionManager()
 
     def test_initial_server_list_empty(self, bastion_manager):
         """测试初始服务器列表为空"""
@@ -74,7 +74,7 @@ class TestMainWindowServerSelectNonModal:
     @pytest.fixture
     def main_window(self, db_with_user, qapp):
         from gui.main_window import MainWindow
-        window = MainWindow(user_id=1, username="testuser", db=db_with_user)
+        window = MainWindow(user_id=1, username="testuser")
         yield window
         window.close()
 

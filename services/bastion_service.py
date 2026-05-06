@@ -6,7 +6,6 @@ import time
 import re
 from typing import Optional, List, Dict, Any, Callable
 from enum import Enum
-from sqlalchemy.orm import Session
 from services.param_service import ParamService
 from core.logger import get_logger
 from core.secure_string import SecureString
@@ -855,10 +854,9 @@ class BastionConnection:
 class BastionService:
     _global_server_list: List[Dict[str, str]] = []
     _global_server_list_lock = threading.Lock()
-    
-    def __init__(self, db: Session):
-        self.db = db
-        self.param_service = ParamService(db)
+
+    def __init__(self):
+        self.param_service = ParamService()
         self._connections: Dict[str, BastionConnection] = {}
         self._lock = threading.Lock()
 

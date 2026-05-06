@@ -23,14 +23,8 @@ class TestRemoteExecutionNode:
         assert "target_host" in schema["properties"]
         assert "operation" not in schema["properties"]
 
-    def test_execute_without_db(self, remote_execution_node):
-        result = remote_execution_node.execute()
-        
-        assert result.status == NodeStatus.FAILED
-        assert "数据库会话未设置" in result.error
-
     def test_execute_without_target_host(self, remote_execution_node, db_session):
-        remote_execution_node.set_services(db=db_session)
+
         
         result = remote_execution_node.execute()
         
@@ -64,8 +58,7 @@ class TestRemoteExecutionNode:
             "channel": mock_channel,
             "output": ""
         }
-        
-        remote_execution_node.set_services(db=db_session)
+
         remote_execution_node.config = {
             "target_host": "192.168.1.200"
         }
@@ -84,8 +77,7 @@ class TestRemoteExecutionNode:
         mock_service.get_connection_status.return_value = {
             "authenticated": False
         }
-        
-        remote_execution_node.set_services(db=db_session)
+
         remote_execution_node.config = {
             "target_host": "192.168.1.200"
         }
@@ -119,8 +111,7 @@ class TestRemoteExecutionNode:
             "success": False,
             "error": "连接失败"
         }
-        
-        remote_execution_node.set_services(db=db_session)
+
         remote_execution_node.config = {
             "target_host": "192.168.1.200"
         }
@@ -138,15 +129,14 @@ class TestRemoteExecutionNode:
         )
         db_session.add(host_param)
         db_session.commit()
-        
-        remote_execution_node.set_services(db=db_session)
+
         
         result = remote_execution_node._replace_variables("@param.BASTION_HOST")
         
         assert result == "192.168.1.100"
 
     def test_variable_replacement_nonexistent(self, remote_execution_node, db_session):
-        remote_execution_node.set_services(db=db_session)
+
         
         result = remote_execution_node._replace_variables("@param.NONEXISTENT")
         

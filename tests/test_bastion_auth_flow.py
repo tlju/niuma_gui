@@ -103,7 +103,7 @@ class TestBastionManager:
     
     @pytest.fixture
     def bastion_manager(self, db_session):
-        return BastionManager(db_session)
+        return BastionManager()
     
     def test_bastion_manager_init(self, bastion_manager):
         """测试堡垒机管理器初始化"""
@@ -221,7 +221,7 @@ class TestBastionManagerSignalChain:
     
     @pytest.fixture
     def bastion_manager(self, db_session):
-        return BastionManager(db_session)
+        return BastionManager()
     
     def test_auth_success_signal_chain(self, bastion_manager):
         """测试认证成功信号链"""

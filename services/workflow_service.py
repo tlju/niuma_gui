@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from models.workflow import Workflow, WorkflowNode, WorkflowExecution, WorkflowNodeExecution
 from services.audit_mixin import AuditMixin
@@ -11,44 +10,53 @@ from core.logger import get_logger
 from core.workflow_engine import WorkflowExecutor
 from core.node_types import NodeStatus
 from core.utils import get_local_now
-from core.database import get_thread_db
+from core.database import get_db, get_thread_db
 
 logger = get_logger(__name__)
 
 
 class WorkflowService(AuditMixin):
-    # 允许通过 update() 方法更新的字段白名单
     UPDATABLE_FIELDS = frozenset({
         "name", "description", "graph_data"
     })
 
-    def __init__(self, db: Session, script_service=None, dict_service=None, param_service=None, bastion_manager=None):
-        self.db = db
+    EXECUTION_UPDATABLE_FIELDS = frozenset({
+        "status", "finished_at", "result", "error_message", "logs"
+    })
+
+    NODE_EXECUTION_UPDATABLE_FIELDS = frozenset({
+        "status", "output", "error_message", "finished_at"
+    })
+
+    def __init__(self, script_service=None, dict_service=None, param_service=None, bastion_manager=None):
         self.script_service = script_service
         self.dict_service = dict_service
         self.param_service = param_service
         self.bastion_manager = bastion_manager
 
     def get_all(self) -> List[Workflow]:
-        return self.db.query(Workflow).filter(
-            Workflow.is_active == True
-        ).order_by(desc(Workflow.updated_at)).all()
+        with get_db() as db:
+            return db.query(Workflow).filter(
+                Workflow.is_active == True
+            ).order_by(desc(Workflow.updated_at)).all()
 
     def get_by_id(self, workflow_id: int) -> Optional[Workflow]:
-        return self.db.query(Workflow).filter(Workflow.id == workflow_id).first()
+        with get_db() as db:
+            return db.query(Workflow).filter(Workflow.id == workflow_id).first()
 
     def create(self, name: str, description: str = "", user_id: int = None, graph_data: Dict = None) -> Workflow:
-        workflow = Workflow(
-            name=name,
-            description=description,
-            created_by=user_id,
-            graph_data=graph_data or {"nodes": [], "connections": []},
-            created_at=get_local_now()
-        )
-        self.db.add(workflow)
-        self.db.commit()
-        self.db.refresh(workflow)
-        logger.info(f"创建工作流: {name}, ID: {workflow.id}")
+        with get_db() as db:
+            workflow = Workflow(
+                name=name,
+                description=description,
+                created_by=user_id,
+                graph_data=graph_data or {"nodes": [], "connections": []},
+                created_at=get_local_now()
+            )
+            db.add(workflow)
+            db.commit()
+            db.refresh(workflow)
+            logger.info(f"创建工作流: {name}, ID: {workflow.id}")
 
         self.log_create(
             user_id=user_id,
@@ -60,23 +68,23 @@ class WorkflowService(AuditMixin):
         return workflow
 
     def update(self, workflow_id: int, user_id: int = None, **kwargs) -> Optional[Workflow]:
-        workflow = self.get_by_id(workflow_id)
-        if not workflow:
-            return None
+        with get_db() as db:
+            workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
+            if not workflow:
+                return None
 
-        # 仅允许白名单中的字段更新
-        for key, value in kwargs.items():
-            if key in self.UPDATABLE_FIELDS:
-                setattr(workflow, key, value)
+            for key, value in kwargs.items():
+                if key in self.UPDATABLE_FIELDS:
+                    setattr(workflow, key, value)
 
-        workflow.updated_at = get_local_now()
-        try:
-            self.db.commit()
-            self.db.refresh(workflow)
-        except Exception as e:
-            self.db.rollback()
-            logger.error(f"更新工作流失败: {e}")
-            raise
+            workflow.updated_at = get_local_now()
+            try:
+                db.commit()
+                db.refresh(workflow)
+            except Exception as e:
+                db.rollback()
+                logger.error(f"更新工作流失败: {e}")
+                raise
         logger.info(f"更新工作流: {workflow.name}, ID: {workflow_id}")
 
         self.log_update(
@@ -89,48 +97,50 @@ class WorkflowService(AuditMixin):
         return workflow
 
     def delete(self, workflow_id: int, user_id: int = None) -> bool:
-        workflow = self.get_by_id(workflow_id)
-        if not workflow:
-            return False
+        with get_db() as db:
+            workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
+            if not workflow:
+                return False
 
-        self.log_delete(
-            user_id=user_id,
-            resource_type="workflow",
-            resource_id=workflow_id,
-            resource_name=workflow.name
-        )
+            self.log_delete(
+                user_id=user_id,
+                resource_type="workflow",
+                resource_id=workflow_id,
+                resource_name=workflow.name
+            )
 
-        workflow.is_active = False
-        self.db.commit()
-        logger.info(f"删除工作流: {workflow.name}, ID: {workflow_id}")
+            workflow.is_active = False
+            db.commit()
+            logger.info(f"删除工作流: {workflow.name}, ID: {workflow_id}")
         return True
 
     def save_graph(self, workflow_id: int, nodes: List[Dict], connections: List[Dict], user_id: int = None) -> Optional[Workflow]:
-        workflow = self.get_by_id(workflow_id)
-        if not workflow:
-            return None
+        with get_db() as db:
+            workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
+            if not workflow:
+                return None
 
-        graph_data = {"nodes": nodes, "connections": connections}
-        workflow.graph_data = graph_data
-        workflow.updated_at = get_local_now()
+            graph_data = {"nodes": nodes, "connections": connections}
+            workflow.graph_data = graph_data
+            workflow.updated_at = get_local_now()
 
-        self.db.query(WorkflowNode).filter(WorkflowNode.workflow_id == workflow_id).delete()
+            db.query(WorkflowNode).filter(WorkflowNode.workflow_id == workflow_id).delete()
 
-        for node_data in nodes:
-            node = WorkflowNode(
-                workflow_id=workflow_id,
-                node_type=node_data.get("node_type", "base"),
-                name=node_data.get("name", f"Node_{node_data['id']}"),
-                config=node_data.get("config", {}),
-                position_x=node_data.get("x", 0),
-                position_y=node_data.get("y", 0),
-                created_at=get_local_now()
-            )
-            self.db.add(node)
+            for node_data in nodes:
+                node = WorkflowNode(
+                    workflow_id=workflow_id,
+                    node_type=node_data.get("node_type", "base"),
+                    name=node_data.get("name", f"Node_{node_data['id']}"),
+                    config=node_data.get("config", {}),
+                    position_x=node_data.get("x", 0),
+                    position_y=node_data.get("y", 0),
+                    created_at=get_local_now()
+                )
+                db.add(node)
 
-        self.db.commit()
-        self.db.refresh(workflow)
-        logger.info(f"保存工作流图形: {workflow.name}, 节点数: {len(nodes)}")
+            db.commit()
+            db.refresh(workflow)
+            logger.info(f"保存工作流图形: {workflow.name}, 节点数: {len(nodes)}")
 
         self.log_audit(
             user_id=user_id,
@@ -143,81 +153,88 @@ class WorkflowService(AuditMixin):
         return workflow
 
     def get_executions(self, workflow_id: int = None, limit: int = 50) -> List[WorkflowExecution]:
-        query = self.db.query(WorkflowExecution)
-        if workflow_id:
-            query = query.filter(WorkflowExecution.workflow_id == workflow_id)
-        return query.order_by(desc(WorkflowExecution.started_at)).limit(limit).all()
+        with get_db() as db:
+            query = db.query(WorkflowExecution)
+            if workflow_id:
+                query = query.filter(WorkflowExecution.workflow_id == workflow_id)
+            return query.order_by(desc(WorkflowExecution.started_at)).limit(limit).all()
 
     def get_execution_by_id(self, execution_id: int) -> Optional[WorkflowExecution]:
-        return self.db.query(WorkflowExecution).filter(WorkflowExecution.id == execution_id).first()
+        with get_db() as db:
+            return db.query(WorkflowExecution).filter(WorkflowExecution.id == execution_id).first()
 
     def create_execution(self, workflow_id: int) -> WorkflowExecution:
-        execution = WorkflowExecution(
-            workflow_id=workflow_id,
-            status="pending",
-            started_at=get_local_now()
-        )
-        self.db.add(execution)
-        self.db.commit()
-        self.db.refresh(execution)
-        return execution
+        with get_db() as db:
+            execution = WorkflowExecution(
+                workflow_id=workflow_id,
+                status="pending",
+                started_at=get_local_now()
+            )
+            db.add(execution)
+            db.commit()
+            db.refresh(execution)
+            return execution
 
     def update_execution(self, execution_id: int, **kwargs) -> Optional[WorkflowExecution]:
-        execution = self.get_execution_by_id(execution_id)
-        if not execution:
-            return None
+        with get_db() as db:
+            execution = db.query(WorkflowExecution).filter(WorkflowExecution.id == execution_id).first()
+            if not execution:
+                return None
 
-        for key, value in kwargs.items():
-            if hasattr(execution, key):
-                setattr(execution, key, value)
+            for key, value in kwargs.items():
+                if key in self.EXECUTION_UPDATABLE_FIELDS:
+                    setattr(execution, key, value)
 
-        self.db.commit()
-        self.db.refresh(execution)
-        return execution
+            db.commit()
+            db.refresh(execution)
+            return execution
 
     def create_node_execution(self, execution_id: int, node_id: int, node_name: str) -> WorkflowNodeExecution:
-        node_exec = WorkflowNodeExecution(
-            execution_id=execution_id,
-            node_id=node_id,
-            node_name=node_name,
-            status="pending",
-            started_at=get_local_now()
-        )
-        self.db.add(node_exec)
-        self.db.commit()
-        self.db.refresh(node_exec)
-        return node_exec
+        with get_db() as db:
+            node_exec = WorkflowNodeExecution(
+                execution_id=execution_id,
+                node_id=node_id,
+                node_name=node_name,
+                status="pending",
+                started_at=get_local_now()
+            )
+            db.add(node_exec)
+            db.commit()
+            db.refresh(node_exec)
+            return node_exec
 
     def update_node_execution(self, node_exec_id: int, **kwargs) -> Optional[WorkflowNodeExecution]:
-        node_exec = self.db.query(WorkflowNodeExecution).filter(
-            WorkflowNodeExecution.id == node_exec_id
-        ).first()
-        if not node_exec:
-            return None
+        with get_db() as db:
+            node_exec = db.query(WorkflowNodeExecution).filter(
+                WorkflowNodeExecution.id == node_exec_id
+            ).first()
+            if not node_exec:
+                return None
 
-        for key, value in kwargs.items():
-            if hasattr(node_exec, key):
-                setattr(node_exec, key, value)
+            for key, value in kwargs.items():
+                if key in self.NODE_EXECUTION_UPDATABLE_FIELDS:
+                    setattr(node_exec, key, value)
 
-        self.db.commit()
-        self.db.refresh(node_exec)
-        return node_exec
+            db.commit()
+            db.refresh(node_exec)
+            return node_exec
 
     def delete_execution(self, execution_id: int, user_id: int = None) -> bool:
-        execution = self.get_execution_by_id(execution_id)
-        if not execution:
-            return False
+        with get_db() as db:
+            execution = db.query(WorkflowExecution).filter(WorkflowExecution.id == execution_id).first()
+            if not execution:
+                return False
 
-        self.log_delete(
-            user_id=user_id,
-            resource_type="workflow_execution",
-            resource_id=execution_id,
-            details=f"删除工作流执行记录: #{execution_id}"
-        )
+            self.log_delete(
+                user_id=user_id,
+                resource_type="workflow_execution",
+                resource_id=execution_id,
+                details=f"删除工作流执行记录: #{execution_id}"
+            )
 
-        self.db.delete(execution)
-        self.db.commit()
-        logger.info(f"删除工作流执行记录: #{execution_id}")
+            db.delete(execution)
+            db.commit()
+            logger.info(f"删除工作流执行记录: #{execution_id}")
         return True
 
     def delete_executions(self, execution_ids: List[int], user_id: int = None) -> int:
@@ -271,15 +288,16 @@ class WorkflowService(AuditMixin):
         return workflow
 
     def _generate_unique_name(self, base_name: str) -> str:
-        existing_names = set(
-            w.name for w in self.db.query(Workflow.name).filter(
-                Workflow.is_active == True
-            ).all()
-        )
-        
+        with get_db() as db:
+            existing_names = set(
+                w.name for w in db.query(Workflow.name).filter(
+                    Workflow.is_active == True
+                ).all()
+            )
+
         if base_name not in existing_names:
             return base_name
-        
+
         counter = 1
         while True:
             new_name = f"{base_name} ({counter})"
@@ -309,8 +327,11 @@ class WorkflowService(AuditMixin):
             resource_name=workflow.name
         )
 
-        executor = WorkflowExecutor(workflow_id, nodes, connections, self.script_service, 
-                                    self.dict_service, self.param_service, self.db, self.bastion_manager)
+        executor = WorkflowExecutor(
+            workflow_id, nodes, connections,
+            self.script_service, self.dict_service,
+            self.param_service, self.bastion_manager
+        )
 
         node_exec_map = {}
         for node_data in nodes:
@@ -352,7 +373,7 @@ class WorkflowService(AuditMixin):
 
         def db_log_callback(log_entry):
             logger.debug(f"[Workflow {workflow_id}] {log_entry['message']}")
-            
+
             execution_logs.append(log_entry)
 
             if log_callback:

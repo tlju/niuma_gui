@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 @pytest.fixture
 def todo_service(db_session):
-    return TodoService(db_session)
+    return TodoService()
 
 def test_create_todo(todo_service):
     todo = todo_service.create_todo(

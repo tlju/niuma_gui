@@ -28,18 +28,9 @@ class TestRemoteExecutionNode:
         assert schema["properties"]["target_host"]["allowManualInput"] == True
         assert "operation" not in schema["properties"]
     
-    def test_execute_without_db(self):
-        """测试没有数据库时执行失败"""
-        node = RemoteExecutionNode(1, "测试远程执行", {"target_host": "192.168.1.100"})
-        result = node.execute()
-        
-        assert result.status == NodeStatus.FAILED
-        assert "数据库会话未设置" in result.error
-    
     def test_execute_without_target_host(self):
         """测试没有目标主机时执行失败"""
         node = RemoteExecutionNode(1, "测试远程执行", {})
-        node.db = Mock()
         result = node.execute()
         
         assert result.status == NodeStatus.FAILED
@@ -75,7 +66,6 @@ class TestRemoteExecutionNode:
         }
         
         node = RemoteExecutionNode(1, "测试远程执行", {"target_host": "192.168.1.100"})
-        node.db = mock_db
         result = node.execute()
         
         assert result.status == NodeStatus.SUCCESS
@@ -260,8 +250,7 @@ class TestWorkflowExecutorEnvironmentContext:
             {"source": 2, "target": 3}
         ]
         
-        mock_db = Mock()
-        executor = WorkflowExecutor(1, nodes, connections, db=mock_db)
+        executor = WorkflowExecutor(1, nodes, connections)
         result = executor.execute()
         
         assert result["status"] == "success"

@@ -1,39 +1,42 @@
 from __future__ import annotations
 
-from sqlalchemy.orm import Session
 from models.todo import Todo, TodoStatus, RecurrenceType
 from services.audit_mixin import AuditMixin
 from typing import List, Optional
 from datetime import datetime, timedelta
 from core.logger import get_logger
 from core.utils import get_local_now, escape_like_wildcards
+from core.database import get_db
 
 logger = get_logger(__name__)
 
 
 class TodoService(AuditMixin):
-    def __init__(self, db: Session):
-        self.db = db
+    UPDATABLE_FIELDS = frozenset({
+        "title", "description", "priority", "assigned_to",
+        "due_date", "status", "recurrence_type", "recurrence_interval"
+    })
 
     def create_todo(self, title: str, description: str = None, priority: int = 5,
                     assigned_to: int = None, due_date: datetime = None,
                     created_by: int = None, status: str = None,
                     recurrence_type: str = None, recurrence_interval: int = 1) -> Todo:
-        todo = Todo(
-            title=title,
-            description=description,
-            priority=priority,
-            assigned_to=assigned_to,
-            due_date=due_date,
-            status=status if status else TodoStatus.PENDING,
-            recurrence_type=recurrence_type if recurrence_type else RecurrenceType.NONE,
-            recurrence_interval=recurrence_interval,
-            created_at=get_local_now()
-        )
-        self.db.add(todo)
-        self.db.commit()
-        self.db.refresh(todo)
-        logger.info(f"创建待办事项: {title}")
+        with get_db() as db:
+            todo = Todo(
+                title=title,
+                description=description,
+                priority=priority,
+                assigned_to=assigned_to,
+                due_date=due_date,
+                status=status if status else TodoStatus.PENDING,
+                recurrence_type=recurrence_type if recurrence_type else RecurrenceType.NONE,
+                recurrence_interval=recurrence_interval,
+                created_at=get_local_now()
+            )
+            db.add(todo)
+            db.commit()
+            db.refresh(todo)
+            logger.info(f"创建待办事项: {title}")
 
         self.log_create(
             user_id=created_by,
@@ -46,36 +49,43 @@ class TodoService(AuditMixin):
         return todo
 
     def get_todos(self, status: str = None, skip: int = 0, limit: int = 100) -> List[Todo]:
-        query = self.db.query(Todo)
-        if status:
-            query = query.filter(Todo.status == status)
-        return query.order_by(Todo.created_at.desc()).offset(skip).limit(limit).all()
+        with get_db() as db:
+            query = db.query(Todo)
+            if status:
+                query = query.filter(Todo.status == status)
+            return query.order_by(Todo.created_at.desc()).offset(skip).limit(limit).all()
 
     def get_todo(self, todo_id: int) -> Optional[Todo]:
-        return self.db.query(Todo).filter(Todo.id == todo_id).first()
+        with get_db() as db:
+            return db.query(Todo).filter(Todo.id == todo_id).first()
 
     def get_todos_by_user(self, user_id: int, status: str = None) -> List[Todo]:
-        query = self.db.query(Todo).filter(Todo.assigned_to == user_id)
-        if status:
-            query = query.filter(Todo.status == status)
-        return query.order_by(Todo.created_at.desc()).all()
+        with get_db() as db:
+            query = db.query(Todo).filter(Todo.assigned_to == user_id)
+            if status:
+                query = query.filter(Todo.status == status)
+            return query.order_by(Todo.created_at.desc()).all()
 
     def update_todo(self, todo_id: int, user_id: Optional[int] = None, **kwargs) -> Optional[Todo]:
-        todo = self.get_todo(todo_id)
-        if not todo:
-            return None
+        with get_db() as db:
+            todo = db.query(Todo).filter(Todo.id == todo_id).first()
+            if not todo:
+                return None
 
-        if 'status' in kwargs and kwargs['status'] == TodoStatus.COMPLETED:
-            if todo.status != TodoStatus.COMPLETED:
-                kwargs['completed_at'] = get_local_now()
+            if 'status' in kwargs and kwargs['status'] == TodoStatus.COMPLETED:
+                if todo.status != TodoStatus.COMPLETED:
+                    kwargs['completed_at'] = get_local_now()
 
-        for key, value in kwargs.items():
-            if value is not None and hasattr(todo, key):
-                setattr(todo, key, value)
+            for key, value in kwargs.items():
+                if key in self.UPDATABLE_FIELDS and value is not None:
+                    setattr(todo, key, value)
 
-        self.db.commit()
-        self.db.refresh(todo)
-        logger.info(f"更新待办事项: {todo.title}")
+            if 'completed_at' in kwargs:
+                todo.completed_at = kwargs['completed_at']
+
+            db.commit()
+            db.refresh(todo)
+            logger.info(f"更新待办事项: {todo.title}")
 
         self.log_update(
             user_id=user_id,
@@ -88,31 +98,34 @@ class TodoService(AuditMixin):
         return todo
 
     def delete_todo(self, todo_id: int, user_id: Optional[int] = None) -> bool:
-        todo = self.get_todo(todo_id)
-        if todo:
-            self.log_delete(
-                user_id=user_id,
-                resource_type="todo",
-                resource_id=todo_id,
-                resource_name=todo.title,
-                details=f"删除待办: {todo.title}"
-            )
-            self.db.delete(todo)
-            self.db.commit()
-            logger.info(f"删除待办事项: {todo.title}")
-            return True
-        return False
+        with get_db() as db:
+            todo = db.query(Todo).filter(Todo.id == todo_id).first()
+            if todo:
+                title = todo.title
+                self.log_delete(
+                    user_id=user_id,
+                    resource_type="todo",
+                    resource_id=todo_id,
+                    resource_name=title,
+                    details=f"删除待办: {title}"
+                )
+                db.delete(todo)
+                db.commit()
+                logger.info(f"删除待办事项: {title}")
+                return True
+            return False
 
     def complete_todo(self, todo_id: int, user_id: Optional[int] = None) -> Optional[Todo]:
-        todo = self.get_todo(todo_id)
-        if not todo:
-            return None
-        
-        todo.status = TodoStatus.COMPLETED
-        todo.completed_at = get_local_now()
-        self.db.commit()
-        self.db.refresh(todo)
-        logger.info(f"完成待办事项: {todo.title}")
+        with get_db() as db:
+            todo = db.query(Todo).filter(Todo.id == todo_id).first()
+            if not todo:
+                return None
+
+            todo.status = TodoStatus.COMPLETED
+            todo.completed_at = get_local_now()
+            db.commit()
+            db.refresh(todo)
+            logger.info(f"完成待办事项: {todo.title}")
 
         self.log_audit(
             user_id=user_id,
@@ -121,41 +134,42 @@ class TodoService(AuditMixin):
             resource_id=todo_id,
             details=f"完成待办: {todo.title}"
         )
-        
+
         if todo.recurrence_type and todo.recurrence_type != RecurrenceType.NONE:
             self._create_next_recurrence(todo)
-        
+
         return todo
 
     def _create_next_recurrence(self, todo: Todo) -> Optional[Todo]:
         next_due_date = self._calculate_next_due_date(
-            todo.due_date, 
-            todo.recurrence_type, 
+            todo.due_date,
+            todo.recurrence_type,
             todo.recurrence_interval
         )
-        
-        new_todo = Todo(
-            title=todo.title,
-            description=todo.description,
-            priority=todo.priority,
-            assigned_to=todo.assigned_to,
-            due_date=next_due_date,
-            status=TodoStatus.PENDING,
-            recurrence_type=todo.recurrence_type,
-            recurrence_interval=todo.recurrence_interval,
-            created_at=get_local_now()
-        )
-        self.db.add(new_todo)
-        self.db.commit()
-        self.db.refresh(new_todo)
-        logger.info(f"创建循环待办事项: {new_todo.title}, 下次截止日期: {next_due_date}")
-        return new_todo
 
-    def _calculate_next_due_date(self, current_due_date: datetime, 
+        with get_db() as db:
+            new_todo = Todo(
+                title=todo.title,
+                description=todo.description,
+                priority=todo.priority,
+                assigned_to=todo.assigned_to,
+                due_date=next_due_date,
+                status=TodoStatus.PENDING,
+                recurrence_type=todo.recurrence_type,
+                recurrence_interval=todo.recurrence_interval,
+                created_at=get_local_now()
+            )
+            db.add(new_todo)
+            db.commit()
+            db.refresh(new_todo)
+            logger.info(f"创建循环待办事项: {new_todo.title}, 下次截止日期: {next_due_date}")
+            return new_todo
+
+    def _calculate_next_due_date(self, current_due_date: datetime,
                                   recurrence_type: str, interval: int) -> datetime:
         if not current_due_date:
             current_due_date = get_local_now()
-        
+
         if recurrence_type == RecurrenceType.DAILY:
             return current_due_date + timedelta(days=interval)
         elif recurrence_type == RecurrenceType.WEEKLY:
@@ -172,7 +186,8 @@ class TodoService(AuditMixin):
 
     def search_todos(self, keyword: str) -> List[Todo]:
         escaped = escape_like_wildcards(keyword)
-        return self.db.query(Todo).filter(
-            Todo.title.like(f"%{escaped}%", escape='\\') |
-            Todo.description.like(f"%{escaped}%", escape='\\')
-        ).all()
+        with get_db() as db:
+            return db.query(Todo).filter(
+                Todo.title.like(f"%{escaped}%", escape='\\') |
+                Todo.description.like(f"%{escaped}%", escape='\\')
+            ).all()

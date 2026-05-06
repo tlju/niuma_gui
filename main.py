@@ -110,25 +110,22 @@ def main():
         setup_app_fonts(app)
         load_stylesheet(app)
 
-        from core.database import init_db, SessionLocal
+        from core.database import init_db
         init_db()
-        db = SessionLocal()
 
         from services.auth_service import AuthService
-        auth_service = AuthService(db)
+        auth_service = AuthService()
 
         from gui.login_dialog import LoginDialog
         login_dialog = LoginDialog(auth_service)
         if login_dialog.exec() != LoginDialog.DialogCode.Accepted:
-            db.close()
             sys.exit(0)
 
         from gui.main_window import MainWindow
-        window = MainWindow(login_dialog.user_id, login_dialog.username, db)
+        window = MainWindow(login_dialog.user_id, login_dialog.username)
         window.show()
 
         ret = app.exec()
-        db.close()
         sys.exit(ret)
     except ValueError as e:
         error_msg = f"配置错误:\n{str(e)}"

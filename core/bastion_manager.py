@@ -3,7 +3,6 @@ from __future__ import annotations
 import threading
 from typing import Optional, Callable, Dict, Any
 from PyQt5.QtCore import QObject, pyqtSignal, QThread, QTimer
-from sqlalchemy.orm import Session
 from services.bastion_service import BastionService, ConnectionStatus
 from core.logger import get_logger
 from core.config import settings
@@ -24,10 +23,9 @@ class BastionManager(QObject):
 
     MAX_AUTH_RETRIES = settings.BASTION_MAX_AUTH_RETRIES
 
-    def __init__(self, db: Session, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self.db = db
-        self.bastion_service = BastionService(db)
+        self.bastion_service = BastionService()
         self._connection_worker: Optional[BastionConnectionWorker] = None
         self._auth_worker: Optional[BastionAuthWorker] = None
         self._asset_worker: Optional[AssetConnectionWorker] = None

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 @pytest.fixture
 def audit_service(db_session):
-    return AuditService(db_session)
+    return AuditService()
 
 def test_log_action(audit_service):
     audit_service.log_action(

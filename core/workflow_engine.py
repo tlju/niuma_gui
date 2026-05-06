@@ -21,7 +21,7 @@ class ExecutionEnvironment:
 
 class WorkflowExecutor:
     def __init__(self, workflow_id: int, nodes: List[Dict], connections: List[Dict],
-                 script_service=None, dict_service=None, param_service=None, db=None, bastion_manager=None):
+                 script_service=None, dict_service=None, param_service=None, bastion_manager=None):
         self.workflow_id = workflow_id
         self.nodes: Dict[int, BaseNode] = {}
         self.connections = connections
@@ -37,7 +37,6 @@ class WorkflowExecutor:
         self.script_service = script_service
         self.dict_service = dict_service
         self.param_service = param_service
-        self.db = db
         self.bastion_manager = bastion_manager
         self._execution_environment = ExecutionEnvironment.LOCAL
         self._bastion_connected = False
@@ -109,7 +108,7 @@ class WorkflowExecutor:
             if isinstance(node, (ScriptNode, CommandNode)):
                 node.set_services(self.dict_service, self.param_service)
             elif isinstance(node, (MinioNode, RemoteExecutionNode)):
-                node.set_services(db=self.db, bastion_manager=self.bastion_manager)
+                node.set_services(bastion_manager=self.bastion_manager)
 
             self.nodes[node_id] = node
 

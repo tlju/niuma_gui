@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-from sqlalchemy.orm import Session
 from models.script import Script
 from services.audit_mixin import AuditMixin
 from typing import List, Optional
 from core.logger import get_logger
 from core.utils import get_local_now
+from core.database import get_db
 
 logger = get_logger(__name__)
 
 
 class ScriptService(AuditMixin):
-    def __init__(self, db: Session):
-        self.db = db
+    UPDATABLE_FIELDS = frozenset({"name", "content", "description", "language"})
 
     def create(
         self,
@@ -23,19 +22,20 @@ class ScriptService(AuditMixin):
         server_id: Optional[int] = None,
         created_by: Optional[int] = None
     ) -> Optional[int]:
-        script = Script(
-            name=name,
-            content=content,
-            description=description,
-            language=language,
-            server_id=server_id,
-            created_by=created_by,
-            created_at=get_local_now()
-        )
-        self.db.add(script)
-        self.db.commit()
-        self.db.refresh(script)
-        logger.info(f"创建脚本: {name}, ID: {script.id}")
+        with get_db() as db:
+            script = Script(
+                name=name,
+                content=content,
+                description=description,
+                language=language,
+                server_id=server_id,
+                created_by=created_by,
+                created_at=get_local_now()
+            )
+            db.add(script)
+            db.commit()
+            db.refresh(script)
+            logger.info(f"创建脚本: {name}, ID: {script.id}")
 
         self.log_create(
             user_id=created_by,
@@ -47,39 +47,34 @@ class ScriptService(AuditMixin):
         return script.id
 
     def get_all(self) -> List[Script]:
-        return self.db.query(Script).order_by(Script.id).all()
+        with get_db() as db:
+            return db.query(Script).order_by(Script.id).all()
 
     def get_by_id(self, script_id: int) -> Optional[Script]:
-        return self.db.query(Script).filter(Script.id == script_id).first()
+        with get_db() as db:
+            return db.query(Script).filter(Script.id == script_id).first()
 
     def update(
         self,
         script_id: int,
-        name: Optional[str] = None,
-        content: Optional[str] = None,
-        description: Optional[str] = None,
-        language: Optional[str] = None,
-        updated_by: Optional[int] = None
+        user_id: Optional[int] = None,
+        **kwargs
     ) -> bool:
-        script = self.get_by_id(script_id)
-        if not script:
-            return False
+        with get_db() as db:
+            script = db.query(Script).filter(Script.id == script_id).first()
+            if not script:
+                return False
 
-        if name is not None:
-            script.name = name
-        if content is not None:
-            script.content = content
-        if description is not None:
-            script.description = description
-        if language is not None:
-            script.language = language
+            for key, value in kwargs.items():
+                if key in self.UPDATABLE_FIELDS and value is not None:
+                    setattr(script, key, value)
 
-        script.updated_at = get_local_now()
-        self.db.commit()
-        logger.info(f"更新脚本: {script.name}, ID: {script_id}")
+            script.updated_at = get_local_now()
+            db.commit()
+            logger.info(f"更新脚本: {script.name}, ID: {script_id}")
 
         self.log_update(
-            user_id=updated_by,
+            user_id=user_id,
             resource_type="script",
             resource_id=script_id,
             resource_name=script.name
@@ -88,21 +83,22 @@ class ScriptService(AuditMixin):
         return True
 
     def delete(self, script_id: int, user_id: int) -> bool:
-        script = self.get_by_id(script_id)
-        if not script:
-            logger.warning(f"删除脚本失败: 脚本不存在, ID: {script_id}")
-            return False
+        with get_db() as db:
+            script = db.query(Script).filter(Script.id == script_id).first()
+            if not script:
+                logger.warning(f"删除脚本失败: 脚本不存在, ID: {script_id}")
+                return False
 
-        script_name = script.name
-        
-        self.log_delete(
-            user_id=user_id,
-            resource_type="script",
-            resource_id=script_id,
-            resource_name=script_name
-        )
+            script_name = script.name
 
-        self.db.delete(script)
-        self.db.commit()
-        logger.info(f"删除脚本: {script_name}, ID: {script_id}")
+            self.log_delete(
+                user_id=user_id,
+                resource_type="script",
+                resource_id=script_id,
+                resource_name=script_name
+            )
+
+            db.delete(script)
+            db.commit()
+            logger.info(f"删除脚本: {script_name}, ID: {script_id}")
         return True

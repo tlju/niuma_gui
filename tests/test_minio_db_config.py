@@ -7,7 +7,7 @@ from services.param_service import ParamService
 
 @pytest.fixture
 def param_service(db_session):
-    return ParamService(db_session)
+    return ParamService()
 
 
 @pytest.fixture
@@ -50,8 +50,8 @@ def minio_params(param_service):
 
 
 def test_minio_service_with_db_params(db_session, minio_params):
-    service = MinioService(db=db_session)
-    
+    service = MinioService()
+
     assert service._endpoint == "minio.example.com:9000"
     assert service._access_key == "test_access_key"
     assert service._secret_key == "test_secret_key"
@@ -90,18 +90,17 @@ def test_minio_service_with_db_params_secure_true(db_session, param_service):
         param_value="true",
         status=1
     )
-    
-    service = MinioService(db=db_session)
+
+    service = MinioService()
     assert service._secure is True
 
 
 def test_minio_service_with_override_params(db_session, minio_params):
     service = MinioService(
-        db=db_session,
         endpoint="override.example.com:9000",
         bucket="override-bucket"
     )
-    
+
     assert service._endpoint == "override.example.com:9000"
     assert service._access_key == "test_access_key"
     assert service._secret_key == "test_secret_key"
@@ -117,7 +116,7 @@ def test_minio_service_without_db():
         bucket="manual-bucket",
         secure=True
     )
-    
+
     assert service._endpoint == "manual.example.com:9000"
     assert service._access_key == "manual_access"
     assert service._secret_key == "manual_secret"
@@ -138,16 +137,16 @@ def test_minio_service_with_disabled_param(db_session, param_service):
         param_value="test_access_key",
         status=1
     )
-    
-    service = MinioService(db=db_session)
-    
+
+    service = MinioService()
+
     assert service._endpoint is None
     assert service._access_key == "test_access_key"
 
 
 def test_minio_service_with_missing_params(db_session):
-    service = MinioService(db=db_session)
-    
+    service = MinioService()
+
     assert service._endpoint is None
     assert service._access_key is None
     assert service._secret_key is None
@@ -159,10 +158,10 @@ def test_minio_service_client_init_with_db_params(db_session, minio_params):
     with patch("services.minio_service.Minio") as mock_minio_cls:
         mock_instance = MagicMock()
         mock_minio_cls.return_value = mock_instance
-        
-        service = MinioService(db=db_session)
+
+        service = MinioService()
         client = service.client
-        
+
         mock_minio_cls.assert_called_once_with(
             "minio.example.com:9000",
             access_key="test_access_key",
@@ -197,7 +196,7 @@ def test_minio_service_secure_variations(db_session, param_service):
         param_value="test-bucket",
         status=1
     )
-    
+
     test_cases = [
         ("true", True),
         ("True", True),
@@ -212,7 +211,7 @@ def test_minio_service_secure_variations(db_session, param_service):
         ("no", False),
         ("NO", False),
     ]
-    
+
     for value, expected in test_cases:
         param = param_service.get_param_by_code("minio_secure")
         if param:
@@ -224,6 +223,6 @@ def test_minio_service_secure_variations(db_session, param_service):
                 param_value=value,
                 status=1
             )
-        
-        service = MinioService(db=db_session)
+
+        service = MinioService()
         assert service._secure == expected, f"Failed for value: {value}"

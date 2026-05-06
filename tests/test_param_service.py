@@ -3,7 +3,7 @@ from services.param_service import ParamService
 
 @pytest.fixture
 def param_service(db_session):
-    return ParamService(db_session)
+    return ParamService()
 
 def test_create_param(param_service):
     param = param_service.create_param(

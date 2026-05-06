@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-from sqlalchemy.orm import Session
 from models.audit_log import AuditLog
 from typing import List, Optional
 from datetime import datetime
 from core.logger import get_logger
 from core.utils import get_local_now
+from core.database import get_db
 
 logger = get_logger(__name__)
 
-class AuditService:
-    def __init__(self, db: Session):
-        self.db = db
 
+class AuditService:
     def get_logs(
         self,
         user_id: Optional[int] = None,
@@ -22,20 +20,21 @@ class AuditService:
         end_date: Optional[datetime] = None,
         limit: int = 100
     ) -> List[AuditLog]:
-        query = self.db.query(AuditLog)
+        with get_db() as db:
+            query = db.query(AuditLog)
 
-        if user_id:
-            query = query.filter(AuditLog.user_id == user_id)
-        if action_type:
-            query = query.filter(AuditLog.action_type == action_type)
-        if resource_type:
-            query = query.filter(AuditLog.resource_type == resource_type)
-        if start_date:
-            query = query.filter(AuditLog.created_at >= start_date)
-        if end_date:
-            query = query.filter(AuditLog.created_at <= end_date)
+            if user_id:
+                query = query.filter(AuditLog.user_id == user_id)
+            if action_type:
+                query = query.filter(AuditLog.action_type == action_type)
+            if resource_type:
+                query = query.filter(AuditLog.resource_type == resource_type)
+            if start_date:
+                query = query.filter(AuditLog.created_at >= start_date)
+            if end_date:
+                query = query.filter(AuditLog.created_at <= end_date)
 
-        return query.order_by(AuditLog.created_at.desc()).limit(limit).all()
+            return query.order_by(AuditLog.created_at.desc()).limit(limit).all()
 
     def log_action(
         self,
@@ -46,16 +45,17 @@ class AuditService:
         details: Optional[str] = None,
         ip_address: Optional[str] = None
     ) -> AuditLog:
-        audit = AuditLog(
-            user_id=user_id,
-            action_type=action_type,
-            resource_type=resource_type,
-            resource_id=resource_id,
-            details=details,
-            ip_address=ip_address,
-            created_at=get_local_now()
-        )
-        self.db.add(audit)
-        self.db.commit()
-        self.db.refresh(audit)
-        return audit
+        with get_db() as db:
+            audit = AuditLog(
+                user_id=user_id,
+                action_type=action_type,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                details=details,
+                ip_address=ip_address,
+                created_at=get_local_now()
+            )
+            db.add(audit)
+            db.commit()
+            db.refresh(audit)
+            return audit

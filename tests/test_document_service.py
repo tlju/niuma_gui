@@ -3,7 +3,7 @@ from services.document_service import DocumentService
 
 @pytest.fixture
 def document_service(db_session):
-    return DocumentService(db_session)
+    return DocumentService()
 
 def test_create_document(document_service):
     document = document_service.create_document(

@@ -3,7 +3,7 @@ from services.dict_service import DictService
 
 @pytest.fixture
 def dict_service(db_session):
-    return DictService(db_session)
+    return DictService()
 
 def test_create_dict(dict_service):
     dict_obj = dict_service.create_dict(

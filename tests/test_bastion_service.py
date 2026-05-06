@@ -471,7 +471,7 @@ class TestBastionConnection:
 class TestBastionService:
     @pytest.fixture
     def bastion_service(self, db_session):
-        return BastionService(db_session)
+        return BastionService()
 
     def test_get_bastion_config(self, bastion_service, db_session):
         host_param = SystemParam(

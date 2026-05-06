@@ -546,10 +546,9 @@ class MinioNode(BaseNode):
 
     def __init__(self, node_id: int, name: str, config: Dict[str, Any] = None):
         super().__init__(node_id, name, config)
-        self.db = None
 
-    def set_services(self, db=None, **kwargs):
-        self.db = db
+    def set_services(self, **kwargs):
+        pass
 
     def get_config_schema(self) -> Dict[str, Any]:
         return {
@@ -687,16 +686,8 @@ class MinioNode(BaseNode):
 
     def execute(self, inputs: Dict[str, Any] = None) -> NodeResult:
         from services.minio_service import MinioService
-        
+
         inputs = inputs or {}
-        
-        if not self.db:
-            self.status = NodeStatus.FAILED
-            self.result = NodeResult(
-                status=NodeStatus.FAILED,
-                error="数据库会话未设置，无法获取MinIO配置"
-            )
-            return self.result
 
         operation = self.config.get("operation")
         if not operation:
@@ -710,7 +701,7 @@ class MinioNode(BaseNode):
         try:
             self.status = NodeStatus.RUNNING
             
-            minio_service = MinioService(db=self.db)
+            minio_service = MinioService()
             
             result_data = {}
             output_msg = ""
@@ -852,11 +843,9 @@ class RemoteExecutionNode(BaseNode):
 
     def __init__(self, node_id: int, name: str, config: Dict[str, Any] = None):
         super().__init__(node_id, name, config)
-        self.db = None
         self.bastion_manager = None
 
-    def set_services(self, db=None, bastion_manager=None, **kwargs):
-        self.db = db
+    def set_services(self, bastion_manager=None, **kwargs):
         self.bastion_manager = bastion_manager
 
     def get_config_schema(self) -> Dict[str, Any]:
@@ -878,24 +867,24 @@ class RemoteExecutionNode(BaseNode):
     def _replace_variables(self, content: str, inputs: Dict[str, Any] = None) -> str:
         if not content:
             return content
-        
+
         inputs = inputs or {}
-        
+
         def replace_var(match):
             var_path = match.group(1)
             parts = var_path.split('.')
-            
+
             if len(parts) < 2:
                 return match.group(0)
-            
+
             source_type = parts[0]
-            
+
             try:
                 if source_type == "input":
                     return str(inputs.get("output", ""))
-                elif source_type == "param" and self.db:
+                elif source_type == "param":
                     from services.param_service import ParamService
-                    param_service = ParamService(self.db)
+                    param_service = ParamService()
                     param_code = parts[1]
                     param = param_service.get_param_by_code(param_code)
                     if param:
@@ -905,29 +894,21 @@ class RemoteExecutionNode(BaseNode):
                         logger.warning(f"参数变量替换失败: 未找到参数 @{var_path}")
             except Exception as e:
                 logger.error(f"变量替换异常: @{var_path}, 错误: {str(e)}")
-            
+
             return match.group(0)
-        
+
         pattern = r'@([a-zA-Z_][a-zA-Z0-9_\.]*)'
         return re.sub(pattern, replace_var, content)
 
     def execute(self, inputs: Dict[str, Any] = None) -> NodeResult:
         from services.bastion_service import BastionService, ConnectionStatus
         from services.asset_service import AssetService
-        
+
         inputs = inputs or {}
-        
-        if not self.db:
-            self.status = NodeStatus.FAILED
-            self.result = NodeResult(
-                status=NodeStatus.FAILED,
-                error="数据库会话未设置，无法获取堡垒机配置"
-            )
-            return self.result
 
         target_host = self.config.get("target_host", "")
         target_host = self._replace_variables(target_host, inputs)
-        
+
         if not target_host:
             self.status = NodeStatus.FAILED
             self.result = NodeResult(
@@ -938,8 +919,8 @@ class RemoteExecutionNode(BaseNode):
 
         try:
             self.status = NodeStatus.RUNNING
-            bastion_service = BastionService(db=self.db)
-            asset_service = AssetService(db=self.db)
+            bastion_service = BastionService()
+            asset_service = AssetService()
             
             connection_id = "default"
             

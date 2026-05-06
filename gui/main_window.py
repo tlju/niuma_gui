@@ -75,24 +75,23 @@ class BastionStatusWidget(QFrame):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, user_id: int, username: str, db):
+    def __init__(self, user_id: int, username: str):
         super().__init__()
         self.current_user_id = user_id
         self.current_username = username
-        self.db = db
         self.setWindowIcon(icons.app_icon())
         logger.info(f"启动运维辅助工具主窗口，用户: {username}")
 
-        self.asset_service = AssetService(self.db)
-        self.script_service = ScriptService(self.db)
-        self.audit_service = AuditService(self.db)
-        self.param_service = ParamService(self.db)
-        self.dict_service = DictService(self.db)
-        self.todo_service = TodoService(self.db)
-        self.document_service = DocumentService(self.db)
-        
-        self.bastion_manager = BastionManager(self.db)
-        self.workflow_service = WorkflowService(self.db, self.script_service, self.dict_service, self.param_service, self.bastion_manager)
+        self.asset_service = AssetService()
+        self.script_service = ScriptService()
+        self.audit_service = AuditService()
+        self.param_service = ParamService()
+        self.dict_service = DictService()
+        self.todo_service = TodoService()
+        self.document_service = DocumentService()
+
+        self.bastion_manager = BastionManager()
+        self.workflow_service = WorkflowService(self.script_service, self.dict_service, self.param_service, self.bastion_manager)
         self._auth_dialog = None
         self._server_select_dialog = None
 
@@ -453,7 +452,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         if self.current_user_id:
-            auth_service = AuthService(self.db)
+            auth_service = AuthService()
             auth_service.logout(self.current_user_id, self.current_username)
 
         self._cleanup_auth_dialog()
@@ -477,6 +476,4 @@ class MainWindow(QMainWindow):
             self.documents_page = None
             self.workflow_page = None
 
-        if self.db:
-            self.db.close()
         super().closeEvent(event)

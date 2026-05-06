@@ -631,131 +631,117 @@ class TestTopologicalSort:
 
 
 class TestWorkflowExecutionDeletion:
-    def test_delete_execution(self):
-        from unittest.mock import Mock, MagicMock
+    def test_delete_execution(self, db_session):
         from services.workflow_service import WorkflowService
-        from models.workflow import WorkflowExecution
-        
-        mock_db = MagicMock()
-        mock_execution = MagicMock(spec=WorkflowExecution)
-        mock_execution.id = 1
-        
-        mock_db.query.return_value.filter.return_value.first.return_value = mock_execution
-        
-        service = WorkflowService(mock_db)
-        result = service.delete_execution(1)
-        
+        from models.workflow import Workflow, WorkflowExecution
+
+        workflow = Workflow(name="测试工作流", graph_data={"nodes": [], "connections": []})
+        db_session.add(workflow)
+        db_session.commit()
+
+        execution = WorkflowExecution(workflow_id=workflow.id, status="success")
+        db_session.add(execution)
+        db_session.commit()
+
+        service = WorkflowService()
+        result = service.delete_execution(execution.id)
+
         assert result == True
-        mock_db.delete.assert_called_once_with(mock_execution)
-        mock_db.commit.assert_called_once()
-    
-    def test_delete_execution_not_found(self):
-        from unittest.mock import Mock, MagicMock
+        assert db_session.query(WorkflowExecution).filter(WorkflowExecution.id == execution.id).first() is None
+
+    def test_delete_execution_not_found(self, db_session):
         from services.workflow_service import WorkflowService
-        
-        mock_db = MagicMock()
-        mock_db.query.return_value.filter.return_value.first.return_value = None
-        
-        service = WorkflowService(mock_db)
+
+        service = WorkflowService()
         result = service.delete_execution(999)
-        
+
         assert result == False
-        mock_db.delete.assert_not_called()
-    
-    def test_delete_executions_batch(self):
-        from unittest.mock import Mock, MagicMock, patch
+
+    def test_delete_executions_batch(self, db_session):
         from services.workflow_service import WorkflowService
-        from models.workflow import WorkflowExecution
-        
-        mock_db = MagicMock()
-        
-        mock_executions = [MagicMock(spec=WorkflowExecution, id=i) for i in [1, 2, 3]]
-        
-        def mock_get_execution(execution_id):
-            for exec in mock_executions:
-                if exec.id == execution_id:
-                    return exec
-            return None
-        
-        service = WorkflowService(mock_db)
-        
-        with patch.object(service, 'get_execution_by_id', side_effect=mock_get_execution):
-            deleted_count = service.delete_executions([1, 2, 3])
-            
-            assert deleted_count == 3
-    
-    def test_delete_executions_batch_partial(self):
-        from unittest.mock import Mock, MagicMock, patch
+        from models.workflow import Workflow, WorkflowExecution
+
+        workflow = Workflow(name="测试工作流", graph_data={"nodes": [], "connections": []})
+        db_session.add(workflow)
+        db_session.commit()
+
+        executions = []
+        for i in range(3):
+            exec_obj = WorkflowExecution(workflow_id=workflow.id, status="success")
+            db_session.add(exec_obj)
+            executions.append(exec_obj)
+        db_session.commit()
+
+        exec_ids = [e.id for e in executions]
+
+        service = WorkflowService()
+        deleted_count = service.delete_executions(exec_ids)
+
+        assert deleted_count == 3
+
+    def test_delete_executions_batch_partial(self, db_session):
         from services.workflow_service import WorkflowService
-        from models.workflow import WorkflowExecution
-        
-        mock_db = MagicMock()
-        
-        mock_executions = [MagicMock(spec=WorkflowExecution, id=i) for i in [1, 3]]
-        
-        def mock_get_execution(execution_id):
-            for exec in mock_executions:
-                if exec.id == execution_id:
-                    return exec
-            return None
-        
-        service = WorkflowService(mock_db)
-        
-        with patch.object(service, 'get_execution_by_id', side_effect=mock_get_execution):
-            deleted_count = service.delete_executions([1, 2, 3])
-            
-            assert deleted_count == 2
+        from models.workflow import Workflow, WorkflowExecution
+
+        workflow = Workflow(name="测试工作流", graph_data={"nodes": [], "connections": []})
+        db_session.add(workflow)
+        db_session.commit()
+
+        executions = []
+        for i in range(2):
+            exec_obj = WorkflowExecution(workflow_id=workflow.id, status="success")
+            db_session.add(exec_obj)
+            executions.append(exec_obj)
+        db_session.commit()
+
+        exec_ids = [e.id for e in executions]
+        exec_ids.append(999)
+
+        service = WorkflowService()
+        deleted_count = service.delete_executions(exec_ids)
+
+        assert deleted_count == 2
 
 
 class TestWorkflowImportExport:
-    def test_export_workflow(self):
-        from unittest.mock import MagicMock
+    def test_export_workflow(self, db_session):
         from services.workflow_service import WorkflowService
         from models.workflow import Workflow
-        
-        mock_db = MagicMock()
-        mock_workflow = MagicMock(spec=Workflow)
-        mock_workflow.id = 1
-        mock_workflow.name = "测试工作流"
-        mock_workflow.description = "测试描述"
-        mock_workflow.graph_data = {
-            "nodes": [
-                {"id": 1, "node_type": "start", "name": "开始"},
-                {"id": 2, "node_type": "end", "name": "结束"}
-            ],
-            "connections": [{"source": 1, "target": 2}]
-        }
-        
-        mock_db.query.return_value.filter.return_value.first.return_value = mock_workflow
-        
-        service = WorkflowService(mock_db)
-        export_data = service.export_workflow(1)
-        
+
+        workflow = Workflow(
+            name="测试工作流",
+            description="测试描述",
+            graph_data={
+                "nodes": [
+                    {"id": 1, "node_type": "start", "name": "开始"},
+                    {"id": 2, "node_type": "end", "name": "结束"}
+                ],
+                "connections": [{"source": 1, "target": 2}]
+            }
+        )
+        db_session.add(workflow)
+        db_session.commit()
+
+        service = WorkflowService()
+        export_data = service.export_workflow(workflow.id)
+
         assert export_data is not None
         assert export_data["name"] == "测试工作流"
         assert export_data["description"] == "测试描述"
         assert "graph_data" in export_data
         assert export_data["export_version"] == "1.0"
-    
-    def test_export_workflow_not_found(self):
-        from unittest.mock import MagicMock
+
+    def test_export_workflow_not_found(self, db_session):
         from services.workflow_service import WorkflowService
-        
-        mock_db = MagicMock()
-        mock_db.query.return_value.filter.return_value.first.return_value = None
-        
-        service = WorkflowService(mock_db)
+
+        service = WorkflowService()
         export_data = service.export_workflow(999)
-        
+
         assert export_data is None
-    
-    def test_import_workflow(self):
-        from unittest.mock import MagicMock, patch
+
+    def test_import_workflow(self, db_session):
         from services.workflow_service import WorkflowService
-        from models.workflow import Workflow
-        
-        mock_db = MagicMock()
-        
+
         import_data = {
             "name": "导入的工作流",
             "description": "导入描述",
@@ -768,79 +754,53 @@ class TestWorkflowImportExport:
             },
             "export_version": "1.0"
         }
-        
-        service = WorkflowService(mock_db)
-        
-        mock_workflow = MagicMock(spec=Workflow)
-        mock_workflow.id = 1
-        mock_workflow.name = "导入的工作流"
-        
-        with patch.object(service, 'create', return_value=mock_workflow):
-            result = service.import_workflow(import_data, user_id=1)
-            
-            assert result is not None
-            service.create.assert_called_once()
-    
-    def test_import_workflow_empty_data(self):
-        from unittest.mock import MagicMock
+
+        service = WorkflowService()
+        result = service.import_workflow(import_data, user_id=1)
+
+        assert result is not None
+        assert result.name == "导入的工作流"
+
+    def test_import_workflow_empty_data(self, db_session):
         from services.workflow_service import WorkflowService
-        
-        mock_db = MagicMock()
-        service = WorkflowService(mock_db)
-        
+
+        service = WorkflowService()
         result = service.import_workflow(None)
         assert result is None
 
-    def test_generate_unique_name_no_conflict(self):
-        from unittest.mock import MagicMock
+    def test_generate_unique_name_no_conflict(self, db_session):
         from services.workflow_service import WorkflowService
-        
-        mock_db = MagicMock()
-        mock_db.query.return_value.filter.return_value.all.return_value = []
-        
-        service = WorkflowService(mock_db)
+
+        service = WorkflowService()
         result = service._generate_unique_name("测试工作流")
-        
+
         assert result == "测试工作流"
 
-    def test_generate_unique_name_with_conflict(self):
-        from unittest.mock import MagicMock
+    def test_generate_unique_name_with_conflict(self, db_session):
         from services.workflow_service import WorkflowService
-        
-        mock_db = MagicMock()
-        
-        class MockWorkflow:
-            def __init__(self, name):
-                self.name = name
-        
-        mock_existing = [MockWorkflow("测试工作流"), MockWorkflow("其他工作流")]
-        mock_db.query.return_value.filter.return_value.all.return_value = mock_existing
-        
-        service = WorkflowService(mock_db)
+        from models.workflow import Workflow
+
+        workflow = Workflow(name="测试工作流", graph_data={"nodes": [], "connections": []})
+        db_session.add(workflow)
+        db_session.commit()
+
+        service = WorkflowService()
         result = service._generate_unique_name("测试工作流")
-        
+
         assert result == "测试工作流 (1)"
 
-    def test_generate_unique_name_multiple_conflicts(self):
-        from unittest.mock import MagicMock
+    def test_generate_unique_name_multiple_conflicts(self, db_session):
         from services.workflow_service import WorkflowService
-        
-        mock_db = MagicMock()
-        
-        class MockWorkflow:
-            def __init__(self, name):
-                self.name = name
-        
-        mock_existing = [
-            MockWorkflow("测试工作流"),
-            MockWorkflow("测试工作流 (1)"),
-            MockWorkflow("测试工作流 (2)")
-        ]
-        mock_db.query.return_value.filter.return_value.all.return_value = mock_existing
-        
-        service = WorkflowService(mock_db)
+        from models.workflow import Workflow
+
+        db_session.add(Workflow(name="测试工作流", graph_data={"nodes": [], "connections": []}))
+        db_session.add(Workflow(name="测试工作流 (1)", graph_data={"nodes": [], "connections": []}))
+        db_session.add(Workflow(name="测试工作流 (2)", graph_data={"nodes": [], "connections": []}))
+        db_session.commit()
+
+        service = WorkflowService()
         result = service._generate_unique_name("测试工作流")
-        
+
         assert result == "测试工作流 (3)"
 
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from sqlalchemy.orm import Session
 from models.server_asset import ServerAsset
 from services.crypto import CryptoManager
 from services.dict_service import DictService
@@ -9,6 +8,7 @@ from typing import List, Optional, Dict, Any, Tuple
 from core.config import settings
 from core.logger import get_logger
 from core.utils import get_local_now
+from core.database import get_db
 from schemas.schemas import AssetCreateRequest, AssetUpdateRequest
 import xlsxwriter
 from io import BytesIO
@@ -18,18 +18,20 @@ logger = get_logger(__name__)
 
 
 class AssetService(AuditMixin):
-    # 允许通过 update() 方法更新的字段白名单，防止任意属性被设置
     UPDATABLE_FIELDS = frozenset({
         "unit_name", "system_name", "ip", "ipv6", "port",
         "host_name", "username", "notes", "business_service",
         "location", "server_type", "vip"
     })
 
-    def __init__(self, db: Session, dict_service: Optional[DictService] = None):
-        self.db = db
+    IMPORT_UPDATABLE_FIELDS = frozenset({
+        "username", "ip", "ipv6", "host_name", "business_service",
+        "location", "server_type", "vip", "notes", "port"
+    })
+
+    def __init__(self, dict_service: Optional[DictService] = None):
         self.crypto = CryptoManager(settings.CRYPTO_KEY)
-        self.dict_service = dict_service or DictService(db)
-        # 实例级别缓存，避免跨实例数据污染
+        self.dict_service = dict_service or DictService()
         self._sort_cache: Dict[str, Dict[str, int]] = {}
         self._cache_valid: bool = False
 
@@ -76,32 +78,33 @@ class AssetService(AuditMixin):
             location=location, server_type=server_type, vip=vip
         )
 
-        try:
-            password_cipher = self.crypto.encrypt(req.password) if req.password else ""
+        with get_db() as db:
+            try:
+                password_cipher = self.crypto.encrypt(req.password) if req.password else ""
 
-            asset = ServerAsset(
-                unit_name=req.unit_name,
-                system_name=req.system_name,
-                ip=req.ip,
-                ipv6=req.ipv6,
-                port=req.port,
-                host_name=req.host_name,
-                username=req.username,
-                password_cipher=password_cipher,
-                notes=req.notes,
-                business_service=req.business_service,
-                location=req.location,
-                server_type=req.server_type,
-                vip=req.vip,
-                created_at=get_local_now()
-            )
-            self.db.add(asset)
-            self.db.commit()
-            self.db.refresh(asset)
-        except Exception as e:
-            self.db.rollback()
-            logger.error(f"创建资产失败: {e}")
-            raise
+                asset = ServerAsset(
+                    unit_name=req.unit_name,
+                    system_name=req.system_name,
+                    ip=req.ip,
+                    ipv6=req.ipv6,
+                    port=req.port,
+                    host_name=req.host_name,
+                    username=req.username,
+                    password_cipher=password_cipher,
+                    notes=req.notes,
+                    business_service=req.business_service,
+                    location=req.location,
+                    server_type=req.server_type,
+                    vip=req.vip,
+                    created_at=get_local_now()
+                )
+                db.add(asset)
+                db.commit()
+                db.refresh(asset)
+            except Exception as e:
+                db.rollback()
+                logger.error(f"创建资产失败: {e}")
+                raise
 
         self.log_audit(
             user_id=user_id,
@@ -114,7 +117,8 @@ class AssetService(AuditMixin):
         return asset.id
 
     def get_all(self) -> List[ServerAsset]:
-        assets = self.db.query(ServerAsset).all()
+        with get_db() as db:
+            assets = db.query(ServerAsset).all()
         self._refresh_sort_cache()
         assets.sort(key=lambda a: (
             self._sort_cache.get("unit", {}).get(a.unit_name, 9999),
@@ -127,31 +131,32 @@ class AssetService(AuditMixin):
     def get_by_id(self, asset_id: int) -> Optional[ServerAsset]:
         if not isinstance(asset_id, int) or asset_id <= 0:
             return None
-        return self.db.query(ServerAsset).filter(ServerAsset.id == asset_id).first()
+        with get_db() as db:
+            return db.query(ServerAsset).filter(ServerAsset.id == asset_id).first()
 
     def update(self, asset_id: int, user_id: Optional[int] = None, **kwargs) -> bool:
         if not isinstance(asset_id, int) or asset_id <= 0:
             return False
-        asset = self.get_by_id(asset_id)
-        if not asset:
-            return False
 
-        # 仅允许白名单中的字段更新，防止 id 等关键字段被篡改
-        for key, value in kwargs.items():
-            if key in self.UPDATABLE_FIELDS:
-                if key == "password":
-                    # 密码字段特殊处理：加密存储到 password_cipher
-                    if value is not None:
-                        setattr(asset, "password_cipher", self.crypto.encrypt(value))
-                elif value is not None:
-                    setattr(asset, key, value)
+        with get_db() as db:
+            asset = db.query(ServerAsset).filter(ServerAsset.id == asset_id).first()
+            if not asset:
+                return False
 
-        try:
-            self.db.commit()
-        except Exception as e:
-            self.db.rollback()
-            logger.error(f"更新资产失败: {e}")
-            raise
+            for key, value in kwargs.items():
+                if key in self.UPDATABLE_FIELDS:
+                    if key == "password":
+                        if value is not None:
+                            setattr(asset, "password_cipher", self.crypto.encrypt(value))
+                    elif value is not None:
+                        setattr(asset, key, value)
+
+            try:
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                logger.error(f"更新资产失败: {e}")
+                raise
 
         self.log_audit(
             user_id=user_id,
@@ -166,25 +171,27 @@ class AssetService(AuditMixin):
     def delete(self, asset_id: int, user_id: int) -> bool:
         if not isinstance(asset_id, int) or asset_id <= 0:
             return False
-        asset = self.get_by_id(asset_id)
-        if not asset:
-            return False
 
-        self.log_audit(
-            user_id=user_id,
-            action_type="delete",
-            resource_type="asset",
-            resource_id=asset_id,
-            details=f"删除资产: {asset.unit_name} - {asset.system_name} ({asset.ip or asset.ipv6})"
-        )
+        with get_db() as db:
+            asset = db.query(ServerAsset).filter(ServerAsset.id == asset_id).first()
+            if not asset:
+                return False
 
-        try:
-            self.db.delete(asset)
-            self.db.commit()
-        except Exception as e:
-            self.db.rollback()
-            logger.error(f"删除资产失败: {e}")
-            raise
+            self.log_audit(
+                user_id=user_id,
+                action_type="delete",
+                resource_type="asset",
+                resource_id=asset_id,
+                details=f"删除资产: {asset.unit_name} - {asset.system_name} ({asset.ip or asset.ipv6})"
+            )
+
+            try:
+                db.delete(asset)
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                logger.error(f"删除资产失败: {e}")
+                raise
         return True
 
     def get_password(self, asset_id: int) -> Optional[str]:
@@ -194,35 +201,28 @@ class AssetService(AuditMixin):
         return self.crypto.decrypt(asset.password_cipher)
 
     def export_assets(self, asset_ids: Optional[List[int]] = None, include_password: bool = False) -> bytes:
-        """
-        导出资产数据到Excel文件
-        
-        Args:
-            asset_ids: 要导出的资产ID列表,如果为None则导出所有资产
-            include_password: 是否包含密码字段
-            
-        Returns:
-            Excel文件的字节数据
-        """
-        if asset_ids:
-            assets = self.db.query(ServerAsset).filter(ServerAsset.id.in_(asset_ids)).all()
-        else:
-            assets = self.get_all()
-        
+        with get_db() as db:
+            if asset_ids:
+                assets = db.query(ServerAsset).filter(ServerAsset.id.in_(asset_ids)).all()
+            else:
+                assets = db.query(ServerAsset).all()
+
+        self._refresh_sort_cache()
+
         columns = [
             "单位名称", "系统名称", "IP地址", "IPv6地址", "用户名",
             "端口", "主机名", "业务服务", "位置", "服务器类型", "VIP", "备注"
         ]
         if include_password:
             columns.insert(5, "密码")
-        
+
         output = BytesIO()
         workbook = xlsxwriter.Workbook(output, {'in_memory': True})
         worksheet = workbook.add_worksheet('资产列表')
-        
+
         dict_sheet = workbook.add_worksheet('字典数据')
         dict_sheet.hide()
-        
+
         header_format = workbook.add_format({
             'bold': True,
             'bg_color': '#4472C4',
@@ -231,23 +231,23 @@ class AssetService(AuditMixin):
             'align': 'center',
             'valign': 'vcenter'
         })
-        
+
         cell_format = workbook.add_format({
             'border': 1,
             'align': 'left',
             'valign': 'vcenter'
         })
-        
+
         for col_num, column in enumerate(columns):
             worksheet.write(0, col_num, column, header_format)
-        
+
         all_data = []
         for row_num, asset in enumerate(assets, start=1):
             unit_name_display = self.dict_service.get_item_name_by_code("unit", asset.unit_name) or asset.unit_name
             system_name_display = self.dict_service.get_item_name_by_code("system", asset.system_name) or asset.system_name
             location_display = self.dict_service.get_item_name_by_code("location", asset.location) or (asset.location or "")
             server_type_display = self.dict_service.get_item_name_by_code("server_type", asset.server_type) or (asset.server_type or "")
-            
+
             data = [
                 unit_name_display,
                 system_name_display,
@@ -264,19 +264,19 @@ class AssetService(AuditMixin):
             ]
             if include_password:
                 data.insert(5, self.crypto.decrypt(asset.password_cipher) if asset.password_cipher else "")
-            
+
             all_data.append(data)
-            
+
             for col_num, value in enumerate(data):
                 worksheet.write(row_num, col_num, value, cell_format)
-        
+
         for col_num, column in enumerate(columns):
             max_length = len(str(column))
             for row_data in all_data:
                 if col_num < len(row_data):
                     max_length = max(max_length, len(str(row_data[col_num])))
             worksheet.set_column(col_num, col_num, min(max_length + 4, 60))
-        
+
         unit_items = self.dict_service.get_dict_items("unit")
         unit_names = [item.item_name for item in unit_items]
         if unit_names:
@@ -292,7 +292,7 @@ class AssetService(AuditMixin):
                     'input_message': '请从下拉列表中选择单位名称'
                 }
             )
-        
+
         system_items = self.dict_service.get_dict_items("system")
         system_names = [item.item_name for item in system_items]
         if system_names:
@@ -308,7 +308,7 @@ class AssetService(AuditMixin):
                     'input_message': '请从下拉列表中选择系统名称'
                 }
             )
-        
+
         location_items = self.dict_service.get_dict_items("location")
         location_names = [item.item_name for item in location_items]
         if location_names:
@@ -325,7 +325,7 @@ class AssetService(AuditMixin):
                     'input_message': '请从下拉列表中选择位置'
                 }
             )
-        
+
         server_type_items = self.dict_service.get_dict_items("server_type")
         server_type_names = [item.item_name for item in server_type_items]
         if server_type_names:
@@ -342,45 +342,34 @@ class AssetService(AuditMixin):
                     'input_message': '请从下拉列表中选择服务器类型'
                 }
             )
-        
+
         workbook.close()
         output.seek(0)
-        
+
         logger.info(f"导出 {len(assets)} 个资产到Excel文件")
         return output.getvalue()
 
     def import_assets(
-        self, 
-        file_data: bytes, 
+        self,
+        file_data: bytes,
         update_existing: bool = False,
         skip_errors: bool = True
     ) -> Tuple[int, int, List[str]]:
-        """
-        从Excel文件导入资产数据
-        
-        Args:
-            file_data: 文件字节数据
-            update_existing: 是否更新已存在的资产(根据单位名称+系统名称判断)
-            skip_errors: 是否跳过错误继续导入
-            
-        Returns:
-            (成功数量, 失败数量, 错误信息列表)
-        """
         try:
             import openpyxl
             workbook = openpyxl.load_workbook(BytesIO(file_data))
             worksheet = workbook.active
-            
+
             rows = []
             for row in worksheet.iter_rows(values_only=True):
                 rows.append([cell if cell is not None else "" for cell in row])
-            
+
             if len(rows) == 0:
                 return 0, 0, ["文件为空"]
-            
+
             headers = rows[0]
             data_rows = rows[1:]
-            
+
             df = []
             for row in data_rows:
                 row_dict = {}
@@ -390,16 +379,16 @@ class AssetService(AuditMixin):
                     else:
                         row_dict[header] = ""
                 df.append(row_dict)
-                
+
         except Exception as e:
             return 0, 0, [f"文件解析失败: {str(e)}"]
-        
+
         success_count = 0
         fail_count = 0
         errors = []
-        
+
         required_fields = ["单位名称", "系统名称", "用户名"]
-        
+
         for index, row_dict in enumerate(df):
             try:
                 missing_fields = []
@@ -408,7 +397,7 @@ class AssetService(AuditMixin):
                     value = row_dict.get(field) or row_dict.get(field_with_star)
                     if not value or str(value).strip() == "":
                         missing_fields.append(field)
-                
+
                 if missing_fields:
                     error_msg = f"第 {index + 2} 行: 缺少必填字段 {', '.join(missing_fields)}"
                     if skip_errors:
@@ -417,20 +406,20 @@ class AssetService(AuditMixin):
                         continue
                     else:
                         raise ValueError(error_msg)
-                
+
                 unit_name_value = str(row_dict.get("单位名称") or row_dict.get("单位名称*")).strip()
                 system_name_value = str(row_dict.get("系统名称") or row_dict.get("系统名称*")).strip()
                 username = str(row_dict.get("用户名") or row_dict.get("用户名*")).strip()
-                
+
                 unit_name = self.dict_service.get_item_code_by_name("unit", unit_name_value) or unit_name_value
                 system_name = self.dict_service.get_item_code_by_name("system", system_name_value) or system_name_value
-                
+
                 ip_value = str(row_dict.get("IP地址", "")).strip()
                 ipv6_value = str(row_dict.get("IPv6地址", "")).strip()
-                
+
                 ip = ip_value if ip_value else None
                 ipv6 = ipv6_value if ipv6_value else None
-                
+
                 if not ip and not ipv6:
                     error_msg = f"第 {index + 2} 行: IP地址和IPv6地址至少需要填写一个"
                     if skip_errors:
@@ -439,106 +428,109 @@ class AssetService(AuditMixin):
                         continue
                     else:
                         raise ValueError(error_msg)
-                
-                existing_asset = self.db.query(ServerAsset).filter(
-                    ServerAsset.unit_name == unit_name,
-                    ServerAsset.system_name == system_name,
-                    ServerAsset.username == username
-                ).filter(
-                    (ServerAsset.ip == ip) | (ServerAsset.ip.is_(None) & (ip is None))
-                ).filter(
-                    (ServerAsset.ipv6 == ipv6) | (ServerAsset.ipv6.is_(None) & (ipv6 is None))
-                ).first()
-                
-                if existing_asset and update_existing:
-                    location_value = str(row_dict.get("位置", "")).strip()
-                    server_type_value = str(row_dict.get("服务器类型", "")).strip()
-                    
-                    update_data = {
-                        "username": username,
-                        "ip": ip,
-                        "ipv6": ipv6,
-                        "host_name": str(row_dict.get("主机名", "")).strip() or None,
-                        "business_service": str(row_dict.get("业务服务", "")).strip() or None,
-                        "location": self.dict_service.get_item_code_by_name("location", location_value) or (location_value or None),
-                        "server_type": self.dict_service.get_item_code_by_name("server_type", server_type_value) or (server_type_value or None),
-                        "vip": str(row_dict.get("VIP", "")).strip() or None,
-                        "notes": str(row_dict.get("备注", "")).strip() or None,
-                    }
-                    
-                    port_value = row_dict.get("端口", "22")
-                    if port_value and str(port_value).strip():
-                        try:
-                            update_data["port"] = int(port_value)
-                        except ValueError:
-                            update_data["port"] = 22
-                    else:
-                        update_data["port"] = 22
-                    
-                    password = row_dict.get("密码", "")
-                    if password and str(password).strip():
-                        update_data["password"] = str(password).strip()
-                    
-                    for key, value in update_data.items():
-                        if key != "password":
-                            setattr(existing_asset, key, value)
+
+                with get_db() as db:
+                    existing_asset = db.query(ServerAsset).filter(
+                        ServerAsset.unit_name == unit_name,
+                        ServerAsset.system_name == system_name,
+                        ServerAsset.username == username
+                    ).filter(
+                        (ServerAsset.ip == ip) | (ServerAsset.ip.is_(None) & (ip is None))
+                    ).filter(
+                        (ServerAsset.ipv6 == ipv6) | (ServerAsset.ipv6.is_(None) & (ipv6 is None))
+                    ).first()
+
+                    if existing_asset and update_existing:
+                        location_value = str(row_dict.get("位置", "")).strip()
+                        server_type_value = str(row_dict.get("服务器类型", "")).strip()
+
+                        update_data = {
+                            "username": username,
+                            "ip": ip,
+                            "ipv6": ipv6,
+                            "host_name": str(row_dict.get("主机名", "")).strip() or None,
+                            "business_service": str(row_dict.get("业务服务", "")).strip() or None,
+                            "location": self.dict_service.get_item_code_by_name("location", location_value) or (location_value or None),
+                            "server_type": self.dict_service.get_item_code_by_name("server_type", server_type_value) or (server_type_value or None),
+                            "vip": str(row_dict.get("VIP", "")).strip() or None,
+                            "notes": str(row_dict.get("备注", "")).strip() or None,
+                        }
+
+                        port_value = row_dict.get("端口", "22")
+                        if port_value and str(port_value).strip():
+                            try:
+                                update_data["port"] = int(port_value)
+                            except ValueError:
+                                update_data["port"] = 22
                         else:
-                            setattr(existing_asset, "password_cipher", self.crypto.encrypt(value))
-                    
-                    self.db.commit()
-                    success_count += 1
-                    logger.info(f"更新资产: {unit_name} - {system_name}")
-                    
-                elif not existing_asset:
-                    password = row_dict.get("密码", "")
-                    if not password:
-                        password = ""
-                    
-                    port_value = row_dict.get("端口", "22")
-                    if port_value and str(port_value).strip():
-                        try:
-                            port = int(port_value)
-                        except ValueError:
+                            update_data["port"] = 22
+
+                        password = row_dict.get("密码", "")
+                        if password and str(password).strip():
+                            update_data["password"] = str(password).strip()
+
+                        for key, value in update_data.items():
+                            if key not in self.IMPORT_UPDATABLE_FIELDS and key != "password":
+                                continue
+                            if key == "password":
+                                if value:
+                                    setattr(existing_asset, "password_cipher", self.crypto.encrypt(value))
+                            elif value is not None:
+                                setattr(existing_asset, key, value)
+
+                        db.commit()
+                        success_count += 1
+                        logger.info(f"更新资产: {unit_name} - {system_name}")
+
+                    elif not existing_asset:
+                        password = row_dict.get("密码", "")
+                        if not password:
+                            password = ""
+
+                        port_value = row_dict.get("端口", "22")
+                        if port_value and str(port_value).strip():
+                            try:
+                                port = int(port_value)
+                            except ValueError:
+                                port = 22
+                        else:
                             port = 22
+
+                        location_value = str(row_dict.get("位置", "")).strip()
+                        server_type_value = str(row_dict.get("服务器类型", "")).strip()
+
+                        asset_id = self.create(
+                            unit_name=unit_name,
+                            system_name=system_name,
+                            username=username,
+                            password=str(password).strip(),
+                            ip=ip,
+                            ipv6=ipv6,
+                            port=port,
+                            host_name=str(row_dict.get("主机名", "")).strip() or None,
+                            business_service=str(row_dict.get("业务服务", "")).strip() or None,
+                            location=self.dict_service.get_item_code_by_name("location", location_value) or (location_value or None),
+                            server_type=self.dict_service.get_item_code_by_name("server_type", server_type_value) or (server_type_value or None),
+                            vip=str(row_dict.get("VIP", "")).strip() or None,
+                            notes=str(row_dict.get("备注", "")).strip() or None,
+                        )
+                        success_count += 1
+                        logger.info(f"创建资产: {unit_name} - {system_name}, ID: {asset_id}")
                     else:
-                        port = 22
-                    
-                    location_value = str(row_dict.get("位置", "")).strip()
-                    server_type_value = str(row_dict.get("服务器类型", "")).strip()
-                    
-                    asset_id = self.create(
-                        unit_name=unit_name,
-                        system_name=system_name,
-                        username=username,
-                        password=str(password).strip(),
-                        ip=ip,
-                        ipv6=ipv6,
-                        port=port,
-                        host_name=str(row_dict.get("主机名", "")).strip() or None,
-                        business_service=str(row_dict.get("业务服务", "")).strip() or None,
-                        location=self.dict_service.get_item_code_by_name("location", location_value) or (location_value or None),
-                        server_type=self.dict_service.get_item_code_by_name("server_type", server_type_value) or (server_type_value or None),
-                        vip=str(row_dict.get("VIP", "")).strip() or None,
-                        notes=str(row_dict.get("备注", "")).strip() or None,
-                    )
-                    success_count += 1
-                    logger.info(f"创建资产: {unit_name} - {system_name}, ID: {asset_id}")
-                else:
-                    error_msg = f"第 {index + 2} 行: 资产已存在 ({unit_name} - {system_name})"
-                    if skip_errors:
-                        errors.append(error_msg)
-                        fail_count += 1
-                        continue
-                    else:
-                        raise ValueError(error_msg)
-                        
+                        error_msg = f"第 {index + 2} 行: 资产已存在 ({unit_name} - {system_name})"
+                        if skip_errors:
+                            errors.append(error_msg)
+                            fail_count += 1
+                            continue
+                        else:
+                            raise ValueError(error_msg)
+
             except Exception as e:
                 error_msg = f"第 {index + 2} 行: {str(e)}"
                 errors.append(error_msg)
                 fail_count += 1
                 if not skip_errors:
-                    self.db.rollback()
                     return success_count, fail_count, errors
-        
+
         logger.info(f"导入完成: 成功 {success_count} 个, 失败 {fail_count} 个")
         return success_count, fail_count, errors

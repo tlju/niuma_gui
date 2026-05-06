@@ -3,7 +3,7 @@ from services.asset_service import AssetService
 
 @pytest.fixture
 def asset_service(db_session):
-    return AssetService(db_session)
+    return AssetService()
 
 def test_create_asset(asset_service):
     asset_id = asset_service.create(

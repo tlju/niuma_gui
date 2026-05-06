@@ -8,7 +8,7 @@ from contextlib import contextmanager
 
 @pytest.fixture
 def script_service(db_session):
-    return ScriptService(db_session)
+    return ScriptService()
 
 
 def test_create_script(script_service):
@@ -29,7 +29,7 @@ def test_create_script(script_service):
 
 def test_create_script_with_server(script_service):
     from services.asset_service import AssetService
-    asset_service = AssetService(script_service.db)
+    asset_service = AssetService()
     server_id = asset_service.create(
         unit_name="TestUnit",
         system_name="TestSystem",

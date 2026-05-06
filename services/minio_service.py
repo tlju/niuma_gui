@@ -4,8 +4,8 @@ from minio import Minio
 from minio.error import S3Error
 from io import BytesIO
 from typing import List, Optional, BinaryIO
-from sqlalchemy.orm import Session
 from core.logger import get_logger
+from core.database import get_db
 from datetime import datetime
 
 logger = get_logger(__name__)
@@ -33,38 +33,30 @@ class MinioFileInfo:
 class MinioService:
     def __init__(
         self,
-        db: Session = None,
         endpoint: str = None,
         access_key: str = None,
         secret_key: str = None,
         bucket: str = None,
         secure: bool = None,
     ):
-        if db is not None:
-            from services.param_service import ParamService
-            param_service = ParamService(db)
-            
-            self._endpoint = endpoint or self._get_param_value(param_service, "minio_endpoint")
-            self._access_key = access_key or self._get_param_value(param_service, "minio_access_key")
-            self._secret_key = secret_key or self._get_param_value(param_service, "minio_secret_key")
-            self._bucket = bucket or self._get_param_value(param_service, "minio_bucket")
-            
-            secure_value = self._get_param_value(param_service, "minio_secure")
-            if secure is not None:
-                self._secure = secure
-            elif secure_value is not None:
-                self._secure = secure_value.lower() in ("true", "1", "yes")
-            else:
-                self._secure = False
+        from services.param_service import ParamService
+        param_service = ParamService()
+
+        self._endpoint = endpoint or self._get_param_value(param_service, "minio_endpoint")
+        self._access_key = access_key or self._get_param_value(param_service, "minio_access_key")
+        self._secret_key = secret_key or self._get_param_value(param_service, "minio_secret_key")
+        self._bucket = bucket or self._get_param_value(param_service, "minio_bucket")
+
+        secure_value = self._get_param_value(param_service, "minio_secure")
+        if secure is not None:
+            self._secure = secure
+        elif secure_value is not None:
+            self._secure = secure_value.lower() in ("true", "1", "yes")
         else:
-            self._endpoint = endpoint
-            self._access_key = access_key
-            self._secret_key = secret_key
-            self._bucket = bucket
-            self._secure = secure if secure is not None else False
-        
+            self._secure = False
+
         self._client: Optional[Minio] = None
-    
+
     def _get_param_value(self, param_service, param_code: str) -> Optional[str]:
         param = param_service.get_param_by_code(param_code)
         if param and param.status == 1:

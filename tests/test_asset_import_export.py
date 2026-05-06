@@ -8,12 +8,12 @@ from services.dict_service import DictService
 
 @pytest.fixture
 def asset_service(db_session):
-    return AssetService(db_session)
+    return AssetService()
 
 
 @pytest.fixture
 def dict_service(db_session):
-    return DictService(db_session)
+    return DictService()
 
 
 def test_export_assets(asset_service):
@@ -322,8 +322,10 @@ def test_import_export_roundtrip(asset_service):
     file_data = asset_service.export_assets(include_password=True)
 
     from models.server_asset import ServerAsset
-    asset_service.db.query(ServerAsset).delete()
-    asset_service.db.commit()
+    from core.database import get_db
+    with get_db() as db:
+        db.query(ServerAsset).delete()
+        db.commit()
 
     success_count, fail_count, errors = asset_service.import_assets(
         file_data=file_data
