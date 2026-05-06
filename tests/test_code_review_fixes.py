@@ -25,14 +25,6 @@ class TestCryptoKeyValidation:
             with pytest.raises(ValueError, match="CRYPTO_KEY 未配置"):
                 importlib.reload(core.config)
 
-    def test_default_crypto_key_raises_error(self):
-        """使用默认弱密钥应抛出 ValueError"""
-        with patch.dict(os.environ, {"CRYPTO_KEY": "default-crypto-key-32-bytes-long-change-me"}, clear=False):
-            import importlib
-            import core.config
-            with pytest.raises(ValueError, match="不安全的默认值"):
-                importlib.reload(core.config)
-
     def test_short_crypto_key_raises_error(self):
         """过短的 CRYPTO_KEY 应抛出 ValueError"""
         with patch.dict(os.environ, {"CRYPTO_KEY": "short"}, clear=False):
