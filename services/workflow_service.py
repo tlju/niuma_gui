@@ -4,6 +4,7 @@ import json
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from sqlalchemy import desc
+from sqlalchemy.orm import joinedload
 from models.workflow import Workflow, WorkflowNode, WorkflowExecution, WorkflowNodeExecution
 from services.audit_mixin import AuditMixin
 from core.logger import get_logger
@@ -154,7 +155,7 @@ class WorkflowService(AuditMixin):
 
     def get_executions(self, workflow_id: int = None, limit: int = 50) -> List[WorkflowExecution]:
         with get_db() as db:
-            query = db.query(WorkflowExecution)
+            query = db.query(WorkflowExecution).options(joinedload(WorkflowExecution.workflow))
             if workflow_id:
                 query = query.filter(WorkflowExecution.workflow_id == workflow_id)
             return query.order_by(desc(WorkflowExecution.started_at)).limit(limit).all()
