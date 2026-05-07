@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -71,6 +72,43 @@ def _create_admin_user(db: Session) -> bool:
     return True
 
 
+def _import_input_sql():
+    """如果存在 input.sql 则导入数据"""
+    base_path = get_base_path()
+    input_sql_path = os.path.join(base_path, "input.sql")
+    
+    if not os.path.exists(input_sql_path):
+        logger.info("未找到 input.sql，跳过数据导入")
+        return False
+    
+    db_path = settings.db_path
+    
+    logger.info("正在导入 input.sql 到数据库...")
+    try:
+        result = subprocess.run(
+            ["sqlite3", db_path, f".read {input_sql_path}"],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode != 0:
+            logger.error(f"导入 input.sql 失败: {result.stderr}")
+            return False
+        
+        logger.info("input.sql 导入成功")
+        return True
+    except subprocess.TimeoutExpired:
+        logger.error("导入 input.sql 超时")
+        return False
+    except FileNotFoundError:
+        logger.error("未找到 sqlite3 命令，无法导入 input.sql")
+        return False
+    except Exception as e:
+        logger.error(f"导入 input.sql 时发生错误: {e}")
+        return False
+
+
 def init_db():
     """初始化数据库表"""
     db_exists = False
@@ -87,6 +125,8 @@ def init_db():
             created = _create_admin_user(db)
             if created:
                 logger.info("初始化完成！")
+        
+        _import_input_sql()
 
 
 def get_db_session() -> Session:
