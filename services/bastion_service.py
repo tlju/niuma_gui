@@ -468,23 +468,28 @@ class BastionConnection:
         return all_servers
 
     def _process_server_list(self, servers: List[Dict[str, str]]) -> List[Dict[str, str]]:
-        processed = []
-        seen_ips = set()
+        ip_groups = {}
         
         for server in servers:
             ip = server.get("ip", "")
-            name = server.get("name", "")
-            
-            if "host_" in name:
-                logger.debug(f"排除包含'host_'的服务器: {ip} - {name}")
-                continue
-            
-            if ip in seen_ips:
-                logger.debug(f"去重: IP {ip} 已存在")
-                continue
-            
-            seen_ips.add(ip)
-            processed.append(server)
+            if ip not in ip_groups:
+                ip_groups[ip] = []
+            ip_groups[ip].append(server)
+        
+        processed = []
+        
+        for ip, group in ip_groups.items():
+            if len(group) > 1:
+                non_host_servers = [s for s in group if not s.get("name", "").startswith("host_")]
+                if non_host_servers:
+                    selected = non_host_servers[0]
+                    logger.debug(f"IP {ip} 有重复，选择非 host_ 服务器: {selected.get('name')}")
+                else:
+                    selected = group[0]
+                    logger.debug(f"IP {ip} 有重复但全部为 host_，选择第一个: {selected.get('name')}")
+                processed.append(selected)
+            else:
+                processed.append(group[0])
         
         logger.info(f"服务器列表处理完成: 原始 {len(servers)} 台，处理后 {len(processed)} 台")
         return processed

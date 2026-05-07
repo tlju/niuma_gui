@@ -544,7 +544,7 @@ class TestBastionService:
 
 
 class TestProcessServerList:
-    def test_process_server_list_filter_host_prefix(self):
+    def test_process_server_list_filter_host_prefix_when_duplicate(self):
         conn = BastionConnection("192.168.1.100", 22, "admin", "password")
         
         servers = [
@@ -556,11 +556,13 @@ class TestProcessServerList:
         
         processed = conn._process_server_list(servers)
         
-        assert len(processed) == 2
-        assert processed[0]["ip"] == "10.9.50.52"
-        assert processed[1]["ip"] == "10.92.210.58"
-        for server in processed:
-            assert "host_" not in server["name"]
+        assert len(processed) == 3
+        ips = [s["ip"] for s in processed]
+        assert "10.9.50.52" in ips
+        assert "10.92.210.58" in ips
+        assert "10.92.210.59" in ips
+        non_host_52 = [s for s in processed if s["ip"] == "10.9.50.52"][0]
+        assert "host_" not in non_host_52["name"]
 
     def test_process_server_list_deduplicate_by_ip(self):
         conn = BastionConnection("192.168.1.100", 22, "admin", "password")
@@ -590,9 +592,11 @@ class TestProcessServerList:
         
         processed = conn._process_server_list(servers)
         
-        assert len(processed) == 2
-        assert processed[0]["ip"] == "10.9.50.52"
-        assert processed[1]["ip"] == "10.92.210.59"
+        assert len(processed) == 3
+        ips = [s["ip"] for s in processed]
+        assert "10.9.50.52" in ips
+        assert "10.92.210.58" in ips
+        assert "10.92.210.59" in ips
 
     def test_process_server_list_empty(self):
         conn = BastionConnection("192.168.1.100", 22, "admin", "password")
@@ -602,7 +606,7 @@ class TestProcessServerList:
         
         assert len(processed) == 0
 
-    def test_process_server_list_all_filtered(self):
+    def test_process_server_list_all_host_prefix_no_duplicate(self):
         conn = BastionConnection("192.168.1.100", 22, "admin", "password")
         
         servers = [
@@ -612,7 +616,20 @@ class TestProcessServerList:
         
         processed = conn._process_server_list(servers)
         
-        assert len(processed) == 0
+        assert len(processed) == 2
+
+    def test_process_server_list_duplicate_all_host_prefix(self):
+        conn = BastionConnection("192.168.1.100", 22, "admin", "password")
+        
+        servers = [
+            {"index": "1", "ip": "10.9.50.52", "name": "host_123"},
+            {"index": "2", "ip": "10.9.50.52", "name": "host_456"},
+        ]
+        
+        processed = conn._process_server_list(servers)
+        
+        assert len(processed) == 1
+        assert processed[0]["ip"] == "10.9.50.52"
 
 
 class TestGlobalServerList:
