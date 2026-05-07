@@ -5,6 +5,7 @@
 """
 import sys
 import os
+import subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -32,7 +33,6 @@ def create_tables():
 
 def create_admin_user(db: Session) -> bool:
     """创建默认管理员用户，使用 settings 中的统一配置"""
-    # 统一使用 settings 中的配置，避免重复定义默认密码
     admin_username = settings.DEFAULT_ADMIN_USERNAME
     admin_password = settings.DEFAULT_ADMIN_PASSWORD
     admin_full_name = settings.DEFAULT_ADMIN_FULL_NAME
@@ -53,9 +53,45 @@ def create_admin_user(db: Session) -> bool:
     db.add(admin)
     db.commit()
     logger.info(f"管理员用户 '{admin_username}' 创建成功")
-    # 不再打印明文密码到日志
     logger.info("请登录后立即修改默认密码！")
     return True
+
+
+def import_input_sql():
+    """如果存在 input.sql 则导入数据"""
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    input_sql_path = os.path.join(base_path, "input.sql")
+    
+    if not os.path.exists(input_sql_path):
+        logger.info("未找到 input.sql，跳过数据导入")
+        return False
+    
+    db_path = settings.db_path
+    
+    logger.info(f"正在导入 input.sql 到数据库...")
+    try:
+        result = subprocess.run(
+            ["sqlite3", db_path, f".read {input_sql_path}"],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode != 0:
+            logger.error(f"导入 input.sql 失败: {result.stderr}")
+            return False
+        
+        logger.info("input.sql 导入成功")
+        return True
+    except subprocess.TimeoutExpired:
+        logger.error("导入 input.sql 超时")
+        return False
+    except FileNotFoundError:
+        logger.error("未找到 sqlite3 命令，无法导入 input.sql")
+        return False
+    except Exception as e:
+        logger.error(f"导入 input.sql 时发生错误: {e}")
+        return False
 
 
 def init_database():
@@ -73,6 +109,8 @@ def init_database():
             logger.info("请登录后立即修改默认密码！")
     finally:
         db.close()
+
+    import_input_sql()
 
     logger.info("数据库初始化完成")
 
