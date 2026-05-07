@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-import subprocess
+import sqlite3
 from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -85,24 +85,20 @@ def _import_input_sql():
     
     logger.info("正在导入 input.sql 到数据库...")
     try:
-        result = subprocess.run(
-            ["sqlite3", db_path, f".read {input_sql_path}"],
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
         
-        if result.returncode != 0:
-            logger.error(f"导入 input.sql 失败: {result.stderr}")
-            return False
+        with open(input_sql_path, 'r', encoding='utf-8') as f:
+            sql_content = f.read()
+        
+        cursor.executescript(sql_content)
+        conn.commit()
+        conn.close()
         
         logger.info("input.sql 导入成功")
         return True
-    except subprocess.TimeoutExpired:
-        logger.error("导入 input.sql 超时")
-        return False
-    except FileNotFoundError:
-        logger.error("未找到 sqlite3 命令，无法导入 input.sql")
+    except sqlite3.Error as e:
+        logger.error(f"导入 input.sql 失败: {e}")
         return False
     except Exception as e:
         logger.error(f"导入 input.sql 时发生错误: {e}")
