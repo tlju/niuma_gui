@@ -29,7 +29,12 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 def setup_linux_env():
     """
     设置Linux环境变量，包括运行时目录、Qt平台插件和输入法支持
+    
+    注意：此函数仅在打包后的环境中执行，开发环境完全跳过
     """
+    if not getattr(sys, 'frozen', False):
+        return
+    
     if sys.platform != "linux":
         return
     
@@ -49,7 +54,7 @@ def setup_linux_env():
     if not os.environ.get("QT_QPA_PLATFORM"):
         os.environ["QT_QPA_PLATFORM"] = "xcb"
     
-    app_root = os.path.dirname(os.path.abspath(__file__))
+    app_root = os.path.dirname(os.path.abspath(sys.executable))
     target_dir = os.path.join(app_root, "bin", "PyQt5", "Qt5", "plugins", "platforminputcontexts")
     target_plugin = os.path.join(target_dir, "libfcitxplatforminputcontextplugin.so")
     
